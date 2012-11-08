@@ -30,7 +30,7 @@ from numpy import shape, random
 from mayavi import mlab
 from string import split
 import nibabel as nb
-import mayBrainExtraFns_0_2 as fns
+import mayBrainExtraFns as fns
 
 class brainObj:
     """
@@ -974,7 +974,7 @@ class plotObj():
         
         # make label and print
         label = 'plot ' + num
-        print('automatically generated label: ', label)
+        print('automatically generated label: '+ label)
         
         # iterate label index
         self.labelNo = self.labelNo + 1
