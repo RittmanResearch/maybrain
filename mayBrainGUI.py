@@ -11,7 +11,7 @@ Created on Wed Oct 31 21:00:09 2012
 
 #import os
 #os.environ['ETS_TOOLKIT'] = 'qt4'
-import networkutils_binary_camgrid_0_2 as mb
+import mayBrainTools as mb
 
 # To be able to use PySide or PyQt4 and not run in conflicts with traits,
 # we need to import QtGui and QtCore from pyface.qt
@@ -32,6 +32,8 @@ class mayBrainGUI(QtGui.QMainWindow):
         # set up UI
         self.ui = ui.Ui_MainWindow()
         self.ui.setupUi(self)
+        self.ui.brainPlot.setEnabled(0)
+        self.ui.skullPlot.setEnabled(0)
 
         # set up function
         self.brains = {}
@@ -53,6 +55,10 @@ class mayBrainGUI(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.adjFnameButton, QtCore.SIGNAL('clicked()'), self.getAdjFilename)
         QtCore.QObject.connect(self.ui.skullFnameButton, QtCore.SIGNAL('clicked()'), self.getSkullFilename)
         QtCore.QObject.connect(self.ui.propsFnameButton, QtCore.SIGNAL('clicked()'), self.getPropsFilename)                
+        QtCore.QObject.connect(self.ui.brainLoad, QtCore.SIGNAL('clicked()'), self.loadBrain)
+        QtCore.QObject.connect(self.ui.skullLoad, QtCore.SIGNAL('clicked()'), self.loadSkull)
+        QtCore.QObject.connect(self.ui.brainPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
+        QtCore.QObject.connect(self.ui.skullPlot, QtCore.SIGNAL('clicked()'), self.plotSkull)
         
         
     ## =============================================
@@ -80,17 +86,107 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.ui.propsFilename.setText(f)
         
     def loadBrain(self):
-        ''' load a spatial info file '''
-        f = str(self.ui.fileNameBox.text())
+        ''' load a brain using given filenames '''
+        # get adjacency filename
+        f = str(self.ui.adjFilename.text())
         
-        br = mb.brainObj()
+        # get threshold
         try:
-            thold = self.ui.thresholdValue.test()
+            thold = float(self.ui.thresholdValue.text())
         except:
-            print('threshold value not recovered, is it a ')
-        br.readAdjFile(f, )
+            print('threshold value not recovered, is it a float?', self.ui.thresholdValue.text())
+        
+        # get spatial info file
+        g = str(self.ui.spatialFilename.text())
+
+        # create brain and load adjacency file
+#        try:
+            # create brain object if it doesn't exist
+        if not('mainBrain' in self.brains):
+            br = mb.brainObj()
+            self.brains['mainBrain'] = br
+        else:
+            br = self.brains['mainBrain']
+        # read in files
+        br.readAdjFile(f, thold)
+        br.readSpatialInfo(g)
+                
+        # enable plot button
+        self.ui.brainPlot.setEnabled(True)
+        
+#        except:
+#            print('could not create brain object and load in files')
+            
+            
+        
+    def loadSkull(self):
+        ''' load a skull file '''
+        # get filename
+        f = str(self.ui.skullFilename.text())
+
+        try:        
+            # create brain object if it doesn't exist
+            if not('mainBrain' in self.brains):
+                br = mb.brainObj()
+                self.brains['mainBrain'] = br
+            else:
+                br = self.brains['mainBrain']
+            # read in file
+            br.importSkull(f)
+            
+            self.ui.skullPlot.setEnabled(True)
+            
+        except:
+            print('problem loading skull file')           
+        
+
+    ## =============================================
+    
+    ## plotting functions
+    
+    def plotBrain(self):
+        ''' plot the brain object '''
+        
+        # check if brain object exists
+        if not('mainBrain' in self.brains):
+            return
+
+        # plot the brain
+        try:            
+            self.plot.plotBrain(self.brains['mainBrain'], label = 'mainBrain')
+        except:
+            print('problem plotting brain, have files been loaded?')
+                
+    
+    def plotSkull(self):
+        ''' plot the skull '''
+        
+        # check if brain object exists
+        if not('mainBrain' in self.brains):
+            return
+            
+        # plot
+        try:
+            self.plot.plotSkull(self.brains['mainBrain'], label = 'mainSkull')
+        except:
+            print('could not plot skull, has file been loaded?')
+
+
+    ## =============================================
+
+    ## subbrain functions
+    def plotSubBrain(self):
+        ''' plot a subBrain with certain properties '''
+        a=1
+        # create the subBrain
         
         
+        # pass info to different parts of the program
+        
+        
+        # do the plot
+
+                        
         
 
         

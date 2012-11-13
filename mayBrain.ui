@@ -70,7 +70,7 @@
       </widget>
       <widget class="QPushButton" name="adjPlot">
        <property name="enabled">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <property name="geometry">
         <rect>
@@ -259,7 +259,7 @@
       </widget>
       <widget class="QPushButton" name="skullPlot">
        <property name="enabled">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <property name="geometry">
         <rect>
