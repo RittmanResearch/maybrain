@@ -3,6 +3,21 @@
 Created on Wed Oct 31 21:00:09 2012
 
 @author: hypocrates
+
+
+Some code for QTreeWidget stuff
+ 1 # Let's do something interesting: load the database contents
+ 2 # into our task list widget
+ 3 for task in todo.Task.query().all():
+ 4     tags=','.join([t.name for t in task.tags])
+ 5     item=QtGui.QTreeWidgetItem([task.text,str(task.date),tags])
+ 6     item.task=task
+ 7     if task.done:
+ 8         item.setCheckState(0,QtCore.Qt.Checked)
+ 9     else:
+10         item.setCheckState(0,QtCore.Qt.Unchecked)
+11     self.ui.list.addTopLevelItem(item)
+
 """
 
 # First, and before importing any Enthought packages, set the ETS_TOOLKIT
@@ -19,6 +34,7 @@ from pyface.qt import QtGui, QtCore
 #import sip
 #sip.setapi('QString', 2)
 
+from numpy import log10
 
 import sys
 #from PyQt4 import QtCore, QtGui
@@ -43,6 +59,10 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.connectSlots()
         
         
+        # plot selected in ui.plotTree
+        self.selectedPlot = None
+        
+        
         
     def connectSlots(self):
         ''' connect buttons and functions '''
@@ -59,6 +79,19 @@ class mayBrainGUI(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.skullLoad, QtCore.SIGNAL('clicked()'), self.loadSkull)
         QtCore.QObject.connect(self.ui.brainPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
         QtCore.QObject.connect(self.ui.skullPlot, QtCore.SIGNAL('clicked()'), self.plotSkull)
+        QtCore.QObject.connect(self.ui.plotTree, QtCore.SIGNAL('itemClicked(QTreeWidgetItem\
+*,int)'), self.setPlotValues)
+        self.ui.opacitySlider.valueChanged.connect(self.setOpacity)
+        self.ui.visibleCheckBox.clicked.connect(self.setVisibility)
+        self.ui.redSlider.valueChanged.connect(self.setColourRed)
+        self.ui.redValueBox.valueChanged.connect(self.setColourRedDial)
+        self.ui.greenSlider.valueChanged.connect(self.setColourGreen)
+        self.ui.greenValueBox.valueChanged.connect(self.setColourGreenDial)
+        self.ui.blueSlider.valueChanged.connect(self.setColourBlue)
+        self.ui.blueValueBox.valueChanged.connect(self.setColourBlueDial)
+        
+        
+#        QtCore.QObject.connect(self.ui.opacitySlider, QtCore.SIGNAL('mouseReleaseEvent()'), self.setOpacity)
         
         
     ## =============================================
@@ -154,8 +187,15 @@ class mayBrainGUI(QtGui.QMainWindow):
         # plot the brain
         try:            
             self.plot.plotBrain(self.brains['mainBrain'], label = 'mainBrain')
+
+            # add to tree view        
+            QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainNode', 'mainBrain'])
+            QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainEdge', 'mainBrain'])
+
         except:
             print('problem plotting brain, have files been loaded?')
+            
+
                 
     
     def plotSkull(self):
@@ -168,8 +208,14 @@ class mayBrainGUI(QtGui.QMainWindow):
         # plot
         try:
             self.plot.plotSkull(self.brains['mainBrain'], label = 'mainSkull')
+            
+            # add to treeview
+            QtGui.QTreeWidgetItem(self.ui.plotTree, ['skull', 'skull'])     
+            
         except:
             print('could not plot skull, has file been loaded?')
+            
+        
 
 
     ## =============================================
@@ -185,6 +231,139 @@ class mayBrainGUI(QtGui.QMainWindow):
         
         
         # do the plot
+        
+        
+    ## =============================================
+    
+    ## setting and altering plot properties e.g. visibility, opacity
+    
+    def setPlotValues(self, item):
+        ''' change the values for sliders and stuff of a specific plot '''
+        
+        # set the selected plot
+        self.selectedPlot = str(item.text(1))
+        self.selectedPlotType = str(item.text(0))
+        
+        # set values related to plot on sliders
+        props = ['opacity', 'visibility', 'colour']
+        
+        for p in props:
+            # get the property
+            v = self.plot.getPlotProperty(self.selectedPlotType, p, self.selectedPlot)
+            
+            # pass values to gui
+            if p == 'visibility':
+                if v == 1:
+                    v = 2
+                self.ui.visibleCheckBox.setCheckState(v)
+            elif p == 'opacity':
+                v = log10(9.*v+1.)*100.
+                print(v)
+                self.ui.opacitySlider.setValue(v)
+            elif p == 'colour':
+                self.ui.redSlider.setValue(v[0]*100)
+                self.ui.redValueBox.setValue(v[0])
+                self.ui.greenSlider.setValue(v[1]*100)
+                self.ui.greenValueBox.setValue(v[1])
+                self.ui.blueSlider.setValue(v[2]*100)
+                self.ui.blueValueBox.setValue(v[2])
+                
+    def setOpacity(self):
+        ''' set the opacity from the slider '''
+
+        v = float(self.ui.opacitySlider.value())
+        print(v)
+        v = (10**(v/100.)-1.)/9.
+        self.plot.changePlotProperty(self.selectedPlotType, 'opacity', self.selectedPlot, v)
+        print(v)
+
+        
+    def setVisibility(self):
+        ''' toggle visibility from checkbox '''        
+        
+        v = self.ui.visibleCheckBox.checkState()
+        if v==0:
+            v=False
+        elif v==2:
+            v = True
+        self.plot.changePlotProperty(self.selectedPlotType, 'visibility', self.selectedPlot, value = v)
+        
+    def setColourRed(self):
+        ''' change colours from sliders '''        
+        # get old values
+        v = self.plot.getPlotProperty(self.selectedPlotType, 'colour', self.selectedPlot)        
+        # get new red value
+        r = float(self.ui.redSlider.value()) * 0.01
+        v1 = (r, v[1], v[2])        
+        # change value in plot
+        self.plot.changePlotProperty(self.selectedPlotType, 'colour', self.selectedPlot, value = v1)        
+        # set dial value
+        self.ui.redValueBox.setValue(r)
+        
+    def setColourRedDial(self):
+        ''' change red colour from dial '''
+        # get old values
+        v = self.plot.getPlotProperty(self.selectedPlotType, 'colour', self.selectedPlot)
+        # get new red value
+        r = self.ui.redValueBox.value()
+        v1 = (r, v[1], v[2])        
+        # change value in plot
+        self.plot.changePlotProperty(self.selectedPlotType, 'colour', self.selectedPlot, value = v1)        
+        # set slider value
+        self.ui.redSlider.setValue(int(r*100.))
+        
+
+    def setColourGreen(self):
+        ''' change colours from sliders '''        
+        # get old values
+        v = self.plot.getPlotProperty(self.selectedPlotType, 'colour', self.selectedPlot)        
+        # get new green value
+        g = float(self.ui.greenSlider.value()) * 0.01
+        v1 = (v[0], g, v[2])        
+        # change value in plot
+        self.plot.changePlotProperty(self.selectedPlotType, 'colour', self.selectedPlot, value = v1)        
+        # set dial value
+        self.ui.greenValueBox.setValue(g)
+        
+    def setColourGreenDial(self):
+        
+        ''' change green colour from dial '''
+        # get old values
+        v = self.plot.getPlotProperty(self.selectedPlotType, 'colour', self.selectedPlot)
+        # get new green value
+        g = self.ui.greenValueBox.value()
+        v1 = (v[0], g, v[2])        
+        # change value in plot
+        self.plot.changePlotProperty(self.selectedPlotType, 'colour', self.selectedPlot, value = v1)        
+        # set slider value
+        self.ui.greenSlider.setValue(int(g*100.))
+        
+    def setColourBlue(self):
+        ''' change colours from sliders '''        
+        # get old values
+        v = self.plot.getPlotProperty(self.selectedPlotType, 'colour', self.selectedPlot)        
+        # get new blue value
+        b = float(self.ui.blueSlider.value()) * 0.01
+        v1 = (v[0], v[1], b)        
+        # change value in plot
+        self.plot.changePlotProperty(self.selectedPlotType, 'colour', self.selectedPlot, value = v1)        
+        # set dial value
+        self.ui.blueValueBox.setValue(b)
+        
+    def setColourBlueDial(self):               
+        ''' change blue colour from dial '''
+        # get old values
+        v = self.plot.getPlotProperty(self.selectedPlotType, 'colour', self.selectedPlot)
+        # get new blue value
+        b = self.ui.blueValueBox.value()
+        v1 = (v[0], v[1], b) 
+        # change value in plot
+        self.plot.changePlotProperty(self.selectedPlotType, 'colour', self.selectedPlot, value = v1)        
+        # set slider value
+        self.ui.blueSlider.setValue(int(b*100.))
+                
+        
+        
 
                         
         

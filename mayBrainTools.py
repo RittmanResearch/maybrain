@@ -949,11 +949,14 @@ class plotObj():
         
         # toggle plot visibility
         elif prop == 'visibility':
-            if plot.actor.actor.visibility:
-                plot.actor.actor.visibility = False
-            else:
-                plot.actor.actor.visibility = True  
+            if type(value)!=bool:
+                if plot.actor.actor.visibility:
+                    plot.actor.actor.visibility = False
+                else:
+                    plot.actor.actor.visibility = True  
                 
+            else:
+                plot.actor.actor.visibility = value
         # change plot colour
         elif prop == 'colour':
             try:
@@ -963,6 +966,36 @@ class plotObj():
                 
         else:
             print('property not recognised')
+            
+        
+    def getPlotProperty(self, plotType, prop, plotLabel):
+        ''' return the value of a given property for a given plot ''' 
+        
+        # get plot
+        if plotType == 'skull':
+            plot = self.skullPlots[plotLabel]
+        elif plotType == 'brainNode':
+            plot = self.brainNodePlots[plotLabel]
+        elif plotType == 'brainEdge':
+            plot = self.brainEdgePlots[plotLabel]
+        else:
+            print('plotType not recognised')
+            return
+            
+        if prop == 'opacity':
+            value = plot.actor.property.opacity
+        elif prop == 'visibility':
+            value =  plot.actor.actor.visibility
+        elif prop == 'colour':
+            value = plot.actor.property.color
+        else:
+            print('property not recognised')
+            return
+            
+        return value
+        
+        
+        
             
             
     def getAutoLabel(self):

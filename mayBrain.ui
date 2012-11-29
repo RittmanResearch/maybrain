@@ -40,7 +40,7 @@
      <enum>QTabWidget::Rounded</enum>
     </property>
     <property name="currentIndex">
-     <number>0</number>
+     <number>1</number>
     </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
@@ -471,12 +471,17 @@
      <widget class="QTreeWidget" name="plotTree">
       <property name="geometry">
        <rect>
-        <x>490</x>
+        <x>340</x>
         <y>20</y>
-        <width>311</width>
+        <width>461</width>
         <height>421</height>
        </rect>
       </property>
+      <column>
+       <property name="text">
+        <string>Plot type</string>
+       </property>
+      </column>
       <column>
        <property name="text">
         <string>Plot name</string>
