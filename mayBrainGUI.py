@@ -18,6 +18,11 @@ Some code for QTreeWidget stuff
 10         item.setCheckState(0,QtCore.Qt.Unchecked)
 11     self.ui.list.addTopLevelItem(item)
 
+change log:
+    2/1/2013
+    - several bug fixes, including 'no selected plot' error, opacity adjustment throwing an error
+    - plotBrain button becomes a replot after loading and plotting once
+
 """
 
 # First, and before importing any Enthought packages, set the ETS_TOOLKIT
@@ -58,7 +63,6 @@ class mayBrainGUI(QtGui.QMainWindow):
         # link up buttons and functions
         self.connectSlots()
         
-        
         # plot selected in ui.plotTree
         self.selectedPlot = None
         
@@ -77,10 +81,8 @@ class mayBrainGUI(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.propsFnameButton, QtCore.SIGNAL('clicked()'), self.getPropsFilename)                
         QtCore.QObject.connect(self.ui.brainLoad, QtCore.SIGNAL('clicked()'), self.loadBrain)
         QtCore.QObject.connect(self.ui.skullLoad, QtCore.SIGNAL('clicked()'), self.loadSkull)
-        QtCore.QObject.connect(self.ui.brainPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
         QtCore.QObject.connect(self.ui.skullPlot, QtCore.SIGNAL('clicked()'), self.plotSkull)
-        QtCore.QObject.connect(self.ui.plotTree, QtCore.SIGNAL('itemClicked(QTreeWidgetItem\
-*,int)'), self.setPlotValues)
+        QtCore.QObject.connect(self.ui.plotTree, QtCore.SIGNAL('itemClicked(QTreeWidgetItem*,int)'), self.setPlotValues)
         self.ui.opacitySlider.valueChanged.connect(self.setOpacity)
         self.ui.visibleCheckBox.clicked.connect(self.setVisibility)
         self.ui.redSlider.valueChanged.connect(self.setColourRed)
@@ -120,6 +122,8 @@ class mayBrainGUI(QtGui.QMainWindow):
         
     def loadBrain(self):
         ''' load a brain using given filenames '''
+        self.ui.brainPlot.setEnabled(False)        
+        
         # get adjacency filename
         f = str(self.ui.adjFilename.text())
         
@@ -145,6 +149,12 @@ class mayBrainGUI(QtGui.QMainWindow):
         br.readSpatialInfo(g)
                 
         # enable plot button
+        try:
+            QtCore.QObject.disconnect(self.ui.brainPlot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
+        except:
+            a = 1
+#        self.ui.brainPlot.connect(self.plotBrain, QtCore.SIGNAL('clicked()'))
+        QtCore.QObject.connect(self.ui.brainPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
         self.ui.brainPlot.setEnabled(True)
         
 #        except:
@@ -195,9 +205,35 @@ class mayBrainGUI(QtGui.QMainWindow):
         except:
             print('problem plotting brain, have files been loaded?')
             
+        # change plot button to replot
+        QtCore.QObject.disconnect(self.ui.brainPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
+        print('disconnected')
+#        self.ui.brainPlot.disconnect()
+        QtCore.QObject.connect(self.ui.brainPlot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
+            
 
-                
     
+    def rePlotBrain(self):
+        ''' plot brain with altered threhold '''        
+        
+        if not('mainBrain' in self.brains):
+            return
+
+        # remove old plots
+        self.plot.brainEdgePlots['mainBrain'].remove()
+        self.plot.brainNodePlots['mainBrain'].remove()
+            
+#        try:
+        # get new threshold
+        threshold = float(self.ui.thresholdValue.text())
+        # replot
+        br = self.brains['mainBrain']
+        br.adjMatThresholding(tVal = threshold)
+        self.plot.plotBrain(br, label = 'mainBrain')       
+#        except:
+#            print('problem plotting brain, is threshold correct?')
+            
+            
     def plotSkull(self):
         ''' plot the skull '''
         
@@ -207,7 +243,7 @@ class mayBrainGUI(QtGui.QMainWindow):
             
         # plot
         try:
-            self.plot.plotSkull(self.brains['mainBrain'], label = 'mainSkull')
+            self.plot.plotSkull(self.brains['mainBrain'], label = 'skull')
             
             # add to treeview
             QtGui.QTreeWidgetItem(self.ui.plotTree, ['skull', 'skull'])     
@@ -272,10 +308,8 @@ class mayBrainGUI(QtGui.QMainWindow):
         ''' set the opacity from the slider '''
 
         v = float(self.ui.opacitySlider.value())
-        print(v)
         v = (10**(v/100.)-1.)/9.
         self.plot.changePlotProperty(self.selectedPlotType, 'opacity', self.selectedPlot, v)
-        print(v)
 
         
     def setVisibility(self):
@@ -289,7 +323,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.plot.changePlotProperty(self.selectedPlotType, 'visibility', self.selectedPlot, value = v)
         
     def setColourRed(self):
-        ''' change colours from sliders '''        
+        ''' change colours from sliders '''     
         # get old values
         v = self.plot.getPlotProperty(self.selectedPlotType, 'colour', self.selectedPlot)        
         # get new red value
@@ -326,7 +360,6 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.ui.greenValueBox.setValue(g)
         
     def setColourGreenDial(self):
-        
         ''' change green colour from dial '''
         # get old values
         v = self.plot.getPlotProperty(self.selectedPlotType, 'colour', self.selectedPlot)
@@ -362,11 +395,6 @@ class mayBrainGUI(QtGui.QMainWindow):
         # set slider value
         self.ui.blueSlider.setValue(int(b*100.))
                 
-        
-        
-
-                        
-        
 
         
 if __name__ == "__main__":

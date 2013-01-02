@@ -4,33 +4,27 @@ Created on Fri Mar 16 18:10:07 2012
 
 @author: -
 
-Change log from networkutils_binary_cambrid_0_1.py:
-    - split brain and plotting classes
-    - can define a subBrain from properties of edges or nodes
-    - animate function a bit more sophisticated (see animate.py)
-    - fixed spelling error of 'visibility' in changePlotProperty
-    - separated plotting of nodes and edges (backwards compatible, kept plotBrain function)
-    - added colour to list of changeable properties of a plot
-    - lists of plots in plotObj converted to dictionaries, with autolabel generation if none supplied
+Change log:
+    - adjacency thresholding moved into separate function
+    - symmetric option for adjacency matrix
+    - fixed bug: all nodes linked to themselves
+    - contiguous spread functions
+    - function to save adjacency matrix to file
         
-To do:
-    - write an error function so that errors can be better handled when using a gui??
         
 """
 
-import string,os,community,csv,sys,itertools,operator
+import string,os,community,csv,sys,itertools
 import networkx as nx
 import numpy as np
 from networkx.drawing import *
-from networkx.generators import random_graphs
-from networkx.algorithms import cluster
 from networkx.algorithms import centrality
 from networkx.algorithms import components
-from numpy import shape, random
+from numpy import shape, random, fill_diagonal, array, where, tril, zeros
 from mayavi import mlab
 from string import split
 import nibabel as nb
-import mayBrainExtraFns as fns
+from os import path, remove
 
 class brainObj:
     """
@@ -43,7 +37,7 @@ class brainObj:
         - counter for iterations of any subsequent process
     """
     
-    def __init__(self, largestconnectedcomp=False, drawpos=False):
+    def __init__(self, drawpos=False):
         ''' 
         initialise the brain model. Arguments are:
             - adjmat: adjacency matrix filename
@@ -56,32 +50,19 @@ class brainObj:
         
         # create an empty graph
         self.G = nx.Graph()
-        self.iter = None
-        self.largestconnectedcomp = largestconnectedcomp
-        self.drawpos = drawpos
+        self.iter = None # not sure where this is used. It is often defined, but never actually used!
+        self.adjMat = None # adjacency matrix, containing weighting of edges.
         
-#        # read input files
-#        self.readAdjFile(adjmat, threshold)
-#        
-#        # read spatial information
-#        if spatialinfoFile!='':
-#            self.readSpatialInfo(spatialinfoFile)
-        
-#        # identify largest connected component
-#        if self.largestconnectedcomp:
-#            self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]
-#            
-#        # draw 2D position
-#        if self.drawpos:
-#            self.pos = nx_agraph.graphviz_layout(self.G,prog='neato')
-        
-      
-        
+    
 
-    def readAdjFile(self, fname, threshold):
+    ## ================================================
+
+    ## File inputs        
+
+    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, symmetric = False):
         ''' load adjacency matrix with filename and threshold for edge definition '''
         
-        print 'loading data from', fname
+        print('loading data from', fname)
 
         # open file
         f = open(fname,"rb")
@@ -93,7 +74,7 @@ class brainObj:
             if 'begins line' in str(line):
                 lstr = str(line)
                 whereLabel = lstr.find('begins line')
-                startLine = int(lstr[whereLabel + 12])
+                startLine = int(lstr[whereLabel + 12])-1
                 break
                 
         # get data and convert to lists of floats
@@ -105,23 +86,93 @@ class brainObj:
 
         # close file                
         f.close()
-        
-        ## check somewhere here that data is square?? Does it need to be??
 
-        # create nodes
+        # create adjacency matrix as an array
+        self.adjMat = array(lines)       # array of data
+        # zero below-diagonal values if symmetric
+        if symmetric:
+            self.adjMat = self.adjMat - tril(self.adjMat)
+        sh = shape(self.adjMat)
+        # check if it's diagonal
+        if sh[0]!=sh[1]:
+            print("Note Bene: adjacency matrix not diagonal.")
+            print(sh)
+
+        # create nodes on graph
         self.G.add_nodes_from(range(nodecount))  # creates one node for every line in the adjacency matrix
         
-        # add edges (if above threshold)
-        mat = np.array(lines)       # array of data
-        boolMat = mat>threshold
-        edgeCos = np.where(boolMat) # lists of where edges should be
+        # create edges by thresholding adjacency matrix
+        self.adjMatThresholding(edgePC, totalEdges, threshold)
+      
+      
+    def readSpatialInfo(self, fname):
+        ''' add 3D coordinate information for each node from a given file '''
         
-        for ind in range(len(edgeCos[0])):
-            node1 = edgeCos[0][ind]
-            node2 = edgeCos[1][ind]
+        coords = {}
+
+        if not fname:
+            if os.path.exists("anat_labels.txt"):
+                ROIs = {}
+                anat = csv.reader(open('anat_labels.txt','rb'),skipinitialspace = True)
+                lblsfile = csv.reader(open('ROI_labels.txt','rb'),delimiter = '\t')
+                lbls = lblsfile.next()
+                
+                count = 1
+                for line in anat:
+                    ROIs[count] = [v for v in line]
+                    count += 1
+                
+                x = string.split(open('ROI_xyz.txt').readlines()[0])
+                y = string.split(open('ROI_xyz.txt').readlines()[1])
+                z = string.split(open('ROI_xyz.txt').readlines()[2])
+                
+                for n in range(len(self.G.nodes())):
+                    self.G.node[n]['anatlabel'] = ROIs[int(lbls[n])]
+                    self.G.node[n]['xyz'] = (float(x[n]),float(y[n]),float(z[n]))
+
+        else:
+            # open file
+            try:
+                f = open(fname,"rb")
+            except IOError, error:
+                (errorno, errordetails) = error
+                print "Couldn't find 3D position information"
+                print "Problem with opening file: "+errordetails                
             
-            if not(self.G.has_edge(node1, node2)):
-                self.G.add_edge(node1, node2, weight = mat[node1, node2])
+            # get data from file
+            lines = f.readlines()
+            for l in lines:
+                line = l.split()
+                if len(line) == 4:
+                    # read in line
+                    coords[line[0]] = {"x":float(line[1]), "y":float(line[2]), "z":float(line[3])}
+                    ROIs = coords.keys()
+                    ROIs.sort()
+                    
+                    # get x, y and z coords
+                    x = [coords[ROI]["x"] for ROI in ROIs]
+                    y = [coords[ROI]["y"] for ROI in ROIs]
+                    z = [coords[ROI]["z"] for ROI in ROIs]
+                    
+            # add coords to nodes
+            for n in range(len(self.G.nodes())):
+                self.G.node[n]['anatlabel'] = ROIs[n]
+                self.G.node[n]['xyz'] = (float(x[n]),float(y[n]),float(z[n]))                
+                
+
+    def importSkull(self, fname):
+        ''' Import a file for skull info using nbbabel
+            gives a 3D array with data range 0 to 255 for test data
+            could be 4d??
+            defines an nibabel object, plus ndarrays with data and header info in
+        
+        '''        
+        
+        self.nbskull = nb.load(fname)
+        self.skull = self.nbskull.get_data()
+        self.skullHeader = self.nbskull.get_header()        
+                
+                
                 
     def inputNodeProperties(self, propertyName, nodeList, propList):
         ''' add properties to nodes, reading from a list of nodes and a list of corresponding properties '''
@@ -130,6 +181,164 @@ class brainObj:
             n = nodeList[ind]
             p = propList[ind]
             self.G.node[n][propertyName] = p
+            
+            
+    def outputAdjMatrix(self, filename, header = None):
+        ''' output the adjacency matrix to file. Header is a string.'''
+        
+        if path.exists(filename):
+            print("old adjacency file removed")
+            remove(filename)
+        
+        # write header
+        if header:
+            f = open(filename, 'w+')
+            f.write(header + '\n')
+            f.close()                
+
+        f = open(filename, 'a+')
+
+        l = f.readlines()
+        nl = len(l)
+        
+        # append line to say where data starts
+        headerApp = 'data begins line '  + str(nl+2) + '\n'
+        f.write(headerApp)
+        
+        # write data to file from adjacency array
+        for line in self.adjMat:
+            for num in line[:-1]:
+                f.write(str(num) + '\t')
+            f.write(str(line[-1]) + '\n')
+            
+        f.close()
+            
+        print("data written to " + filename)
+        
+        
+    def outputEdges(self, filename, header = None, properties = []):
+        ''' output the edges to file '''        
+        
+        if path.exists(filename):
+            print("old edge file removed")
+            remove(filename)   
+            
+        # open file and write header
+        f = open(filename, 'w')
+        if header:
+            f.write(header + '\n')
+            
+        # write column headers
+        line = 'x' + '\t' + 'y'
+        for p in properties:
+            line = line + '\t' + p
+        line = line + '\n'
+        f.write(line)
+        
+        for n in self.G.edges(data = True):
+            # add coordinates
+            line = str(n[0]) + '\t' + str(n[1]) 
+            # add other properties
+            for p in properties:
+                try:
+                    line = line + '\t' + str(n[2][p])
+                except:
+                    print(p, "omitted in edge output")
+            line = line + '\n'
+            # write out
+            f.write(line)
+        f.close()
+
+        print("edges written to " + filename)            
+        
+    
+    def outputEdgesMatrix(self, filename):
+        ''' output the edge data as a boolean matrix '''
+        
+        if path.exists(filename):
+            print("old edge matrix file removed")
+            remove(filename)           
+        
+        n = self.G.number_of_nodes()
+        mat = zeros([n,n], dtype = int)
+        
+        for ed in self.G.edges():
+            x = ed[0]
+            y = ed[1]
+            if y>x:
+                mat[x,y] = 1
+            else:
+                mat[y,x] = 1
+            
+        f = open(filename, 'w')
+        for row in mat:
+            for ch in row[:-1]:
+                 f.write(str(ch) + '\t')
+            f.write(str(row[-1]) + '\n')
+        f.close()
+                
+        print("edges written to " + filename)            
+    
+    
+    ## ===========================================================================
+    
+    ## Functions to alter the brain
+
+    def adjMatThresholding(self, edgePC = None, totalEdges = None, tVal = None):
+        ''' apply thresholding to the adjacency matrix. This can be done in one of
+            three ways (in order of decreasing precendence):
+                edgePC - this percentage of nodes will be linked
+                totalEdges - this number of nodes will be linked
+                tVal - give an absolute threshold value. Pairs of nodes with a corresponding adj matrix
+                       value greater than this will be linked.
+        '''
+        
+        # check if adjacency matrix is there
+        if self.adjMat == None:
+            print("No adjacency matrix. Please load one.")
+            return
+        
+        # remove existing edges
+        self.G.remove_edges_from(self.G.edges())
+        nodecount = len(self.G)
+            
+        # check some method of thresholding was defined
+        if (edgePC==None)&(totalEdges==None)&(tVal==None):
+            print("No method of thresholding give. Please define edgePC, totalEdges or tVal.")
+            return
+        
+        # get the number of edges to link
+        if edgePC:
+            # find threshold as a percentage of total possible edges
+            edgeNum = int(edgePC * (nodecount * (nodecount-1)))
+        elif totalEdges:
+            # allow a fixed number of edges
+            edgeNum = totalEdges
+        else:
+            edgeNum = -1
+        
+        # get threshold
+        if edgeNum>=0:
+            # get treshold value
+            weights = self.adjMat.flatten()
+            weights.sort()
+            threshold = weights[-edgeNum]
+            print("Threshold set at: "+str(threshold))
+        else:
+            threshold  = tVal        
+            
+        
+        # carry out thresholding on adjacency matrix
+        boolMat = self.adjMat>threshold
+        fill_diagonal(boolMat, 0)
+        edgeCos = where(boolMat) # lists of where edges should be
+        
+        for ind in range(len(edgeCos[0])):
+            node1 = edgeCos[0][ind]
+            node2 = edgeCos[1][ind]
+            
+            if not(self.G.has_edge(node1, node2)):
+                self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])            
             
     
     def makeSubBrain(self, propName, value):
@@ -231,315 +440,110 @@ class brainObj:
         return subBrain        
 
 
-    def readSpatialInfo(self, fname):
-        ''' add 3D coordinate information for each node from a given file '''
-        
-        coords = {}
-
-        if not fname:
-            if os.path.exists("anat_labels.txt"):
-                ROIs = {}
-                anat = csv.reader(open('anat_labels.txt','rb'),skipinitialspace = True)
-                lblsfile = csv.reader(open('ROI_labels.txt','rb'),delimiter = '\t')
-                lbls = lblsfile.next()
-                
-                count = 1
-                for line in anat:
-                    ROIs[count] = [v for v in line]
-                    count += 1
-                
-                x = string.split(open('ROI_xyz.txt').readlines()[0])
-                y = string.split(open('ROI_xyz.txt').readlines()[1])
-                z = string.split(open('ROI_xyz.txt').readlines()[2])
-                
-                for n in range(len(self.G.nodes())):
-                    self.G.node[n]['anatlabel'] = ROIs[int(lbls[n])]
-                    self.G.node[n]['xyz'] = (float(x[n]),float(y[n]),float(z[n]))
-
-        else:
-            # open file
-            try:
-                f = open(fname,"rb")
-                reader = csv.reader(f,delimiter=" ")
-            except IOError, error:
-                (errorno, errordetails) = error
-                print "Couldn't find 3D position information"
-                print "Problem with opening file: "+errordetails                
+    def randomiseGraph(self, largestconnectedcomp = False):
+        self.G = nx.gnm_random_graph(len(self.G.nodes()), len(self.G.edges()))
+        if largestconnectedcomp:
+            self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
             
-            # get data from file
-            for line in reader:
-                if len(line) == 4:
-                    # read in line
-                    coords[line[0]] = {"x":float(line[1]), "y":float(line[2]), "z":float(line[3])}
-                    ROIs = coords.keys()
-                    ROIs.sort()
-                    
-                    # get x, y and z coords
-                    x = [coords[ROI]["x"] for ROI in ROIs]
-                    y = [coords[ROI]["y"] for ROI in ROIs]
-                    z = [coords[ROI]["z"] for ROI in ROIs]
-                    
-            # add coords to nodes
-            for n in range(len(self.G.nodes())):
-                self.G.node[n]['anatlabel'] = ROIs[n]
-                self.G.node[n]['xyz'] = (float(x[n]),float(y[n]),float(z[n]))                
-                
-
-            
-#                except:
-#                    print "Problem adding 3D position information - check the information in the files is correct"
-#                    print "Ignoring the problem and carrying on"        
-            
-
-
-        
-        
-    def importSkull(self, fname):
-        ''' Import a file for skull info using nbbabel
-            gives a 3D array with data range 0 to 255 for test data
-            could be 4d??
-            defines an nibabel object, plus ndarrays with data and header info in
-        
-        '''        
-        
-        self.nbskull = nb.load(fname)
-        self.skull = self.nbskull.get_data()
-        self.skullHeader = self.nbskull.get_header()
-        print(shape(self.skull))
-        
-        
-            
-
-
-    
-    def findSpatiallyNearest(self, degennodes):
-        # find the spatially closest node as no topologically close nodes exist
-        print "Finding spatially closest node"
-        duffNode = random.choice(degennodes)
-        nodes = [v for v in self.G.nodes() if v!=duffNode]
-        nodes = [v for v in nodes if not v in degennodes]
-
-        shortestnode = (None, None)
-        for node in nodes:
-            try:
-                distance = np.linalg.norm(np.array(self.G.node[duffNode]['xyz'] - np.array(self.G.node[node]['xyz'])))
-            except:
-                print "Finding the spatially nearest node requires x,y,z values"
-                
-            if shortestnode[0]:
-                if distance < shortestnode[1]:
-                    if self.G.degree(node) > 0:
-                        shortestnode = (node, distance)
-            
-            else:
-                if self.G.degree(node) > 0:
-                    shortestnode = (node, distance)
-                    
-        return shortestnode[0]
-                                
-    
-    def hubIdentifier(self):
-        """ 
-        define hubs by generating a hub score, based on the sum of normalised scores for:
-            betweenness centrality
-            closeness centrality
-            degree
-        
-        hubs are defined as nodes 2 standard deviations above the mean hub score
-        """
-        
-        self.hubs = []
-        # get degree
-        degrees = nx.degree(self.G)
-        sum_degrees = np.sum(degrees.values())
-        
-    #    get centrality measures
-        betweenessCentrality = centrality.betweenness_centrality(self.G)
-        sum_betweenness = np.sum(betweenessCentrality.values())
-        
-        closenessCentrality = centrality.closeness_centrality(self.G)
-        sum_closeness = np.sum(closenessCentrality.values())
-        
-    #    combine normalised measures for each node to generate a hub score
-        hubScores = []
-        for node in self.G.nodes():
-            self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
-            hubScores.append(self.G.node[node]['hubScore'])
-            
-    #   find standard deviation of hub score
-        upperLimit = np.mean(np.array(hubScores)) + 2*np.std(np.array(hubScores))
-    
-    #   identify nodes as hubs if 2 standard deviations above hub score
-        for node in self.G.nodes():
-            if self.G.node[node]['hubScore'] > upperLimit:
-                self.hubs.append(node)
-                
-    def psuedohubIdentifier(self):
-        """ 
-        define hubs by generating a hub score, based on the sum of normalised scores for:
-            betweenness centrality
-            closeness centrality
-            degree
-            
-        hubs are the two 5% connected nodes
-        """
-        self.hubs = []
-        # get degree
-        degrees = nx.degree(self.G)
-        sum_degrees = np.sum(degrees.values())
-        
-    #    get centrality measures
-        betweenessCentrality = centrality.betweenness_centrality(self.G)
-        sum_betweenness = np.sum(betweenessCentrality.values())
-        
-        closenessCentrality = centrality.closeness_centrality(self.G)
-        sum_closeness = np.sum(closenessCentrality.values())
-        
-    #   calculate the length of 5% of nodes
-        numHubs = len(self.G.nodes()) * 0.05
-        if numHubs < 1:
-            numHubs = 1
-            
-    #    combine normalised measures for each node to generate a hub score
-        hubScores = {}
-        for node in self.G.nodes():
-            self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
-            
-    #   Check if hub scores is more than those previously collected, and if so replace it in the list of hubs            
-            if len(hubScores.keys()) < numHubs:
-                hubScores[node] = self.G.node[node]['hubScore']
-                
-            else:
-                minhubScore = np.min(hubScores.values())
-                if self.G.node[node]['hubScore'] > minhubScore:
-                    minKeyList = [v for v in hubScores.keys() if hubScores[v] == minhubScore]
-                    for key in minKeyList:
-                        del(hubScores[key])
-                    
-                    hubScores[node] = self.G.node[node]['hubScore']
-                    
-    
-    #   identify nodes as hubs if 2 standard deviations above hub score
-        for node in hubScores.keys():
-            self.hubs.append(node)
-    
-    def clusters(self):
-        """
-        Defines clusters using community detection algorithm and adjust layout for pretty presentations
-        
-        """
-        try:
-            clusters = community.best_partition(self.G)
-#            clusters = community.generate_dendogram(self.G)[0]
-                
-            # add community and degenerating attributes for each node
-            for node in self.G.nodes():
-                self.G.node[node]['cluster']=clusters[node] # adds a community attribute to each node
-            self.clusternames = set(clusters.values())
-        
-        except:
-            print "Can not assign clusters"
-            print "Setting all nodes to cluster 0"
-            for node in self.G.nodes():
-                self.G.node[node]['cluster'] = 0
-            self.clusternames = [0]
-            clusters = None
-    
-        # set layout position for plotting
-        xy = (0,400)
-        try:
-            angle = 360/len(self.clusternames)
-        except:
-            angle = 180
-        
-        points = {0:xy}
-        for n in range(1,len(self.clusternames)):
-            x = points[n-1][0]
-            y = points[n-1][1]
-            points[n] = (x*np.cos(angle)-y*np.sin(angle),x*np.sin(angle)+y*np.cos(angle))
-        
-        self.pos = {}
-        
-        for clust in self.clusternames:
-            clusternodes = [v for v in self.G.nodes() if self.G.node[v]['cluster']==clust]
-            clusteredges = [v for v in self.G.edges(clusternodes) if v[0] in clusternodes and v[1] in clusternodes]
-            
-            subgraph = nx.Graph()
-            subgraph.add_nodes_from(clusternodes)
-            subgraph.add_edges_from(clusteredges)
-            
-            if self.drawpos:
-                centre = points[clust]
-                
-                clusterpos = nx_agraph.graphviz_layout(subgraph,prog='neato')
-               
-                for node in clusternodes:
-                    self.pos[node] = (clusterpos[node][0]+centre[0],clusterpos[node][1]+centre[1])
-    
-        # calculate modularity
-        if clusters:
-            self.modularity = community.modularity(clusters,self.G)
-        else:
-            self.modularity = 0
-    
-    def neuronsusceptibility(self, edgeloss=1):
-        """
-        Models loss of edges according to a neuronal suceptibility model with the most highly connected nodes losing
-        edges. Inputs are the number of edges to be lost each iteration and the number of iterations.
-        """
-        self.lengthEdgesRemoved = []
-        edgesleft = edgeloss
+    def randomremove(self,edgeloss):
         if not self.iter:
-            self.iter = 0
-        
-        while edgesleft > 0:
-            try:
-                # redefine hubs
-                self.hubIdentifier()
-                
-                if self.G.edges(self.hubs) == []:
-                    print "No hub edges left, generating pseudohubs"
-                    self.psuedohubIdentifier()
-                                    
-                edgetoremove = random.choice(self.G.edges(self.hubs))
-                
-                try: # records length of edge removal if spatial information is available
-                    self.lengthEdgesRemoved.append(np.linalg.norm(np.array(self.G.node[edgetoremove[0]]['xyz']) - np.array(self.G.node[edgetoremove[1]]['xyz'])))
-                    
-                except:
-                    pass
-                    
-                self.G.remove_edge(edgetoremove[0],edgetoremove[1])
-                edgesleft -= 1
+            self.iter=0
+        try:
+            edges_to_remove = random.sample(self.G.edges(), edgeloss)
+            self.G.remove_edges_from(edges_to_remove)
             
-            except:
-                if self.G.edges(self.hubs) == []:
-                    print "No hub edges left, redefining hubs"
-                    self.hubIdentifier()
-
-                if self.G.edges(self.hubs) == []:
-                    print "No hub edges left, generating pseudohubs"
-                    self.psuedohubIdentifier()
-                
-                if self.G.edges(self.hubs) == []:
-                    print "Still no hub edges left, exiting loop"
-                    break
-                    
-                else:
-                    continue
-        
+        except ValueError:
+            print "No further edges left"
+            
         self.iter += 1
         
-        if self.largestconnectedcomp:
-            self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
 
-    def contiguousspread(self, edgeloss, spreadratio):
+
+    def contiguousspread(self, edgeloss, largestconnectedcomp=False, startNodes = None):
+        ''' remove edges in a continuous fashion. Doesn't currently include spreadratio '''
+
+        # make sure nodes have the linkedNodes attribute
+        try:
+            self.G.node[0]['linkedNodes']
+        except:
+            self.findLinkedNodes()
+            
+        # make sure all nodes have degenerating attribute
+        try:
+            self.G.node[0]['degenerating']
+        except:
+            for n in range(len(self.G.nodes())):
+                self.G.node[n]['degenerating']=False 
+        
+        # start with a random node or set of nodes
+        if not(startNodes):
+            # start with one random node if none chosen
+            toxicNodes = [random.randint(len(self.G.nodes))]
+        else:
+            # otherwise use user provided nodes
+            toxicNodes = startNodes
+        # make all toxic nodes degenerating
+        for t in toxicNodes:
+            self.G.node[t]['degenerating'] = True
+                
+        # put at-risk nodes into a list
+        riskNodes = []
+        for t in toxicNodes:
+            l = self.G.node[t]['linkedNodes']
+            newl = []
+            # check the new indices aren't already toxic
+            for a in l:
+                if not(a in toxicNodes)&(not(self.G.node[a]['degenerating'])):
+                    newl.append(a)
+            riskNodes = riskNodes + newl
+            
+#        print(riskNodes)
+        
+        # iterate number of steps
+        for count in range(edgeloss):
+            # find at risk nodes
+            ind = random.randint(0, len(riskNodes))
+            deadNode = riskNodes.pop(ind) # get the index of the node to be removed and remove from list
+            # remove all instances from list
+            while deadNode in riskNodes:
+                riskNodes.remove(deadNode)
+            
+            # add to toxic list    
+            toxicNodes.append(deadNode)
+            # make it degenerate
+            self.G.node[deadNode]['degenerating'] = 'True'
+            
+            
+            # add the new at-risk nodes
+            l = self.G.node[deadNode]['linkedNodes']
+            newl = []
+            # check the new indices aren't already toxic
+            for a in l:
+                if not(a in toxicNodes)&(not(self.G.node[a]['degenerating'])):
+                    newl.append(a)
+            riskNodes = riskNodes + newl
+            
+            # check that there are any more nodes at risk
+            if len(riskNodes)==0:
+                break
+            
+#            print(toxicNodes)
+            
+        return toxicNodes
+                
+                
+                
+        
+        
+
+
+    def contiguousspreadOld(self, edgeloss, spreadratio, largestconnectedcomp=False):
         """
         removes edges in a contiguous fashion
         
         edges = number of edges to remove each time
         spreadratio = Ratio of mean degree to the recruitment for new nodes.
-                      New nodes are added when spreadratio*mean degree number of edges are lost 
+                      New nodes are added [to what??] when spreadratio*mean degree number of edges are lost 
                       Effectively a measure of the speed of diffusitivity.
         """
         self.lengthEdgesRemoved = []
@@ -669,26 +673,263 @@ class brainObj:
                   
             self.iter += 1
             
-            if self.largestconnectedcomp:
+            if largestconnectedcomp:
                 self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
-            edgesleft -= len(degenedges_toremove)
+            edgesleft -= len(degenedges_toremove)        
+
+
+    ## =============================================================
+    
+    ## Analysis functions
+
+    
+    def findSpatiallyNearestOld(self, degennodes):
+        # find the spatially closest node as no topologically close nodes exist
+        print "Finding spatially closest node"
+        duffNode = random.choice(degennodes)
+        nodes = [v for v in self.G.nodes() if v!=duffNode]
+        nodes = [v for v in nodes if not v in degennodes]
+
+        shortestnode = (None, None)
+        for node in nodes:
+            try:
+                distance = np.linalg.norm(np.array(self.G.node[duffNode]['xyz'] - np.array(self.G.node[node]['xyz'])))
+            except:
+                print "Finding the spatially nearest node requires x,y,z values"
                 
-    def randomiseGraph(self):
-        self.G = nx.gnm_random_graph(len(self.G.nodes()), len(self.G.edges()))
-        if self.largestconnectedcomp:
-            self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
+            if shortestnode[0]:
+                if distance < shortestnode[1]:
+                    if self.G.degree(node) > 0:
+                        shortestnode = (node, distance)
             
-    def randomremove(self,edgeloss):
-        if not self.iter:
-            self.iter=0
+            else:
+                if self.G.degree(node) > 0:
+                    shortestnode = (node, distance)
+                    
+        return shortestnode[0]
+        
+    
+    def findSpatiallyNearest(self, nodeList, threshold):
+        ''' find the spatially nearest nodes to each node within a treshold '''
+        
+        a = 1
+        
+        
+    def findLinkedNodes(self):
+        ''' give each node a list containing the linked nodes '''
+        
+        for l in self.G.edges():
+            
+            # add to list of connecting nodes for each participating node
+            try:
+                self.G.node[l[0]]['linkedNodes'] = self.G.node[l[0]]['linkedNodes'] + [l[1]]
+            except:
+                self.G.node[l[0]]['linkedNodes'] = [l[1]]
+                        
+            try:
+                self.G.node[l[1]]['linkedNodes'] = self.G.node[l[1]]['linkedNodes'] + [l[0]]
+            except:
+                self.G.node[l[1]]['linkedNodes'] = [l[0]]
+                                                
+    
+    def hubIdentifier(self):
+        """ 
+        define hubs by generating a hub score, based on the sum of normalised scores for:
+            betweenness centrality
+            closeness centrality
+            degree
+        
+        hubs are defined as nodes 2 standard deviations above the mean hub score
+        """
+        
+        self.hubs = []
+        # get degree
+        degrees = nx.degree(self.G)
+        sum_degrees = np.sum(degrees.values())
+        
+    #    get centrality measures
+        betweenessCentrality = centrality.betweenness_centrality(self.G)
+        sum_betweenness = np.sum(betweenessCentrality.values())
+        
+        closenessCentrality = centrality.closeness_centrality(self.G)
+        sum_closeness = np.sum(closenessCentrality.values())
+        
+    #    combine normalised measures for each node to generate a hub score
+        hubScores = []
+        for node in self.G.nodes():
+            self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
+            hubScores.append(self.G.node[node]['hubScore'])
+            
+    #   find standard deviation of hub score
+        upperLimit = np.mean(np.array(hubScores)) + 2*np.std(np.array(hubScores))
+    
+    #   identify nodes as hubs if 2 standard deviations above hub score
+        for node in self.G.nodes():
+            if self.G.node[node]['hubScore'] > upperLimit:
+                self.hubs.append(node)
+                
+    def psuedohubIdentifier(self):
+        """ 
+        define hubs by generating a hub score, based on the sum of normalised scores for:
+            betweenness centrality
+            closeness centrality
+            degree
+            
+        hubs are the two 5% connected nodes
+        """
+        self.hubs = []
+        # get degree
+        degrees = nx.degree(self.G)
+        sum_degrees = np.sum(degrees.values())
+        
+    #    get centrality measures
+        betweenessCentrality = centrality.betweenness_centrality(self.G)
+        sum_betweenness = np.sum(betweenessCentrality.values())
+        
+        closenessCentrality = centrality.closeness_centrality(self.G)
+        sum_closeness = np.sum(closenessCentrality.values())
+        
+    #   calculate the length of 5% of nodes
+        numHubs = len(self.G.nodes()) * 0.05
+        if numHubs < 1:
+            numHubs = 1
+            
+    #    combine normalised measures for each node to generate a hub score
+        hubScores = {}
+        for node in self.G.nodes():
+            self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
+            
+    #   Check if hub scores is more than those previously collected, and if so replace it in the list of hubs            
+            if len(hubScores.keys()) < numHubs:
+                hubScores[node] = self.G.node[node]['hubScore']
+                
+            else:
+                minhubScore = np.min(hubScores.values())
+                if self.G.node[node]['hubScore'] > minhubScore:
+                    minKeyList = [v for v in hubScores.keys() if hubScores[v] == minhubScore]
+                    for key in minKeyList:
+                        del(hubScores[key])
+                    
+                    hubScores[node] = self.G.node[node]['hubScore']
+                    
+    
+    #   identify nodes as hubs if 2 standard deviations above hub score
+        for node in hubScores.keys():
+            self.hubs.append(node)
+    
+    def clusters(self, drawpos=False):
+        """
+        Defines clusters using community detection algorithm and adjust layout for pretty presentations
+        
+        """
         try:
-            edges_to_remove = random.sample(self.G.edges(), edgeloss)
-            self.G.remove_edges_from(edges_to_remove)
+            clusters = community.best_partition(self.G)
+#            clusters = community.generate_dendogram(self.G)[0]
+                
+            # add community and degenerating attributes for each node
+            for node in self.G.nodes():
+                self.G.node[node]['cluster']=clusters[node] # adds a community attribute to each node
+            self.clusternames = set(clusters.values())
+        
+        except:
+            print "Can not assign clusters"
+            print "Setting all nodes to cluster 0"
+            for node in self.G.nodes():
+                self.G.node[node]['cluster'] = 0
+            self.clusternames = [0]
+            clusters = None
+    
+        # set layout position for plotting
+        xy = (0,400)
+        try:
+            angle = 360/len(self.clusternames)
+        except:
+            angle = 180
+        
+        points = {0:xy}
+        for n in range(1,len(self.clusternames)):
+            x = points[n-1][0]
+            y = points[n-1][1]
+            points[n] = (x*np.cos(angle)-y*np.sin(angle),x*np.sin(angle)+y*np.cos(angle))
+        
+        self.pos = {}
+        
+        for clust in self.clusternames:
+            clusternodes = [v for v in self.G.nodes() if self.G.node[v]['cluster']==clust]
+            clusteredges = [v for v in self.G.edges(clusternodes) if v[0] in clusternodes and v[1] in clusternodes]
             
-        except ValueError:
-            print "No further edges left"
+            subgraph = nx.Graph()
+            subgraph.add_nodes_from(clusternodes)
+            subgraph.add_edges_from(clusteredges)
             
+            if drawpos:
+                centre = points[clust]
+                
+                clusterpos = nx_agraph.graphviz_layout(subgraph,prog='neato')
+               
+                for node in clusternodes:
+                    self.pos[node] = (clusterpos[node][0]+centre[0],clusterpos[node][1]+centre[1])
+    
+        # calculate modularity
+        if clusters:
+            self.modularity = community.modularity(clusters,self.G)
+        else:
+            self.modularity = 0
+    
+    def neuronsusceptibility(self, edgeloss=1, largestconnectedcomp=False):
+        """
+        Models loss of edges according to a neuronal suceptibility model with the most highly connected nodes losing
+        edges. Inputs are the number of edges to be lost each iteration and the number of iterations.
+        """
+        self.lengthEdgesRemoved = []
+        edgesleft = edgeloss
+        if not self.iter:
+            self.iter = 0
+        
+        while edgesleft > 0:
+            try:
+                # redefine hubs
+                self.hubIdentifier()
+                
+                if self.G.edges(self.hubs) == []:
+                    print "No hub edges left, generating pseudohubs"
+                    self.psuedohubIdentifier()
+                                    
+                edgetoremove = random.choice(self.G.edges(self.hubs))
+                
+                try: # records length of edge removal if spatial information is available
+                    self.lengthEdgesRemoved.append(np.linalg.norm(np.array(self.G.node[edgetoremove[0]]['xyz']) - np.array(self.G.node[edgetoremove[1]]['xyz'])))
+                    
+                except:
+                    pass
+                    
+                self.G.remove_edge(edgetoremove[0],edgetoremove[1])
+                edgesleft -= 1
+            
+            except:
+                if self.G.edges(self.hubs) == []:
+                    print "No hub edges left, redefining hubs"
+                    self.hubIdentifier()
+
+                if self.G.edges(self.hubs) == []:
+                    print "No hub edges left, generating pseudohubs"
+                    self.psuedohubIdentifier()
+                
+                if self.G.edges(self.hubs) == []:
+                    print "Still no hub edges left, exiting loop"
+                    break
+                    
+                else:
+                    continue
+        
         self.iter += 1
+        
+        if largestconnectedcomp:
+            self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
+
+
+                
+
         
         
     def percentConnected(self):
@@ -832,7 +1073,7 @@ class plotObj():
         xn, yn, zn, xe, ye, ze, xv, yv, zv = self.nodeToList(brain, nodeList=nodeList, edgeList=edgeList)
         
         # plot nodes
-        s = mlab.points3d(xn, yn, zn, scale_factor = 0.2, color = col, opacity = opacity)
+        s = mlab.points3d(xn, yn, zn, scale_factor = 0.5, color = col, opacity = opacity)
         self.brainNodePlots[label] = s
         
         # plot edges
@@ -928,18 +1169,23 @@ class plotObj():
             
             
         '''
-            
-        # get plot
-        if plotType == 'skull':
-            plot = self.skullPlots[plotLabel]
-        elif plotType == 'brainNode':
-            plot = self.brainNodePlots[plotLabel]
-        elif plotType == 'brainEdge':
-            plot = self.brainEdgePlots[plotLabel]
-        else:
-            print 'plotType not recognised'
+        
+
+        try:            
+            # get plot
+            if plotType == 'skull':
+                plot = self.skullPlots[plotLabel]
+            elif plotType == 'brainNode':
+                plot = self.brainNodePlots[plotLabel]
+            elif plotType == 'brainEdge':
+                plot = self.brainEdgePlots[plotLabel]
+            else:
+                print 'plotType not recognised'
+                return
+        except:
+            # quietly go back if the selected plot doesn't exist
             return
-            
+        
         # change plot opacity
         if prop == 'opacity':
             try:
