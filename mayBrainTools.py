@@ -11,6 +11,10 @@ Change log:
     - contiguous spread functions
     - function to save adjacency matrix to file
         
+24/01/2013 Modifications from Tim's files - 13-01
+	- added degeneracy fn to brainObj
+	- binarise and largest conn comp added
+	- hub identifier can take weighted measures
         
 """
 
@@ -37,20 +41,18 @@ class brainObj:
         - counter for iterations of any subsequent process
     """
     
-    def __init__(self, drawpos=False):
+    def __init__(self):
         ''' 
         initialise the brain model. Arguments are:
-            - adjmat: adjacency matrix filename
-            - threshold: threshold of adjacency for plotting edges
-            - spatialinfoFile: filename for spatial info
-            - largestconnectedcomp: compute the largest conneted component
-            - drawpos: draw 2D position ??? What does this mean ???
+        		- drawpos: draw 2D position ??? What does this mean ??? removed from arguments for now
     
         '''        
         
         # create an empty graph
         self.G = nx.Graph()
         self.iter = None # not sure where this is used. It is often defined, but never actually used!
+        
+        # define global variables
         self.adjMat = None # adjacency matrix, containing weighting of edges.
         
     
@@ -95,7 +97,7 @@ class brainObj:
         sh = shape(self.adjMat)
         # check if it's diagonal
         if sh[0]!=sh[1]:
-            print("Note Bene: adjacency matrix not diagonal.")
+            print("Note Bene: adjacency matrix not square.")
             print(sh)
 
         # create nodes on graph
@@ -110,6 +112,7 @@ class brainObj:
         
         coords = {}
 
+        # Try something slightly crazy if filename not defined
         if not fname:
             if os.path.exists("anat_labels.txt"):
                 ROIs = {}
@@ -304,7 +307,7 @@ class brainObj:
             
         # check some method of thresholding was defined
         if (edgePC==None)&(totalEdges==None)&(tVal==None):
-            print("No method of thresholding give. Please define edgePC, totalEdges or tVal.")
+            print("No method of thresholding given. Please define edgePC, totalEdges or tVal.")
             return
         
         # get the number of edges to link
@@ -731,8 +734,8 @@ class brainObj:
             except:
                 self.G.node[l[1]]['linkedNodes'] = [l[0]]
                                                 
-    
-    def hubIdentifier(self):
+
+    def hubIdentifier(self, weighted=False):
         """ 
         define hubs by generating a hub score, based on the sum of normalised scores for:
             betweenness centrality
@@ -740,24 +743,38 @@ class brainObj:
             degree
         
         hubs are defined as nodes 2 standard deviations above the mean hub score
+        
+        Changelog 7/12/12:
+            - added possibility of weighted measures
         """
         
         self.hubs = []
-        # get degree
-        degrees = nx.degree(self.G)
-        sum_degrees = np.sum(degrees.values())
         
     #    get centrality measures
-        betweenessCentrality = centrality.betweenness_centrality(self.G)
-        sum_betweenness = np.sum(betweenessCentrality.values())
-        
-        closenessCentrality = centrality.closeness_centrality(self.G)
+        if weighted:
+            betweenessCentrality = centrality.betweenness_centrality(self.G, weight='weight')
+            closenessCentrality = centrality.closeness_centrality(self.G, distance=True)
+            degrees = nx.degree(self.G, weight='weight')
+            
+            
+        else:
+            betweenessCentrality = centrality.betweenness_centrality(self.G)
+            closenessCentrality = centrality.closeness_centrality(self.G)
+            degrees = nx.degree(self.G)
+            
+        sum_degrees = np.sum(degrees.values())
+        sum_betweenness = np.sum(betweenessCentrality.values())        
         sum_closeness = np.sum(closenessCentrality.values())
         
     #    combine normalised measures for each node to generate a hub score
         hubScores = []
         for node in self.G.nodes():
-            self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
+            if weighted:
+                self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
+            else:
+                self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
+                
+            
             hubScores.append(self.G.node[node]['hubScore'])
             
     #   find standard deviation of hub score
@@ -875,7 +892,101 @@ class brainObj:
             self.modularity = community.modularity(clusters,self.G)
         else:
             self.modularity = 0
-    
+            
+    def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, weightLossLimit=None, toxicNodes=None, riskEdges=None, spread=False):
+        ''' remove random edges from connections of the toxicNodes set, or from the riskEdges set. This occurs either until edgesRemovedLimit
+        number of edges have been removed (use this for a thresholded weighted graph), or until the weight loss
+        limit has been reached (for a weighted graph). For a binary graph, weight loss should be set
+        to 1.
+        
+        The spread option recruits connected nodes of degenerating edges to the toxic nodes list.
+        
+        By default this function will enact a random attack model, with a weight loss of 0.1 each iteration.
+        '''        
+        try:
+            self.degenEdges
+        except AttributeError:
+            self.degenEdges = []
+            
+            
+        # set limit
+        if weightLossLimit:
+            limit = weightLossLimit
+        
+        else:
+            limit = edgesRemovedLimit
+        
+        if not riskEdges:
+            # if no toxic nodes defined, select the whole graph
+            if not toxicNodes:
+                toxicNodes = self.G.nodes()
+            
+            # make all toxic nodes degenerating
+            for t in toxicNodes:
+                self.G.node[t]['degenerating'] = True
+                          
+             # generate list of at risk edges
+            riskEdges = nx.edges(self.G, toxicNodes)
+        
+        # iterate number of steps
+        while limit>0:
+            if not riskEdges:
+                # find spatially closest nodes if no edges exist
+                # is it necessary to do this for all nodes?? - waste of computing power,
+                # choose node first, then calculated spatially nearest of a single node
+                newNode = self.findSpatiallyNearest(toxicNodes)
+                if newNode:
+                    print "Found spatially nearest node"
+                    toxicNodes.append(newNode)
+                    riskEdges = nx.edges(self.G, toxicNodes)
+                else:
+                    print "No further edges to degenerate"
+                    break
+            
+            # choose at risk edge to degenerate from           
+            dyingEdge = random.choice(riskEdges)            
+            if not dyingEdge in self.degenEdges:
+                self.degenEdges.append(dyingEdge)
+            
+            # remove specified weight from edge
+            w = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
+            
+            if np.absolute(w) < weightloss:
+                loss = w
+                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] = 0
+            
+            elif w>0:
+                loss = weightloss
+                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] -= weightloss
+                
+            else:
+                loss = weightloss
+                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] += weightloss
+            
+            # add nodes to toxic list if the spread option is selected
+            if spread:
+                for node in dyingEdge:
+                    if not node in toxicNodes:
+                        toxicNodes.append(node)
+            
+            # remove edge if below the graph threshold
+            if self.G[dyingEdge[0]][dyingEdge[1]]['weight'] < self.threshold and self.threshold != -1:      # checks that the graph isn't fully connected and weighted, ie threshold = -1
+                self.G.remove_edge(dyingEdge[0], dyingEdge[1])
+                print ' '.join(["Edge removed:",str(dyingEdge[0]),str(dyingEdge[1])])
+                if not weightLossLimit:
+                    limit-=1
+            
+            if weightLossLimit:
+                limit -= loss
+                
+            # redefine at risk edges
+            riskEdges = nx.edges(self.G, toxicNodes)
+        
+        print "Number of toxic nodes: "+str(len(toxicNodes))
+                                     
+        return toxicNodes
+            
+            
     def neuronsusceptibility(self, edgeloss=1, largestconnectedcomp=False):
         """
         Models loss of edges according to a neuronal suceptibility model with the most highly connected nodes losing
@@ -926,16 +1037,20 @@ class brainObj:
         
         if largestconnectedcomp:
             self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
-
-
-                
-
-        
+                      
         
     def percentConnected(self):
         totalConnections = len(self.G.nodes()*(len(self.G.nodes())-1))
         self.percentConnections = float(len(self.G.edges()))/float(totalConnections)
     
+    def binarise(self):
+        binEdges = [v for v in self.G.edges()]
+        self.G.remove_edges_from(self.G.edges())
+        self.G.add_edges_from(binEdges)
+        
+    def largestConnComp(self):
+        self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
+        
 
 class plotObj():
     ''' classes that plot various aspects of a brain object '''
