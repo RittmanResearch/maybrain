@@ -8,6 +8,6 @@ Initialisation file for maybrain
 
 """
 
-import mayBrainTools as maybrain
+from mayBrainTools import brainObj, plotObj
 import writeFns
 import mayBrainExtraFns as extraFns
