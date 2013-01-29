@@ -12,11 +12,6 @@ import csv
 from networkx.algorithms import cluster
 from networkx.algorithms import centrality
 
-def writeout(brain,outfilebase="brain"):
-    if not brain.iter:
-        outfile = '_'.join(outfilebase,'0.txt')
-    else:
-        outfile = '_'.join(outfilebase, str(brain.iter)+'.txt')
 
 
 def globalefficiency(G):
@@ -78,7 +73,43 @@ def localefficiency(G):
         print "Can not calculate local efficiency"
         print "Local efficiency list for each node:"+','.join(loceff)
         return None
+    
+
+def smallworldparameters(brain,outfilebase = "brain", append=True):
+    """A calculation for average cluster coefficient and average shortest path length (as defined in Humphries
+    2008 http://www.plosone.org/article/info:doi/10.1371/journal.pone.0002051).
+    """
+    outfile = outfilebase+'_smallworldparameters'
+    
+    if not append and os.path.exists(outfile):
+        print "Moving existing file to "+outfile+'.old'
+        os.rename(outfile,outfile+'.old')
+    
+    if append and os.path.exists(outfile):
+        f = open(outfile,"ab")
+    
+    else:
+        f= open(outfile,"wb")
+        f.writelines('ClusterCoeff\tAvShortPathLength\n')
+    
+    writer = csv.writer(f,delimiter='\t')       
+    cc_pl =  (None,None)
+
+    try:
+        cc_pl = (cluster.average_clustering(brain.bigconnG),nx.average_shortest_path_length(brain.bigconnG))
+    
+    except:
+        if brain.bigconnG.nodes() == []:
+            print "No nodes left in network, can not calculate path length, clustering coeff or smallworldness"
         
+        else:
+            print "No edges, can not calculate shortest path length"
+            print "Writing clustering coefficient only"
+            cc_pl = (cluster.average_clustering(brain.bigconnG),None)
+            
+    writer.writerow(cc_pl)
+    f.close()
+    
 
 def degreewrite(brain,outfilebase="brain", append=True):
     # node degrees
@@ -174,42 +205,8 @@ def degreewrite(brain,outfilebase="brain", append=True):
     histwriter = csv.writer(f)
     histwriter.writerow(degreeHist)
     f.close()
-    
-    
-def smallworldparameters(brain,outfilebase = "brain", append=True):
-    """A calculation for average cluster coefficient and average shortest path length (as defined in Humphries
-    2008 http://www.plosone.org/article/info:doi/10.1371/journal.pone.0002051).
-    """
-    outfile = outfilebase+'_smallworldparameters'
-    
-    if not append and os.path.exists(outfile):
-        print "Moving existing file to "+outfile+'.old'
-        os.rename(outfile,outfile+'.old')
-    
-    if append and os.path.exists(outfile):
-        f = open(outfile,"ab")
-    
-    else:
-        f= open(outfile,"wb")
-        f.writelines('ClusterCoeff\tAvShortPathLength\n')
-    
-    writer = csv.writer(f,delimiter='\t')       
-    cc_pl =  (None,None)
-
-    try:
-        cc_pl = (cluster.average_clustering(brain.bigconnG),nx.average_shortest_path_length(brain.bigconnG))
-    
-    except:
-        if brain.bigconnG.nodes() == []:
-            print "No nodes left in network, can not calculate path length, clustering coeff or smallworldness"
         
-        else:
-            print "No edges, can not calculate shortest path length"
-            print "Writing clustering coefficient only"
-            cc_pl = (cluster.average_clustering(brain.bigconnG),None)
-            
-    writer.writerow(cc_pl)
-    f.close()
+
             
 
 def betweennesscentralitywrite(brain,outfilebase = "brain", append=True):
@@ -484,6 +481,14 @@ def writeEdgeNumber(brain, outfilebase = "brain", append=True):
     writer = csv.writer(f,delimiter='\t')
     writer.writerow([edgeNum])
     f.close()
+    
+    
+def writeout(brain,outfilebase="brain"):
+    if not brain.iter:
+        outfile = '_'.join(outfilebase,'0.txt')
+    else:
+        outfile = '_'.join(outfilebase, str(brain.iter)+'.txt')
+    
     
 #def mayavivis(brain,outfile,nbunch = None):
 #    """
