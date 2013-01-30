@@ -28,7 +28,7 @@ class writeFns():
             return True
         return False
         
-    def degreewrite(self, brain, outfilebase="brain", append=True):
+    def degree(self, brain, outfilebase="brain", append=True):
         # node degrees
         outfile = outfilebase+'_degrees_nodes'    
         boolVal = self.fileCheck(outfile, append)
@@ -59,49 +59,50 @@ class writeFns():
         ## ===========================================================================    
         
         ## hub degrees
-        outfile = outfilebase+'_degrees_hubs'
-        hubidfile = outfilebase+'_degrees_hubs_ids'
-
-        # move old file if necessary
-        boolOF = self.fileCheck(outfile, append)
-        self.fileCheck(hubidfile, append)
+        if brain.hubs != []:
+            outfile = outfilebase+'_degrees_hubs'
+            hubidfile = outfilebase+'_degrees_hubs_ids'
     
-        # open files to write to
-        # bit dodgy, should check both files before "ab" opening...
-        if append and boolOF:
-            f = open(outfile,"ab")
-            g = open(hubidfile,"ab")
+            # move old file if necessary
+            boolOF = self.fileCheck(outfile, append)
+            self.fileCheck(hubidfile, append)
+        
+            # open files to write to
+            # bit dodgy, should check both files before "ab" opening...
+            if append and boolOF:
+                f = open(outfile,"ab")
+                g = open(hubidfile,"ab")
+                
+            else:
+                f= open(outfile,"wb")
+                g = open(hubidfile,"wb")
             
-        else:
-            f= open(outfile,"wb")
-            g = open(hubidfile,"wb")
+            # hubs within largest connected graph component
+            deghubs = [hub for hub in brain.hubs if hub in brain.G] 
         
-        # hubs within largest connected graph component
-        deghubs = [hub for hub in brain.hubs if hub in brain.G] 
-    
-        # write hub identifies to file    
-        idwriter = DictWriter(f,fieldnames = brain.hubs)
-        hubwriter = DictWriter(g,fieldnames = brain.hubs)
+            # write hub identifies to file    
+            idwriter = DictWriter(f,fieldnames = brain.hubs)
+            hubwriter = DictWriter(g,fieldnames = brain.hubs)
+            
+            headers = dict((n,n) for n in brain.hubs)
+            hubwriter.writerow(headers)
+            
+            # empty dictionary to populate with degree data
+            degstowrite = dict((n,None) for n in brain.hubs) 
         
-        headers = dict((n,n) for n in brain.hubs)
-        hubwriter.writerow(headers)
-        
-        # empty dictionary to populate with degree data
-        degstowrite = dict((n,None) for n in brain.hubs) 
-    
-        # get degrees of hubs
-        try:
-            degs = brain.G.degree(deghubs)
-            for node in degs.keys():
-                degstowrite[node] = degs[node]
-        except:
-            # why not check for this specifically beforehand than using try...except?
-            print "no hubs in largest connected component"
-        
-        # write to file
-        idwriter.writerow(degstowrite)
-        f.close()
-        g.close()
+            # get degrees of hubs
+            try:
+                degs = brain.G.degree(deghubs)
+                for node in degs.keys():
+                    degstowrite[node] = degs[node]
+            except:
+                # why not check for this specifically beforehand than using try...except?
+                print "no hubs in largest connected component"
+            
+            # write to file
+            idwriter.writerow(degstowrite)
+            f.close()
+            g.close()
         
         ## =======================================================================    
         
@@ -123,11 +124,9 @@ class writeFns():
         histwriter.writerow(degreeHist)
         f.close()
         
-     
+
     
-                
-    
-    def betweennesscentralitywrite(self, brain,outfilebase = "brain", append=True):
+    def betweennesscentrality(self, brain,outfilebase = "brain", append=True):
         """ Calculates node and hub betweenness centralities. For hub centralities there are two files, one with the values in and another
         with the hub identities in corresponding rows.
         """
@@ -190,7 +189,7 @@ class writeFns():
         g.close()
         
         
-    def closenesscentralitywrite(self, brain,outfilebase = "brain", append=True):
+    def closenesscentrality(self, brain,outfilebase = "brain", append=True):
         """ Calculates node and hub closeness centralities. For hub centralities there are two files, one with the values in and another
         with the hub identities in corresponding rows.
         """
@@ -252,7 +251,7 @@ class writeFns():
         f.close()
         g.close()
     
-    def efficiencywrite(self, brain, localEffs, globalEffs, outfilebase = "brain", append=True):
+    def efficiency(self, brain, localEffs, globalEffs, outfilebase = "brain", append=True):
         """
         Writes to a file the output of global and local efficiencies for the 
         largest connected component of a network.
@@ -298,9 +297,9 @@ class writeFns():
         writeObj.writerow([brain.modularity])
         f.close()
     
-    def writeEdgeLengths(self, brain,outfilebase = "brain", append=True):
+    def edgeLengths(self, brain,outfilebase = "brain", append=True):
         ''' change log: 29/1/2013, removed unnecessary looping when calculating avg edge lengths'''
-        outfile = outfilebase+'_edgeLengths'
+        outfile = outfilebase+'_edgeLengthsRemoved'
         boolVal = self.fileCheck(outfile, append)
         # remove this try...except - it's just laziness! Check the attribute you want to test for first rather than relying on an error
            
@@ -331,22 +330,28 @@ class writeFns():
         meanEdgeLengths = mean(l)        
         
         # do the same for hubs
-        hn1 = []
-        hn2 = []
-        for edge in brain.G.edges(brain.hubs):
-            hn1.append(brain.G.node[edge[0]]['xyz'])
-            hn2.append(brain.G.node[edge[1]]['xyz'])
-        hn1 = array(hn1)
-        hn2 = array(hn2)
+        if len(brain.hubs) == 0:
+            print('no hubs')
+            meanHubLengths = 0
+        else:
+            # get hub edges
+            hn1 = []
+            hn2 = []
+            for edge in brain.G.edges(brain.hubs):
+                hn1.append(brain.G.node[edge[0]]['xyz'])
+                hn2.append(brain.G.node[edge[1]]['xyz'])
         
-        l = sqrt(sum((hn1-hn2)**2, axis=1))
-        meanHubLengths = mean(l)            
+            # get mean hub edge lengths                    
+            hn1 = array(hn1)
+            hn2 = array(hn2)
             
+            l = sqrt(sum((hn1-hn2)**2, axis=1))
+            meanHubLengths = mean(l)            
+                
         # open output file
         outfile = outfilebase+'_meanEdgeLengths'
-        self.fileCheck(outfile)        
-        
-        if append and path.exists(outfile):
+        boolVal = self.fileCheck(outfile, append)                
+        if append and boolVal:
             f = open(outfile,"ab")
         else:
             f= open(outfile,"wb")
@@ -357,10 +362,10 @@ class writeFns():
         writeObj.writerow([meanEdgeLengths, meanHubLengths])
         f.close()
         
-    def writeEdgeNumber(self, brain, outfilebase = "brain", append=True):
+    def edgeNumber(self, brain, outfilebase = "brain", append=True):
         ''' Write number of edges to file'''
         outfile = outfilebase+'_EdgeNumber'
-        self.fileCheck(outfile)
+        self.fileCheck(outfile, append)
         
         if append and path.exists(outfile):
             f = open(outfile,"ab")            

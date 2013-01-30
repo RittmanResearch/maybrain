@@ -13,102 +13,106 @@ from networkx.algorithms import cluster
 from networkx.algorithms import centrality
 
 
-
-def globalefficiency(G):
-    """
-    A set of definitions to calculate global efficiency and local efficiency. Definitions are taken from Latora and Marchiori
-    2001, Physical Review Letters. 
-    """
-
-    N = len(G.nodes())      # count nodes
-    ssl = 0            # sum of inverse of the shortest path lengths
-
-    # nicked from nx.single_source_shortest_path_length to sum shortest lengths
-    for node in G.nodes():
-        seen={}                  # level (number of hops) when seen in BFS
-        level=0                  # the current level
-        nextlevel={node:1}  # dict of nodes to check at next level
-        while nextlevel:
-            thislevel=nextlevel  # advance to next level
-            nextlevel={}         # and start a new list (fringe)
-            for v in thislevel:
-                if v not in seen: 
-                    seen[v]=level # set the level of vertex v
-                    nextlevel.update(G[v]) # add neighbors of v
-            level=level+1
-        if sum(seen.values())>0:
-            invpls = [1/float(v) for v in seen.values() if v!=0 ]
-            invpl = np.sum(invpls)
-            ssl += invpl         # sum inverse shortest path lengths
+class extraFns():
     
-    if N>1:
-        Geff = (1/(float(N)*(float(N-1))))*float(ssl)
-        return Geff
-    else:
-        "Number of nodes <1, can't calculate global efficiency"
-        return None
+    def globalefficiency(self, G):
+        """
+        A set of definitions to calculate global efficiency and local efficiency. Definitions are taken from Latora and Marchiori
+        2001, Physical Review Letters. 
+        """
     
-
-def localefficiency(G):
-    nodecalcs = []
+        N = len(G.nodes())      # count nodes
+        ssl = 0            # sum of inverse of the shortest path lengths
     
-    for node in G.nodes():
-        Ginodes = nx.neighbors(G,node)
-        Giedges = G.edges(Ginodes)
-        Gi = nx.Graph()
-        Gi.add_nodes_from(Ginodes)
-        Gi.add_edges_from(Giedges)
+        # nicked from nx.single_source_shortest_path_length to sum shortest lengths
+        for node in G.nodes():
+            seen={}                  # level (number of hops) when seen in BFS
+            level=0                  # the current level
+            nextlevel={node:1}  # dict of nodes to check at next level
+            while nextlevel:
+                thislevel=nextlevel  # advance to next level
+                nextlevel={}         # and start a new list (fringe)
+                for v in thislevel:
+                    if v not in seen: 
+                        seen[v]=level # set the level of vertex v
+                        nextlevel.update(G[v]) # add neighbors of v
+                level=level+1
+            if sum(seen.values())>0:
+                invpls = [1/float(v) for v in seen.values() if v!=0 ]
+                invpl = np.sum(invpls)
+                ssl += invpl         # sum inverse shortest path lengths
         
-        Gi_globeff = globalefficiency(Gi)
+        if N>1:
+            Geff = (1/(float(N)*(float(N-1))))*float(ssl)
+            return Geff
+        else:
+            "Number of nodes <1, can't calculate global efficiency"
+            return None
         
-        nodecalcs.append(Gi_globeff)
     
-    nodecalcs = [float(v) for v in nodecalcs if v]
+    def localefficiency(self, G):
+        nodecalcs = []
+        
+        for node in G.nodes():
+            Ginodes = nx.neighbors(G,node)
+            Giedges = G.edges(Ginodes)
+            Gi = nx.Graph()
+            Gi.add_nodes_from(Ginodes)
+            Gi.add_edges_from(Giedges)
+            
+            Gi_globeff = globalefficiency(Gi)
+            
+            nodecalcs.append(Gi_globeff)
+        
+        nodecalcs = [float(v) for v in nodecalcs if v]
+        
+        try:
+            loceff = np.sum(nodecalcs) / float(len(G.nodes()))
+            return(loceff)
+        
+        except:
+            print "Can not calculate local efficiency"
+            print "Local efficiency list for each node:"+','.join(loceff)
+            return None
+        
     
-    try:
-        loceff = np.sum(nodecalcs) / float(len(G.nodes()))
-        return(loceff)
-    
-    except:
-        print "Can not calculate local efficiency"
-        print "Local efficiency list for each node:"+','.join(loceff)
-        return None
-    
-
-def smallworldparameters(brain,outfilebase = "brain", append=True):
-    """A calculation for average cluster coefficient and average shortest path length (as defined in Humphries
-    2008 http://www.plosone.org/article/info:doi/10.1371/journal.pone.0002051).
-    """
-    outfile = outfilebase+'_smallworldparameters'
-    
-    if not append and os.path.exists(outfile):
-        print "Moving existing file to "+outfile+'.old'
-        os.rename(outfile,outfile+'.old')
-    
-    if append and os.path.exists(outfile):
-        f = open(outfile,"ab")
-    
-    else:
-        f= open(outfile,"wb")
-        f.writelines('ClusterCoeff\tAvShortPathLength\n')
-    
-    writer = csv.writer(f,delimiter='\t')       
-    cc_pl =  (None,None)
-
-    try:
-        cc_pl = (cluster.average_clustering(brain.bigconnG),nx.average_shortest_path_length(brain.bigconnG))
-    
-    except:
-        if brain.bigconnG.nodes() == []:
-            print "No nodes left in network, can not calculate path length, clustering coeff or smallworldness"
+    def smallworldparameters(self, brain,outfilebase = "brain", append=True):
+        """A calculation for average cluster coefficient and average shortest path length (as defined in Humphries
+        2008 http://www.plosone.org/article/info:doi/10.1371/journal.pone.0002051).
+        """
+        outfile = outfilebase+'_smallworldparameters'
+        
+        if not append and os.path.exists(outfile):
+            print "Moving existing file to "+outfile+'.old'
+            os.rename(outfile,outfile+'.old')
+        
+        if append and os.path.exists(outfile):
+            f = open(outfile,"ab")
         
         else:
-            print "No edges, can not calculate shortest path length"
-            print "Writing clustering coefficient only"
-            cc_pl = (cluster.average_clustering(brain.bigconnG),None)
+            f= open(outfile,"wb")
+            f.writelines('ClusterCoeff\tAvShortPathLength\n')
+        
+        writer = csv.writer(f,delimiter='\t')       
+        cc_pl =  (None,None)
+    
+        try:
+            cc_pl = (cluster.average_clustering(brain.bigconnG),nx.average_shortest_path_length(brain.bigconnG))
+        
+        except:
+            if brain.bigconnG.nodes() == []:
+                print "No nodes left in network, can not calculate path length, clustering coeff or smallworldness"
             
-    writer.writerow(cc_pl)
-    f.close()
+            else:
+                print "No edges, can not calculate shortest path length"
+                print "Writing clustering coefficient only"
+                cc_pl = (cluster.average_clustering(brain.bigconnG),None)
+                
+        writer.writerow(cc_pl)
+        f.close()
+    
+## Everything below this line will soon be deprecated. It's currently kept for backwards
+## compatibility.     
     
 
 def degreewrite(brain,outfilebase="brain", append=True):

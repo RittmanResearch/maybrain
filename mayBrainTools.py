@@ -18,7 +18,7 @@ Change log:
         
 """
 
-import string,os,community,csv,sys,itertools
+import string,os,csv,sys,itertools # ,community
 import networkx as nx
 import numpy as np
 from networkx.drawing import *
@@ -55,6 +55,9 @@ class brainObj:
         # define global variables
         self.adjMat = None # adjacency matrix, containing weighting of edges.
         
+        self.hubs = []
+        self.lengthEdgesRemoved = None
+        
     
 
     ## ================================================
@@ -64,7 +67,7 @@ class brainObj:
     def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, symmetric = False):
         ''' load adjacency matrix with filename and threshold for edge definition '''
         
-        print('loading data from', fname)
+        print('loading data from' + fname)
 
         # open file
         f = open(fname,"rb")
