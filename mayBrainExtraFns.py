@@ -60,7 +60,7 @@ class extraFns():
             Gi.add_nodes_from(Ginodes)
             Gi.add_edges_from(Giedges)
             
-            Gi_globeff = globalefficiency(Gi)
+            Gi_globeff = self.globalefficiency(Gi)
             
             nodecalcs.append(Gi_globeff)
         
@@ -95,7 +95,12 @@ class extraFns():
         
         writer = csv.writer(f,delimiter='\t')       
         cc_pl =  (None,None)
+        
+        # check biggest connected component is define
+        if not brain.bigconnG:
+            brain.largestConnComp()
     
+        # calculate parameters
         try:
             cc_pl = (cluster.average_clustering(brain.bigconnG),nx.average_shortest_path_length(brain.bigconnG))
         
@@ -110,6 +115,8 @@ class extraFns():
                 
         writer.writerow(cc_pl)
         f.close()
+        
+        return cc_pl
     
 ## Everything below this line will soon be deprecated. It's currently kept for backwards
 ## compatibility.     

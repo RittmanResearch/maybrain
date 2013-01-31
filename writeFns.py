@@ -8,14 +8,112 @@ Functions to write output of a brain object. Now object oriented.
 
 """
 
-from os import path, rename
+from os import path, rename, remove
 from csv import writer, DictWriter
 from networkx.algorithms import centrality
 from networkx import degree_histogram
-from numpy import array, sqrt, mean, sum, shape
+from numpy import array, sqrt, mean, sum, shape, zeros
 
 class writeFns():
     ''' a set of functions to write various things from a maybrain brainObj to file '''
+
+    def outputAdjMatrix(self, brain, filename, header = None):
+        ''' output the adjacency matrix to file. Header is a string.'''
+        
+        if path.exists(filename):
+            print("old adjacency file removed")
+            remove(filename)
+        
+        # write header
+        if header:
+            f = open(filename, 'w+')
+            f.write(header + '\n')
+            f.close()                
+
+        f = open(filename, 'a+')
+
+        l = f.readlines()
+        nl = len(l)
+        
+        # append line to say where data starts
+        headerApp = 'data begins line '  + str(nl+2) + '\n'
+        f.write(headerApp)
+        
+        # write data to file from adjacency array
+        for line in brain.adjMat:
+            for num in line[:-1]:
+                f.write(str(num) + '\t')
+            f.write(str(line[-1]) + '\n')
+            
+        f.close()
+            
+        print("data written to " + filename)
+        
+                   
+        
+    def outputEdges(self, brain, filename, header = None, properties = []):
+        ''' output the edges to file '''        
+        
+        if path.exists(filename):
+            print("old edge file removed")
+            remove(filename)   
+            
+        # open file and write header
+        f = open(filename, 'w')
+        if header:
+            f.write(header + '\n')
+            
+        # write column headers
+        line = 'x' + '\t' + 'y'
+        for p in properties:
+            line = line + '\t' + p
+        line = line + '\n'
+        f.write(line)
+        
+        for n in brain.G.edges(data = True):
+            # add coordinates
+            line = str(n[0]) + '\t' + str(n[1]) 
+            # add other properties
+            for p in properties:
+                try:
+                    line = line + '\t' + str(n[2][p])
+                except:
+                    print(p, "omitted in edge output")
+            line = line + '\n'
+            # write out
+            f.write(line)
+        f.close()
+
+        print("edges written to " + filename)            
+        
+
+    def outputEdgesMatrix(self, brain, filename):
+        ''' output the edge data as a boolean matrix '''
+        
+        if path.exists(filename):
+            print("old edge matrix file removed")
+            remove(filename)           
+        
+        n = brain.G.number_of_nodes()
+        mat = zeros([n,n], dtype = int)
+        
+        for ed in brain.G.edges():
+            x = ed[0]
+            y = ed[1]
+            if y>x:
+                mat[x,y] = 1
+            else:
+                mat[y,x] = 1
+            
+        f = open(filename, 'w')
+        for row in mat:
+            for ch in row[:-1]:
+                 f.write(str(ch) + '\t')
+            f.write(str(row[-1]) + '\n')
+        f.close()
+                
+        print("edges written to " + filename)   
+
 
     def fileCheck(self, fname, boolVal):
         ''' perform a check to see if old file is there and move if necessary '''

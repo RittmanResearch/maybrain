@@ -15,6 +15,9 @@ Change log:
 	- added degeneracy fn to brainObj
 	- binarise and largest conn comp added
 	- hub identifier can take weighted measures
+31/1/2013
+    - adjmat and edge writing functions moved to writeFns
+    - isosurface plotting added
         
 """
 
@@ -57,6 +60,7 @@ class brainObj:
         
         self.hubs = []
         self.lengthEdgesRemoved = None
+        self.bigconnG = None
         
     
 
@@ -144,6 +148,7 @@ class brainObj:
                 (errorno, errordetails) = error
                 print "Couldn't find 3D position information"
                 print "Problem with opening file: "+errordetails                
+                return
             
             # get data from file
             lines = f.readlines()
@@ -187,104 +192,7 @@ class brainObj:
             n = nodeList[ind]
             p = propList[ind]
             self.G.node[n][propertyName] = p
-            
-            
-    def outputAdjMatrix(self, filename, header = None):
-        ''' output the adjacency matrix to file. Header is a string.'''
-        
-        if path.exists(filename):
-            print("old adjacency file removed")
-            remove(filename)
-        
-        # write header
-        if header:
-            f = open(filename, 'w+')
-            f.write(header + '\n')
-            f.close()                
 
-        f = open(filename, 'a+')
-
-        l = f.readlines()
-        nl = len(l)
-        
-        # append line to say where data starts
-        headerApp = 'data begins line '  + str(nl+2) + '\n'
-        f.write(headerApp)
-        
-        # write data to file from adjacency array
-        for line in self.adjMat:
-            for num in line[:-1]:
-                f.write(str(num) + '\t')
-            f.write(str(line[-1]) + '\n')
-            
-        f.close()
-            
-        print("data written to " + filename)
-        
-        
-    def outputEdges(self, filename, header = None, properties = []):
-        ''' output the edges to file '''        
-        
-        if path.exists(filename):
-            print("old edge file removed")
-            remove(filename)   
-            
-        # open file and write header
-        f = open(filename, 'w')
-        if header:
-            f.write(header + '\n')
-            
-        # write column headers
-        line = 'x' + '\t' + 'y'
-        for p in properties:
-            line = line + '\t' + p
-        line = line + '\n'
-        f.write(line)
-        
-        for n in self.G.edges(data = True):
-            # add coordinates
-            line = str(n[0]) + '\t' + str(n[1]) 
-            # add other properties
-            for p in properties:
-                try:
-                    line = line + '\t' + str(n[2][p])
-                except:
-                    print(p, "omitted in edge output")
-            line = line + '\n'
-            # write out
-            f.write(line)
-        f.close()
-
-        print("edges written to " + filename)            
-        
-    
-    def outputEdgesMatrix(self, filename):
-        ''' output the edge data as a boolean matrix '''
-        
-        if path.exists(filename):
-            print("old edge matrix file removed")
-            remove(filename)           
-        
-        n = self.G.number_of_nodes()
-        mat = zeros([n,n], dtype = int)
-        
-        for ed in self.G.edges():
-            x = ed[0]
-            y = ed[1]
-            if y>x:
-                mat[x,y] = 1
-            else:
-                mat[y,x] = 1
-            
-        f = open(filename, 'w')
-        for row in mat:
-            for ch in row[:-1]:
-                 f.write(str(ch) + '\t')
-            f.write(str(row[-1]) + '\n')
-        f.close()
-                
-        print("edges written to " + filename)            
-    
     
     ## ===========================================================================
     
@@ -399,7 +307,11 @@ class brainObj:
         
         
     def makeSubBrainEdges(self, propName, value):
-        ''' separate out edges with a certain property '''
+        ''' separate out edges with a certain property
+
+            value can be a defined range, given as a dictionary e.g. {'min': 0, 'max':1}
+        
+        '''
 
         # initialise new brain
         subBrain = brainObj()
@@ -747,6 +659,8 @@ class brainObj:
         
         hubs are defined as nodes 2 standard deviations above the mean hub score
         
+        defines self.hubs
+        
         Changelog 7/12/12:
             - added possibility of weighted measures
         """
@@ -1045,8 +959,14 @@ class brainObj:
     def percentConnected(self):
         totalConnections = len(self.G.nodes()*(len(self.G.nodes())-1))
         self.percentConnections = float(len(self.G.edges()))/float(totalConnections)
+        
+        return self.percentConnections
     
     def binarise(self):
+        ''' effectively removes weighting from edges 
+
+        Comment, Smart: isn't there a better way to do this, why would you want to??        
+        '''
         binEdges = [v for v in self.G.edges()]
         self.G.remove_edges_from(self.G.edges())
         self.G.add_edges_from(binEdges)
@@ -1063,8 +983,8 @@ class plotObj():
         # initialise mayavi figure
         self.startMayavi()  
         
-    
-    
+        self.nodesf = 0.5 # scale factor for nodes
+
         
     def startMayavi(self):
         ''' initialise the Mayavi figure for plotting '''        
@@ -1081,6 +1001,7 @@ class plotObj():
         self.brainNodePlots = {}
         self.brainEdgePlots = {}
         self.skullPlots = {}
+        self.isosurfacePlots = {}
 
         # autolabel for plots
         self.labelNo = 0         
@@ -1191,14 +1112,14 @@ class plotObj():
         xn, yn, zn, xe, ye, ze, xv, yv, zv = self.nodeToList(brain, nodeList=nodeList, edgeList=edgeList)
         
         # plot nodes
-        s = mlab.points3d(xn, yn, zn, scale_factor = 0.5, color = col, opacity = opacity)
+        s = mlab.points3d(xn, yn, zn, scale_factor = self.nodesf, color = col, opacity = opacity)
         self.brainNodePlots[label] = s
         
         # plot edges
         t = mlab.quiver3d(xe, ye, ze, xv, yv, zv, line_width = 1., mode = '2ddash', scale_mode = 'vector', scale_factor = 1., color = col, opacity = opacity)
         self.brainEdgePlots[label] = t
 
-    def plotBrainNodes(self, brain, nodes = None, col = (1, 1, 1), opacity = 1.):
+    def plotBrainNodes(self, brain, nodes = None, col = (1, 1, 1), opacity = 1., label=None):
         ''' plot the nodes and edges using Mayavi '''
         
         # sort out keywords
@@ -1214,7 +1135,7 @@ class plotObj():
         xn, yn, zn = self.getNodesList(brain, nodeList=nodeList)
         
         # plot nodes
-        s = mlab.points3d(xn, yn, zn, scale_factor = 0.2, color = col, opacity = opacity)
+        s = mlab.points3d(xn, yn, zn, scale_factor = self.nodesf, color = col, opacity = opacity)
         self.brainNodePlots[label] = s
 
 
@@ -1277,6 +1198,20 @@ class plotObj():
         # get the object for editing
         self.skullPlots[label] = s
         
+        
+    def plotIsosurface(self, brain, label = None, contourVals = [], opacity = 0.1):
+        ''' plot an isosurface using Mayavi, almost the same as skull plotting '''
+        
+        if not(label):
+            label = self.getAutoLabel()        
+        
+        if contourVals == []:            
+            s = mlab.contour3d(brain.skull, opacity = opacity)
+        else:
+            s = mlab.contour3d(brain.skull, opacity = opacity, contours = contourVals)
+            
+        # get the object for editing
+        self.isosurfacePlots[label] = s        
     
     def changePlotProperty(self, plotType, prop, plotLabel, value = 0.):
         ''' change a specified property prop of a plot of type plotType, index is used if multiple plots of
@@ -1285,6 +1220,7 @@ class plotObj():
             Allowed plotTypes: skull, brainNode, brainEdge
             Allowed props: opacity, visibility, colour
             
+            This is basically a shortcut to mayavi visualisation functions            
             
         '''
         
@@ -1358,10 +1294,7 @@ class plotObj():
             
         return value
         
-        
-        
-            
-            
+
     def getAutoLabel(self):
         ''' generate an automatic label for a plot object if none given '''
         
