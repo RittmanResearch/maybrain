@@ -18,6 +18,10 @@ Change log:
 31/1/2013
     - adjmat and edge writing functions moved to writeFns
     - isosurface plotting added
+
+5/2/2013
+    - critical bug fix: readSpatial info was assigning coordinates to the wrong nodes
+    
         
 """
 
@@ -27,7 +31,8 @@ import numpy as np
 from networkx.drawing import *
 from networkx.algorithms import centrality
 from networkx.algorithms import components
-from numpy import shape, random, fill_diagonal, array, where, tril, zeros
+import random
+from numpy import shape, fill_diagonal, array, where, tril, zeros
 from mayavi import mlab
 from string import split
 import nibabel as nb
@@ -152,23 +157,37 @@ class brainObj:
             
             # get data from file
             lines = f.readlines()
+            x = {}
+            y = {}
+            z = {}
+            keys = []
             for l in lines:
                 line = l.split()
                 if len(line) == 4:
                     # read in line
-                    coords[line[0]] = {"x":float(line[1]), "y":float(line[2]), "z":float(line[3])}
-                    ROIs = coords.keys()
-                    ROIs.sort()
+                    key = line[0]
+                    keys.append(key)
+                    x[key] = float(line[1])
+                    y[key] = float(line[2])
+                    z[key] = float(line[3])
+#                    coords[strnum(line[0])] = {"x":float(line[1]), "y":float(line[2]), "z":float(line[3])}
+#                    ROIs = coords.keys()
+#                    ROIs.sort()
                     
-                    # get x, y and z coords
-                    x = [coords[ROI]["x"] for ROI in ROIs]
-                    y = [coords[ROI]["y"] for ROI in ROIs]
-                    z = [coords[ROI]["z"] for ROI in ROIs]
+#                    # get x, y and z coords
+#                    x = [coords[ROI]["x"] for ROI in ROIs]
+#                    y = [coords[ROI]["y"] for ROI in ROIs]
+#                    z = [coords[ROI]["z"] for ROI in ROIs]
                     
-            # add coords to nodes
-            for n in range(len(self.G.nodes())):
-                self.G.node[n]['anatlabel'] = ROIs[n]
-                self.G.node[n]['xyz'] = (float(x[n]),float(y[n]),float(z[n]))                
+            # add coords to nodes            
+            for k in keys:
+                self.G.node[int(k)]['anatlabel'] = k
+                self.G.node[int(k)]['xyz'] = (x[k], y[k], z[k])
+                
+                print(k, x[k], y[k], z[k])
+#            for n in range(len(self.G.nodes())):
+#                self.G.node[n]['anatlabel'] = ROIs[n]
+#                self.G.node[n]['xyz'] = (float(x[n]),float(y[n]),float(z[n]))                
                 
 
     def importSkull(self, fname):
@@ -239,7 +258,9 @@ class brainObj:
             threshold = weights[-edgeNum]
             print("Threshold set at: "+str(threshold))
         else:
-            threshold  = tVal        
+            threshold  = tVal      
+            
+        self.threshold = threshold
             
         
         # carry out thresholding on adjacency matrix
@@ -247,6 +268,10 @@ class brainObj:
         fill_diagonal(boolMat, 0)
         edgeCos = where(boolMat) # lists of where edges should be
         
+        # display coordinates (for testing only)
+#        for x in range(len(edgeCos[0])):
+#            print(edgeCos[0][x], edgeCos[1][x])
+                
         for ind in range(len(edgeCos[0])):
             node1 = edgeCos[0][ind]
             node2 = edgeCos[1][ind]
@@ -355,8 +380,23 @@ class brainObj:
                     continue
                 
                             
-        return subBrain        
+        return subBrain    
+        
+    def makeSubBrainIndList(self, indices):
+        ''' Create a subbrain using the given list of nodes. Also taks edges those nodes are in '''
 
+        subbrain = brainObj()        
+        for ind in indices:
+            n = self.G.nodes(data=True)[ind]
+            subbrain.G.add_nodes_from([n])
+
+        # add edges from the current brain if both nodes are in the current brain
+        for e in self.G.edges():
+            if (e[0] in indices) & (e[1] in indices):
+                subbrain.G.add_edges_from([e])                      
+            
+        # should also transfer the adjacency matrix here
+        return subbrain
 
     def randomiseGraph(self, largestconnectedcomp = False):
         self.G = nx.gnm_random_graph(len(self.G.nodes()), len(self.G.edges()))
@@ -378,7 +418,7 @@ class brainObj:
 
 
     def contiguousspread(self, edgeloss, largestconnectedcomp=False, startNodes = None):
-        ''' remove edges in a continuous fashion. Doesn't currently include spreadratio '''
+        ''' degenerate nodes in a continuous fashion. Doesn't currently include spreadratio '''
 
         # make sure nodes have the linkedNodes attribute
         try:
@@ -411,16 +451,22 @@ class brainObj:
             newl = []
             # check the new indices aren't already toxic
             for a in l:
-                if not(a in toxicNodes)&(not(self.G.node[a]['degenerating'])):
-                    newl.append(a)
+                if a in toxicNodes:
+                    continue
+                if self.G.node[a]['degenerating']:
+                    continue
+#                if not(a in toxicNodes)&(not(self.G.node[a]['degenerating'])):
+                newl.append(a)
+
             riskNodes = riskNodes + newl
-            
-#        print(riskNodes)
+
+
         
         # iterate number of steps
+        toxicNodeRecord = [toxicNodes[:]]
         for count in range(edgeloss):
             # find at risk nodes
-            ind = random.randint(0, len(riskNodes))
+            ind = random.randint(0, len(riskNodes)-1)
             deadNode = riskNodes.pop(ind) # get the index of the node to be removed and remove from list
             # remove all instances from list
             while deadNode in riskNodes:
@@ -429,7 +475,8 @@ class brainObj:
             # add to toxic list    
             toxicNodes.append(deadNode)
             # make it degenerate
-            self.G.node[deadNode]['degenerating'] = 'True'
+            self.G.node[deadNode]['degenerating'] = True
+            print('deadNode', deadNode)
             
             
             # add the new at-risk nodes
@@ -437,9 +484,15 @@ class brainObj:
             newl = []
             # check the new indices aren't already toxic
             for a in l:
-                if not(a in toxicNodes)&(not(self.G.node[a]['degenerating'])):
-                    newl.append(a)
+                if a in toxicNodes:
+                    continue
+                if self.G.node[a]['degenerating']:
+                    continue
+                newl.append(a)
+                
             riskNodes = riskNodes + newl
+            
+            toxicNodeRecord.append(toxicNodes[:])
             
             # check that there are any more nodes at risk
             if len(riskNodes)==0:
@@ -447,7 +500,7 @@ class brainObj:
             
 #            print(toxicNodes)
             
-        return toxicNodes
+        return toxicNodes, toxicNodeRecord
                 
                 
                 
@@ -601,7 +654,7 @@ class brainObj:
     ## Analysis functions
 
     
-    def findSpatiallyNearestOld(self, degennodes):
+    def findSpatiallyNearest(self, degennodes):
         # find the spatially closest node as no topologically close nodes exist
         print "Finding spatially closest node"
         duffNode = random.choice(degennodes)
@@ -627,7 +680,7 @@ class brainObj:
         return shortestnode[0]
         
     
-    def findSpatiallyNearest(self, nodeList, threshold):
+    def findSpatiallyNearestNew(self, nodeList, threshold):
         ''' find the spatially nearest nodes to each node within a treshold '''
         
         a = 1
@@ -974,6 +1027,14 @@ class brainObj:
     def largestConnComp(self):
         self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
         
+    def strnum(num, length=5):
+        ''' convert a number into a string of a given length'''
+        
+        sn = str(num)
+        lenzeros = length - len(sn)
+        sn = lenzeros*'0' + sn
+        
+        return sn
 
 class plotObj():
     ''' classes that plot various aspects of a brain object '''
