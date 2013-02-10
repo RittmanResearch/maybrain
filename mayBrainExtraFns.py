@@ -12,7 +12,6 @@ import csv
 from networkx.algorithms import cluster
 from networkx.algorithms import centrality
 
-
 class extraFns():
     
     def globalefficiency(self, G):
@@ -370,6 +369,7 @@ def efficiencywrite(brain,outfilebase = "brain", append=True):
     """
     Writes to a file the output of global and local efficiencies for the largest connected component of a network.
     """
+    from maybrain import analysis
     outfile = outfilebase+'_efficiency'
     if not append and os.path.exists(outfile):
         print "Moving existing file to "+outfile+'.old'
@@ -385,10 +385,10 @@ def efficiencywrite(brain,outfilebase = "brain", append=True):
     effs = {"Globalefficiency":None,"Localefficiency":None}
             
     # local efficiency
-    effs["Localefficiency"] = localefficiency(brain.G)
+    effs["Localefficiency"] = analysis.localefficiency(brain.G)
         
     # global efficiency
-    effs["Globalefficiency"] = globalefficiency(brain.G)
+    effs["Globalefficiency"] = analysis.globalefficiency(brain.G)
     
     # write results to file
     writer = csv.DictWriter(f,fieldnames = effs.keys())
@@ -437,7 +437,7 @@ def writeEdgeLengths(brain,outfilebase = "brain", append=True):
             f= open(outfile,"wb")
             
         writer = csv.writer(f,delimiter='\t')
-        writer.writerow(brain.lengthEdgesRemoved)
+        writer.writerow([brain.lengthEdgesRemoved])
         f.close()
         
     except AttributeError:
@@ -492,267 +492,4 @@ def writeEdgeNumber(brain, outfilebase = "brain", append=True):
     writer = csv.writer(f,delimiter='\t')
     writer.writerow([edgeNum])
     f.close()
-    
-    
-def writeout(brain,outfilebase="brain"):
-    if not brain.iter:
-        outfile = '_'.join(outfilebase,'0.txt')
-    else:
-        outfile = '_'.join(outfilebase, str(brain.iter)+'.txt')
-    
-    
-#def mayavivis(brain,outfile,nbunch = None):
-#    """
-#    draws 3D version of brain
-#    """
-#    if nbunch:
-#        # set up arrays of data for 3D visualisation
-#        visarray = np.array([[0.0]*len(nbunch)]*4)
-#        for n in range(len(nbunch)):
-#            node = nbunch[n]
-#            for x in range(3):
-#                visarray[x:x+1,n:n+1] = float(brain.G.node[node]['xyz'][x])/200
-#            visarray[3:4,n:n+1] = brain.G.node[node]['cluster']
-#        
-#        hubs = [v for v in brain.hubs if v in nbunch]
-#        
-#        visarrayhubs = np.array([[0.0]*len(hubs)]*4)
-#        for n in range(len(hubs)):
-#            hub = hubs[n]
-#            for x in range(3):
-#                visarrayhubs[x:x+1,n:n+1] = float(brain.G.node[hub]['xyz'][x])/200
-#            visarrayhubs[3:4,n:n+1] = brain.G.node[hub]['cluster']
-#            brain.clustervisarrayhubs = visarrayhubs
-#            
-#        degennodes = [v for v in nbunch if brain.G.node[v]['degenerating']]
-#        visarraydegens = np.array([[0.0]*len(degennodes)]*4)
-#        for n in range(len(degennodes)):
-#            degennode = degennodes[n]
-#            for x in range(3):
-#                visarraydegennodes[x:x+1,n:n+1] = float(brain.G.node[degennode]['xyz'][x])/200
-#            visarraydegennodes[3:4,n:n+1] = brain.G.node[degennode]['cluster']
-#            brain.clustervisarraydegennodes = visarraydegennodes
-#        edges = [v for v in brain.G.edges(nbunch) if v[0] in nbunch and v[1] in nbunch]
-#
-#    else:    
-##    set up hub 3D locations
-#        visarray = np.array([[0.0]*len(brain.G.nodes())]*4)
-#        for n in range(len(brain.G.nodes())):
-#            node = brain.G.nodes()[n]
-#            for x in range(3):
-#                visarray[x:x+1,n:n+1] = float(brain.G.node[node]['xyz'][x])/200
-#            visarray[3:4,n:n+1] = brain.G.node[node]['cluster']
-#
-#        visarrayhubs = np.array([[0.0]*len(brain.hubs)]*4)
-#        for n in range(len(brain.hubs)):
-#            hub = brain.hubs[n]
-#            for x in range(3):
-#                visarrayhubs[x:x+1,n:n+1] = float(brain.G.node[hub]['xyz'][x])/200
-#            visarrayhubs[3:4,n:n+1] = brain.G.node[hub]['cluster']
-#            
-#        
-#        try:
-#            degennodes = [v for v in brain.G.nodes() if brain.G.node[v]['degenerating']]
-#            visarraydegennodes = np.array([[0.0]*len(degennodes)]*4)
-#            for n in range(len(degennodes)):
-#                degennode = degennodes[n]
-#                for x in range(3):
-#                    visarraydegennodes[x:x+1,n:n+1] = float(brain.G.node[degennode]['xyz'][x])/200
-#                visarraydegennodes[3:4,n:n+1] = brain.G.node[degennode]['cluster']
-#        except:
-#            pass
-#        
-#        
-#        edges = brain.G.edges()
-#        
-#    
-#    mlab.figure(1,bgcolor=(1,1,1),size=(1200,900))
-#    
-#    pts = mlab.points3d(visarray[0],visarray[1],visarray[2],visarray[3],scale_factor=0.01,scale_mode='none',colormap='Greens',opacity=0)
-#    pts.mlab_source.dataset.lines = np.array(edges)
-#    
-#    ptshubs = mlab.points3d(visarrayhubs[0],visarrayhubs[1],visarrayhubs[2],scale_factor=0.01,color=(1,0,0))
-#    try:
-#        ptsdegens = mlab.points3d(visarraydegennodes[0],visarraydegennodes[1],visarraydegennodes[2],scale_factor=0.02,color=(1,1,0))
-#    except:
-#        pass
-#    
-#    tube = mlab.pipeline.tube(pts,tube_radius=0.0002)
-#    mlab.pipeline.surface(tube,colormap='Accent',opacity=1)
-#    brain.picturecount = 1
-#    while os.path.exists(outfile+'_3D_'+str(brain.picturecount)+'.png'):
-#        brain.picturecount += 1
-#    mlab.savefig(outfile+'_3D_'+str(brain.picturecount)+'.png')
-#    scene.scene.save_x3d(outfile+".x3d")
-#    mlab.close(all=True)
-#    mlab.show()
-#    
-#def flatpictures(brain,outfile='Brain',nbunch=None):
-#    """
-#    draws 2D version of brain, or subset of nodes
-#    """
-#    if nbunch:
-#        hubs = [v for v in brain.hubs if v in nbunch]
-#        try:
-#            degennodes = [v for v in nbunch if brain.G.node[v]['degenerating']]
-#        except:
-#            pass
-#        nodes = [v for v in nbunch if v not in hubs]
-#        
-#        crossclusteredges = [v for v in brain.G.edges(nbunch) if v[0] in nbunch and v[1] in nbunch]
-#        noncrossingedges = []
-#            
-#    else:
-#        hubs = brain.hubs
-#        nodes = [v for v in brain.G.nodes() if v not in brain.hubs]
-#        try:
-#            degennodes = [v for v in brain.G.nodes() if brain.G.node[v]['degenerating']]
-#        except:
-#            pass
-#        
-#        # define edges crossing or not crossing clusters
-#        crossclusteredges = [v for v in brain.G.edges() if brain.G.node[v[0]]['cluster'] != brain.G.node[v[1]]['cluster']]
-#        noncrossingedges = [v for v in brain.G.edges() if brain.G.node[v[0]]['cluster'] == brain.G.node[v[1]]['cluster']]
-#    
-#    # draw whole brain/cluster
-#    cm = plt.get_cmap('Autumn')
-#        
-#    plt.figure(1)
-#    plt.clf()
-#    draw_networkx_edges(brain.G,brain.pos,edgelist=crossclusteredges,edge_color='Black',width=0.2)
-#    draw_networkx_nodes(brain.G,brain.pos,nodelist=nodes,node_size=0,)
-#    try:
-#        draw_networkx_nodes(brain.G,brain.pos,nodelist=degennodes,node_size=20,node_color="blue")
-#    except:
-#        pass
-#    
-#    draw_networkx_nodes(brain.G,brain.pos,nodelist=hubs,node_size=10)
-#    colors = [brain.G.node[v[0]]['cluster'] for v in noncrossingedges]
-#    draw_networkx_edges(brain.G,brain.pos,edgelist=noncrossingedges,edge_color=colors,edge_cmap=cm,width=0.2)
-#    plt.axis('off')
-#    
-#    brain.picturecount = 1
-#    while os.path.exists(outfile+'_2D_'+str(brain.picturecount)+'.png'):
-#        brain.picturecount += 1
-#    
-#    plt.savefig(outfile+'_2D_'+str(brain.picturecount)+'.png',dpi=75,figsize=(2,1.5))
-#
-#    plt.close()
-
-#def glassBrain(brain, bgImage='../average4_thr.mnc',outfile="glassbrain", nbunch=None):
-#    try:
-#        engine = mayavi.engine
-#    except NameError:
-#        from mayavi.api import Engine
-#        engine = Engine()
-#        engine.start()
-#    if len(engine.scenes) == 0:
-#        engine.new_scene()
-#    
-#    scene = engine.scenes[0]
-#    scene.scene.background = (1.0, 1.0, 1.0)
-#    scene.scene.show_axes = True
-#           
-#    mlab.set_engine(engine)
-#    
-#    # import background image
-#    bg = nibabel.load(bgImage)
-#    a = bg.get_data()
-#    src = mlab.contour3d(a, colormap='bone', figure=scene)
-#    
-#    src.actor.property.representation = 'points'    
-#
-#    
-#    # draw network
-#    posCorrectionDict = {0:91, 1:109, 2:91}
-#    if nbunch:
-#        # set up arrays of data for 3D visualisation
-#        visarray = np.array([[0.0]*len(nbunch)]*4)
-#        for n in range(len(nbunch)):
-#            node = nbunch[n]
-#            for x in range(3):
-#                visarray[x:x+1,n:n+1] = float(brain.G.node[node]['xyz'][x])##*2-posCorrectionDict[x]
-#            visarray[3:4,n:n+1] = brain.G.node[node]['cluster']
-#        
-#        hubs = [v for v in brain.hubs if v in nbunch]
-#        
-#        visarrayhubs = np.array([[0.0]*len(hubs)]*4)
-#        for n in range(len(hubs)):
-#            hub = hubs[n]
-#            for x in range(3):
-#                visarrayhubs[x:x+1,n:n+1] = float(brain.G.node[hub]['xyz'][x])#*2-posCorrectionDict[x]
-#            visarrayhubs[3:4,n:n+1] = brain.G.node[hub]['cluster']
-#            brain.clustervisarrayhubs = visarrayhubs
-#            
-#        degennodes = [v for v in nbunch if brain.G.node[v]['degenerating']]
-#        visarraydegens = np.array([[0.0]*len(degennodes)]*4)
-#        for n in range(len(degennodes)):
-#            degennode = degennodes[n]
-#            for x in range(3):
-#                visarraydegennodes[x:x+1,n:n+1] = float(brain.G.node[degennode]['xyz'][x])#*2-posCorrectionDict[x]
-#            visarraydegennodes[3:4,n:n+1] = brain.G.node[degennode]['cluster']
-#            brain.clustervisarraydegennodes = visarraydegennodes
-#        edges = [v for v in brain.G.edges(nbunch) if v[0] in nbunch and v[1] in nbunch]
-#
-#    else:    
-##    set up hub 3D locations
-#        visarray = np.array([[0.0]*len(brain.G.nodes())]*4)
-#        for n in range(len(brain.G.nodes())):
-#            node = brain.G.nodes()[n]
-#            for x in range(3):
-#                visarray[x:x+1,n:n+1] = float(brain.G.node[node]['xyz'][x])#*2-posCorrectionDict[x]
-#            visarray[3:4,n:n+1] = brain.G.node[node]['cluster']
-#
-#        visarrayhubs = np.array([[0.0]*len(brain.hubs)]*4)
-#        for n in range(len(brain.hubs)):
-#            hub = brain.hubs[n]
-#            for x in range(3):
-#                visarrayhubs[x:x+1,n:n+1] = float(brain.G.node[hub]['xyz'][x])#*2-posCorrectionDict[x]
-#            visarrayhubs[3:4,n:n+1] = brain.G.node[hub]['cluster']
-#            
-#        
-#        try:
-#            degennodes = [v for v in brain.G.nodes() if brain.G.node[v]['degenerating']]
-#            visarraydegennodes = np.array([[0.0]*len(degennodes)]*4)
-#            for n in range(len(degennodes)):
-#                degennode = degennodes[n]
-#                for x in range(3):
-#                    visarraydegennodes[x:x+1,n:n+1] = float(brain.G.node[degennode]['xyz'][x])#*2-posCorrectionDict[x]
-#                visarraydegennodes[3:4,n:n+1] = brain.G.node[degennode]['cluster']
-#        except:
-#            pass
-#        
-#        
-#        edges = brain.G.edges()
-#        
-#    
-##    mlab.figure(1,bgcolor=(1,1,1),size=(1200,900))
-#    
-#    pts = mlab.points3d(visarray[0],visarray[1],visarray[2],visarray[3],scale_factor=1,scale_mode='none',colormap='Greens',opacity=0,figure=scene)
-#    pts.mlab_source.dataset.lines = np.array(edges)
-#    
-#    ptshubs = mlab.points3d(visarrayhubs[0],visarrayhubs[1],visarrayhubs[2],scale_factor=1,color=(1,0,0),figure=scene)
-#    try:
-#        ptsdegens = mlab.points3d(visarraydegennodes[0],visarraydegennodes[1],visarraydegennodes[2],scale_factor=1,color=(1,1,0),figure=scene)
-#    except:
-#        pass
-#    
-#    tube = mlab.pipeline.tube(pts,tube_radius=0.03,figure=scene)
-#    mlab.pipeline.surface(tube,colormap='Accent',opacity=1)    
-##    mlab.show()
-#    # set a few environmental variables
-#    scene.scene.camera.position = [145, 145, 130]
-#    scene.scene.camera.focal_point = [-100, -100, -100]
-#    scene.scene.camera.view_angle = 30.0
-#    scene.scene.camera.view_up = [0.0, 0.0, 1.0]
-#    scene.scene.camera.clipping_range = [100, 600]
-#    scene.scene.camera.compute_view_plane_normal()
-#    scene.scene.set_size((1600,1200))
-#    scene.scene.render()
-#    ## scene.scene.x_minus_view()
-#    scene.scene.save(outfile+'.png')
-#    scene.scene.save_x3d(outfile+".x3d")
-#    
-    
-          
     

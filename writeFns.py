@@ -6,6 +6,10 @@ Created on Tue Jan 29 10:23:18 2013
 
 Functions to write output of a brain object. Now object oriented.
 
+Changelog 7/2/2013
+- in edgelength changed output to a list so it will write to a class of csv writer
+
+
 """
 
 from os import path, rename, remove
@@ -409,7 +413,7 @@ class writeFns():
         # not sure exactly what I should be checking here - double check what happens
         if brain.lengthEdgesRemoved:                
             writeObj = writer(f,delimiter='\t')
-            writeObj.writerow(brain.lengthEdgesRemoved)
+            writeObj.writerow([brain.lengthEdgesRemoved])
             f.close()
 
         # get edges

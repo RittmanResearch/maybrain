@@ -22,21 +22,33 @@ Change log:
 5/2/2013
     - critical bug fix: readSpatial info was assigning coordinates to the wrong nodes
     
-        
+7/2/2013
+    - Changed readAdjFile to deal with non-whitespace delimiters through the 'delimiter' option
+    - Changed readAdjFile to replace string "NA" with 0 from adjacency matrices
+    - Added 'weighted' property to readAdjFile to allow a choice of binary or weighted graphs
+    - Changed binarise to change the weight of each edge to 1 rather than remove all edge properties
+    - Removed contiguousspread and contiguousspreadold functions (superceded by degenerate)
+    - Removed the 'symmetric' argument and replaced with directed, which creates a directed graph if required.
+        Note that if the graph is undirected, it can not have reciprocal connections eg (2,1) and (1,2)
+    - Added clusterslices function to produce 2D images with nodes plotted ***this needs testing***
+    - Removed a lost, lonely and wandering dictionary definition from readSpatialInfo
+    - Added a function to import isosurfaces, enabling the plotting function to be useful
+    - Simplified the spatial positioning function
+
 """
 
-import string,os,csv,sys,itertools # ,community
+import string,os,csv,community
 import networkx as nx
 import numpy as np
 from networkx.drawing import *
 from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
-from numpy import shape, fill_diagonal, array, where, tril, zeros
+from numpy import shape, fill_diagonal, array, where, zeros
 from mayavi import mlab
 from string import split
 import nibabel as nb
-from os import path, remove
+from matplotlib import pyplot as plt
 
 class brainObj:
     """
@@ -47,12 +59,12 @@ class brainObj:
         - actual length information for each edge
         - layout for plotting
         - counter for iterations of any subsequent process
+        
     """
     
     def __init__(self):
         ''' 
         initialise the brain model. Arguments are:
-        		- drawpos: draw 2D position ??? What does this mean ??? removed from arguments for now
     
         '''        
         
@@ -73,10 +85,12 @@ class brainObj:
 
     ## File inputs        
 
-    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, symmetric = False):
-        ''' load adjacency matrix with filename and threshold for edge definition '''
+    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False, delimiter=None, weighted=True):
+        ''' load adjacency matrix with filename and threshold for edge definition 
+        Comment - I don't seem to be able to construct an unweighted directed graph, ie with edge number N(N-1) for an NxN adjacency matrix 
+        '''
         
-        print('loading data from' + fname)
+        print('loading data from ' + fname)
 
         # open file
         f = open(fname,"rb")
@@ -95,7 +109,7 @@ class brainObj:
         linesStr = reader[startLine:]
         lines = []
         for l in linesStr:
-            lines.append(map(float, split(l)))
+            lines.append(map(float, [v if v != "NA" else 0 for v in split(l, sep=delimiter)]))
         nodecount = len(lines)                
 
         # close file                
@@ -103,92 +117,49 @@ class brainObj:
 
         # create adjacency matrix as an array
         self.adjMat = array(lines)       # array of data
-        # zero below-diagonal values if symmetric
-        if symmetric:
-            self.adjMat = self.adjMat - tril(self.adjMat)
-        sh = shape(self.adjMat)
+        
         # check if it's diagonal
+        sh = shape(self.adjMat)
         if sh[0]!=sh[1]:
             print("Note Bene: adjacency matrix not square.")
             print(sh)
+
+        # create directed graph if necessary
+        self.directed = directed
+        if directed:
+            self.G = nx.DiGraph()
 
         # create nodes on graph
         self.G.add_nodes_from(range(nodecount))  # creates one node for every line in the adjacency matrix
         
         # create edges by thresholding adjacency matrix
         self.adjMatThresholding(edgePC, totalEdges, threshold)
+        
+        if not weighted:
+            self.binarise()
       
       
     def readSpatialInfo(self, fname):
         ''' add 3D coordinate information for each node from a given file '''
         
-        coords = {}
-
-        # Try something slightly crazy if filename not defined
-        if not fname:
-            if os.path.exists("anat_labels.txt"):
-                ROIs = {}
-                anat = csv.reader(open('anat_labels.txt','rb'),skipinitialspace = True)
-                lblsfile = csv.reader(open('ROI_labels.txt','rb'),delimiter = '\t')
-                lbls = lblsfile.next()
-                
-                count = 1
-                for line in anat:
-                    ROIs[count] = [v for v in line]
-                    count += 1
-                
-                x = string.split(open('ROI_xyz.txt').readlines()[0])
-                y = string.split(open('ROI_xyz.txt').readlines()[1])
-                z = string.split(open('ROI_xyz.txt').readlines()[2])
-                
-                for n in range(len(self.G.nodes())):
-                    self.G.node[n]['anatlabel'] = ROIs[int(lbls[n])]
-                    self.G.node[n]['xyz'] = (float(x[n]),float(y[n]),float(z[n]))
-
-        else:
-            # open file
-            try:
-                f = open(fname,"rb")
-            except IOError, error:
-                (errorno, errordetails) = error
-                print "Couldn't find 3D position information"
-                print "Problem with opening file: "+errordetails                
-                return
-            
-            # get data from file
-            lines = f.readlines()
-            x = {}
-            y = {}
-            z = {}
-            keys = []
-            for l in lines:
-                line = l.split()
-                if len(line) == 4:
-                    # read in line
-                    key = line[0]
-                    keys.append(key)
-                    x[key] = float(line[1])
-                    y[key] = float(line[2])
-                    z[key] = float(line[3])
-#                    coords[strnum(line[0])] = {"x":float(line[1]), "y":float(line[2]), "z":float(line[3])}
-#                    ROIs = coords.keys()
-#                    ROIs.sort()
-                    
-#                    # get x, y and z coords
-#                    x = [coords[ROI]["x"] for ROI in ROIs]
-#                    y = [coords[ROI]["y"] for ROI in ROIs]
-#                    z = [coords[ROI]["z"] for ROI in ROIs]
-                    
-            # add coords to nodes            
-            for k in keys:
-                self.G.node[int(k)]['anatlabel'] = k
-                self.G.node[int(k)]['xyz'] = (x[k], y[k], z[k])
-                
-                print(k, x[k], y[k], z[k])
-#            for n in range(len(self.G.nodes())):
-#                self.G.node[n]['anatlabel'] = ROIs[n]
-#                self.G.node[n]['xyz'] = (float(x[n]),float(y[n]),float(z[n]))                
-                
+        try:
+            f = open(fname,"rb")
+        except IOError, error:
+            (errorno, errordetails) = error
+            print "Couldn't find 3D position information"
+            print "Problem with opening file: "+errordetails                
+            return
+        
+        # get data from file
+        lines = f.readlines()
+        nodeCount=0
+        for line in lines:
+            l = split(line)
+            self.G.node[nodeCount]['anatlabel'] = l[0]
+            self.G.node[nodeCount]['xyz'] = (float(l[1]),float(l[2]),float(l[3]))
+            nodeCount+=1
+        del(lines)
+                 
 
     def importSkull(self, fname):
         ''' Import a file for skull info using nbbabel
@@ -202,7 +173,16 @@ class brainObj:
         self.skull = self.nbskull.get_data()
         self.skullHeader = self.nbskull.get_header()        
                 
-                
+    def importISO(self, fname):
+        ''' Import a file for isosurface info using nbbabel
+            gives a 3D array with data range 0 to 255 for test data
+            could be 4d??
+            defines an nibabel object, plus ndarrays with data and header info in
+        
+        '''
+        self.nbiso = nb.load(fname)
+        self.iso = self.nbiso.get_data()
+        self.isoHeader = self.nbiso.get_header()                 
                 
     def inputNodeProperties(self, propertyName, nodeList, propList):
         ''' add properties to nodes, reading from a list of nodes and a list of corresponding properties '''
@@ -217,68 +197,96 @@ class brainObj:
     
     ## Functions to alter the brain
 
-    def adjMatThresholding(self, edgePC = None, totalEdges = None, tVal = None):
+    def adjMatThresholding(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False):
         ''' apply thresholding to the adjacency matrix. This can be done in one of
             three ways (in order of decreasing precendence):
                 edgePC - this percentage of nodes will be linked
                 totalEdges - this number of nodes will be linked
                 tVal - give an absolute threshold value. Pairs of nodes with a corresponding adj matrix
-                       value greater than this will be linked.
+                       value greater than this will be linked. Defaults to -1.1 to produce a fully connected graph.
         '''
-        
-        # check if adjacency matrix is there
-        if self.adjMat == None:
-            print("No adjacency matrix. Please load one.")
-            return
-        
-        # remove existing edges
-        self.G.remove_edges_from(self.G.edges())
-        nodecount = len(self.G)
+        if not rethreshold:
+            # check if adjacency matrix is there
+            if self.adjMat == None:
+                print("No adjacency matrix. Please load one.")
+                return
             
-        # check some method of thresholding was defined
-        if (edgePC==None)&(totalEdges==None)&(tVal==None):
-            print("No method of thresholding given. Please define edgePC, totalEdges or tVal.")
-            return
-        
-        # get the number of edges to link
-        if edgePC:
-            # find threshold as a percentage of total possible edges
-            edgeNum = int(edgePC * (nodecount * (nodecount-1)))
-        elif totalEdges:
-            # allow a fixed number of edges
-            edgeNum = totalEdges
-        else:
-            edgeNum = -1
-        
-        # get threshold
-        if edgeNum>=0:
-            # get treshold value
-            weights = self.adjMat.flatten()
-            weights.sort()
-            threshold = weights[-edgeNum]
-            print("Threshold set at: "+str(threshold))
-        else:
-            threshold  = tVal      
+            # remove existing edges
+            self.G.remove_edges_from(self.G.edges())
+            nodecount = len(self.G)
             
-        self.threshold = threshold
+            # get the number of edges to link
+            if edgePC:
+                # find threshold as a percentage of total possible edges
+                # note this works for undirected graphs because it is applied to the whole adjacency matrix
+                edgeNum = int(edgePC * nodecount * (nodecount-1))
+            elif totalEdges:
+                # allow a fixed number of edges
+                edgeNum = totalEdges
+            else:
+                edgeNum = -1
             
-        
-        # carry out thresholding on adjacency matrix
-        boolMat = self.adjMat>threshold
-        fill_diagonal(boolMat, 0)
-        edgeCos = where(boolMat) # lists of where edges should be
-        
-        # display coordinates (for testing only)
-#        for x in range(len(edgeCos[0])):
-#            print(edgeCos[0][x], edgeCos[1][x])
+            # get threshold
+            if edgeNum>=0:
+                # get threshold value
+                weights = self.adjMat.flatten()
+                weights.sort()
+                threshold = weights[-edgeNum]
+                print("Threshold set at: "+str(threshold))
+            else:
+                threshold  = tVal      
                 
-        for ind in range(len(edgeCos[0])):
-            node1 = edgeCos[0][ind]
-            node2 = edgeCos[1][ind]
+            self.threshold = threshold
             
-            if not(self.G.has_edge(node1, node2)):
-                self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])            
+            # carry out thresholding on adjacency matrix
+            boolMat = self.adjMat>threshold
+            fill_diagonal(boolMat, 0)
+            edgeCos = where(boolMat) # lists of where edges should be
             
+            # display coordinates (for testing only)
+    #        for x in range(len(edgeCos[0])):
+    #            print(edgeCos[0][x], edgeCos[1][x])
+                    
+            for ind in range(len(edgeCos[0])):
+                node1 = edgeCos[0][ind]
+                node2 = edgeCos[1][ind]
+                
+                if not(self.G.has_edge(node1, node2)):
+                    self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])
+        
+        else: # rethresholds a graph with existing edges
+            if edgePC:
+                nodecount = len(self.G.nodes())
+                edgeNum = int(edgePC * ((nodecount * (nodecount-1))/2))
+                
+            elif totalEdges:
+                # allow a fixed number of edges
+                edgeNum = totalEdges
+            
+            else:
+                edgeNum = -1
+                
+            # get threshold
+            if edgeNum>=0:
+                # get threshold value
+                weights = [self.G[v[0]][v[1]]['weight'] for v in self.G.edges()]
+                weights.sort()
+                try:
+                    threshold = weights[-edgeNum]
+                except IndexError:
+                    print "Check you are not trying to apply a lower threshold than the current "+str(self.threshold)
+                    return
+                
+            else:
+                threshold  = tVal      
+            
+            print("Threshold set at: "+str(threshold))
+            self.threshold = threshold
+
+            del(weights)
+                
+            edgesToRemove = [v for v in self.G.edges() if self.G[v[0]][v[1]]['weight'] < threshold]
+            self.G.remove_edges_from(edgesToRemove)            
     
     def makeSubBrain(self, propName, value):
         ''' separate out nodes and edges with a certain property '''
@@ -417,238 +425,6 @@ class brainObj:
         
 
 
-    def contiguousspread(self, edgeloss, largestconnectedcomp=False, startNodes = None):
-        ''' degenerate nodes in a continuous fashion. Doesn't currently include spreadratio '''
-
-        # make sure nodes have the linkedNodes attribute
-        try:
-            self.G.node[0]['linkedNodes']
-        except:
-            self.findLinkedNodes()
-            
-        # make sure all nodes have degenerating attribute
-        try:
-            self.G.node[0]['degenerating']
-        except:
-            for n in range(len(self.G.nodes())):
-                self.G.node[n]['degenerating']=False 
-        
-        # start with a random node or set of nodes
-        if not(startNodes):
-            # start with one random node if none chosen
-            toxicNodes = [random.randint(len(self.G.nodes))]
-        else:
-            # otherwise use user provided nodes
-            toxicNodes = startNodes
-        # make all toxic nodes degenerating
-        for t in toxicNodes:
-            self.G.node[t]['degenerating'] = True
-                
-        # put at-risk nodes into a list
-        riskNodes = []
-        for t in toxicNodes:
-            l = self.G.node[t]['linkedNodes']
-            newl = []
-            # check the new indices aren't already toxic
-            for a in l:
-                if a in toxicNodes:
-                    continue
-                if self.G.node[a]['degenerating']:
-                    continue
-#                if not(a in toxicNodes)&(not(self.G.node[a]['degenerating'])):
-                newl.append(a)
-
-            riskNodes = riskNodes + newl
-
-
-        
-        # iterate number of steps
-        toxicNodeRecord = [toxicNodes[:]]
-        for count in range(edgeloss):
-            # find at risk nodes
-            ind = random.randint(0, len(riskNodes)-1)
-            deadNode = riskNodes.pop(ind) # get the index of the node to be removed and remove from list
-            # remove all instances from list
-            while deadNode in riskNodes:
-                riskNodes.remove(deadNode)
-            
-            # add to toxic list    
-            toxicNodes.append(deadNode)
-            # make it degenerate
-            self.G.node[deadNode]['degenerating'] = True
-            print('deadNode', deadNode)
-            
-            
-            # add the new at-risk nodes
-            l = self.G.node[deadNode]['linkedNodes']
-            newl = []
-            # check the new indices aren't already toxic
-            for a in l:
-                if a in toxicNodes:
-                    continue
-                if self.G.node[a]['degenerating']:
-                    continue
-                newl.append(a)
-                
-            riskNodes = riskNodes + newl
-            
-            toxicNodeRecord.append(toxicNodes[:])
-            
-            # check that there are any more nodes at risk
-            if len(riskNodes)==0:
-                break
-            
-#            print(toxicNodes)
-            
-        return toxicNodes, toxicNodeRecord
-                
-                
-                
-        
-        
-
-
-    def contiguousspreadOld(self, edgeloss, spreadratio, largestconnectedcomp=False):
-        """
-        removes edges in a contiguous fashion
-        
-        edges = number of edges to remove each time
-        spreadratio = Ratio of mean degree to the recruitment for new nodes.
-                      New nodes are added [to what??] when spreadratio*mean degree number of edges are lost 
-                      Effectively a measure of the speed of diffusitivity.
-        """
-        self.lengthEdgesRemoved = []
-        edgesleft = edgeloss
-        if not self.iter:
-            self.iter = 0
-        # get group of degenerating nodes
-        # if the ratio to the mean degree requires more nodes, add some more now
-        # find mean node degree and ratio of mean degree
-        meandegree = np.mean(self.G.degree().values())
-        ratio_meandegree  = meandegree*spreadratio
-        while edgesleft > 0:
-            try:
-                degennodes = [v for v in self.G.nodes() if self.G.node[v]['degenerating']]
-                
-            except:
-                # if no degenerating nodes, pick a random node to start
-                for node in self.G.nodes():
-                    self.G.node[node]['degenerating'] = False
-                
-                connectednodes = [v for v in self.G.nodes() if nx.degree(self.G,v)!=0]
-                
-                self.startingnode = random.choice(connectednodes)
-    
-                self.G.node[self.startingnode]['degenerating'] = True
-                degennodes = [self.startingnode]
-                self.edgeloss = 0
-                
-                # number of nodes to add is a ratio of the mean degree
-                numNodestoAdd = ratio_meandegree
-                
-                while numNodestoAdd > 0:
-                    try:
-                        neighbours = []
-                        for node in degennodes:
-                            neighbours.append( [ v for v in self.G.neighbors(node) ] )
-                        
-                        neighbours = list(itertools.chain.from_iterable(neighbours))  # converts list of lists in to list
-                        neighbours = set(neighbours)
-                        neighbours = [v for v in neighbours if not v in degennodes]
-                        
-                        newnode = random.choice(neighbours)
-                        
-                        self.G.node[newnode]['degenerating'] = True
-                        degennodes.append(newnode)
-                        
-                        numNodestoAdd -= 1
-                    
-                    except:
-                        nextnode = self.findSpatiallyNearest(degennodes)
-                        degennodes.append(nextnode)
-                        numNodestoAdd -= 1
-    
-                    
-            # identify edges of all degenerating nodes
-            degenedges = self.G.edges(degennodes)
-            
-            # check to see if there are any edges left in the graph if no degenerating edges exist
-            if not degenedges:
-                if not self.G.edges():
-                    sys.exit("No edges left in graph")
-                else:
-                    pass
-            
-            try:
-                degenedges_toremove = random.sample(degenedges, edgeloss)
-            except:
-                degenedges_toremove = None
-                    
-            # recruit neighbouring nodes to degenerate only if number of edges lost is greater than a ratio of the mean degree
-            # or if there are no edges to degenerate                
-            if (not degenedges_toremove) or (self.edgeloss >= ratio_meandegree):
-                neighbours = []
-                numnewrecruits = 1
-                
-                if self.edgeloss >= ratio_meandegree:
-                    numnewrecruits = int(self.edgeloss / ratio_meandegree)
-                    self.edgeloss = 0 # resets the counter
-                    
-                    for node in degennodes:
-                        for v in self.G.neighbors_iter(node):
-                            neighbours.append(v)
-                    
-                    neighbours = set(neighbours)            
-                    neighbours = [v for v in neighbours if not v in degennodes]
-                
-                for i in range(numnewrecruits):
-                    # first step, try and find nodes topologically connected
-                    try:
-                        newrecruit = random.sample(neighbours,numnewrecruits)
-                        self.G.node[newrecruit]['degenerating'] = True
-                    
-                    # if no topologically connected nodes, find nearest spatial neighbour
-                    except:
-                        newrecruit = self.findSpatiallyNearest(degennodes)
-                        if not newrecruit:
-                            print "The graph has no non-degenerating nodes left with a non-zero degree"
-                            sys.exit("No edges left in graph")
-                            
-                        try:
-                            self.G.node[newrecruit]['degenerating'] = True
-                        except:
-                            continue
-                            
-                        # if we're looking for new neighbours purely to remove an edge, enter this loop
-                        if not degenedges_toremove:
-                            degenedges_toremove = random.sample(self.G.edges(self.G.neighbors(newrecruit)), 1)
-                                        
-            
-            # remove 
-            if edgesleft - len(degenedges_toremove) < 0:
-                degenedges_toremove = [v for v in degenedges_toremove[0:edgesleft]]
-            self.G.remove_edges_from(degenedges_toremove)
-            self.lastnode = degenedges_toremove[0][1]
-            self.edgeloss += edgeloss
-            
-    
-            try: # records length of edge removal if spatial information is available
-                for edge in degenedges_toremove:
-                    print edge
-                    print np.linalg.norm(np.array(self.G.node[edge[0]]['xyz']) - np.array(self.G.node[edge[1]]['xyz']))
-                    self.lengthEdgesRemoved.append(np.linalg.norm(np.array(self.G.node[edge[0]]['xyz']) - np.array(self.G.node[edge[1]]['xyz'])))
-    
-            except:
-                pass
-    
-                  
-            self.iter += 1
-            
-            if largestconnectedcomp:
-                self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
-            edgesleft -= len(degenedges_toremove)        
-
-
     ## =============================================================
     
     ## Analysis functions
@@ -681,7 +457,10 @@ class brainObj:
         
     
     def findSpatiallyNearestNew(self, nodeList, threshold):
-        ''' find the spatially nearest nodes to each node within a treshold '''
+        ''' find the spatially nearest nodes to each node within a treshold 
+        
+        Comment - did you have something in mind for this?
+        '''
         
         a = 1
         
@@ -872,13 +651,8 @@ class brainObj:
         The spread option recruits connected nodes of degenerating edges to the toxic nodes list.
         
         By default this function will enact a random attack model, with a weight loss of 0.1 each iteration.
-        '''        
-        try:
-            self.degenEdges
-        except AttributeError:
-            self.degenEdges = []
-            
-            
+        '''  
+        nodeList = [v for v in toxicNodes]
         # set limit
         if weightLossLimit:
             limit = weightLossLimit
@@ -888,36 +662,29 @@ class brainObj:
         
         if not riskEdges:
             # if no toxic nodes defined, select the whole graph
-            if not toxicNodes:
-                toxicNodes = self.G.nodes()
+            if not nodeList:
+                nodeList = self.G.nodes()
             
-            # make all toxic nodes degenerating
-            for t in toxicNodes:
-                self.G.node[t]['degenerating'] = True
-                          
-             # generate list of at risk edges
-            riskEdges = nx.edges(self.G, toxicNodes)
-        
+            # generate list of at risk edges
+            riskEdges = nx.edges(self.G, nodeList)
         # iterate number of steps
         while limit>0:
+            print len(nodeList)
             if not riskEdges:
                 # find spatially closest nodes if no edges exist
                 # is it necessary to do this for all nodes?? - waste of computing power,
                 # choose node first, then calculated spatially nearest of a single node
-                newNode = self.findSpatiallyNearest(toxicNodes)
+                newNode = self.findSpatiallyNearest(nodeList)
                 if newNode:
                     print "Found spatially nearest node"
-                    toxicNodes.append(newNode)
-                    riskEdges = nx.edges(self.G, toxicNodes)
+                    nodeList.append(newNode)
+                    riskEdges = nx.edges(self.G, nodeList)
                 else:
                     print "No further edges to degenerate"
                     break
-            
             # choose at risk edge to degenerate from           
-            dyingEdge = random.choice(riskEdges)            
-            if not dyingEdge in self.degenEdges:
-                self.degenEdges.append(dyingEdge)
-            
+            dyingEdge = random.choice(riskEdges)
+                        
             # remove specified weight from edge
             w = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
             
@@ -932,13 +699,11 @@ class brainObj:
             else:
                 loss = weightloss
                 self.G[dyingEdge[0]][dyingEdge[1]]['weight'] += weightloss
-            
             # add nodes to toxic list if the spread option is selected
             if spread:
                 for node in dyingEdge:
-                    if not node in toxicNodes:
-                        toxicNodes.append(node)
-            
+                    if not node in nodeList:
+                        nodeList.append(node)
             # remove edge if below the graph threshold
             if self.G[dyingEdge[0]][dyingEdge[1]]['weight'] < self.threshold and self.threshold != -1:      # checks that the graph isn't fully connected and weighted, ie threshold = -1
                 self.G.remove_edge(dyingEdge[0], dyingEdge[1])
@@ -950,11 +715,11 @@ class brainObj:
                 limit -= loss
                 
             # redefine at risk edges
-            riskEdges = nx.edges(self.G, toxicNodes)
+            riskEdges = nx.edges(self.G, nodeList)
         
-        print "Number of toxic nodes: "+str(len(toxicNodes))
-                                     
-        return toxicNodes
+        print "Number of toxic nodes: "+str(len(nodeList))
+        
+        return nodeList
             
             
     def neuronsusceptibility(self, edgeloss=1, largestconnectedcomp=False):
@@ -1010,19 +775,23 @@ class brainObj:
                       
         
     def percentConnected(self):
-        totalConnections = len(self.G.nodes()*(len(self.G.nodes())-1))
+        '''
+        This will only give the correct results 
+        '''
+        if self.directed:
+            totalConnections = len(self.G.nodes()*(len(self.G.nodes())-1))
+        else:
+            totalConnections = len(self.G.nodes()*(len(self.G.nodes())-1)) / 2
         self.percentConnections = float(len(self.G.edges()))/float(totalConnections)
         
         return self.percentConnections
     
     def binarise(self):
-        ''' effectively removes weighting from edges 
-
-        Comment, Smart: isn't there a better way to do this, why would you want to??        
         '''
-        binEdges = [v for v in self.G.edges()]
-        self.G.remove_edges_from(self.G.edges())
-        self.G.add_edges_from(binEdges)
+            removes weighting from edges 
+        '''
+        for edge in self.G.edges():
+            self.G.edge[edge[0]][edge[1]]['weight'] = 1
         
     def largestConnComp(self):
         self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
@@ -1245,31 +1014,31 @@ class plotObj():
         return c1, diff           
     
     
-    def plotSkull(self, brain, label = None, contourVals = [], opacity = 0.1):
+    def plotSkull(self, brain, label = None, contourVals = [], opacity = 0.1, cmap='Spectral'):
         ''' plot the skull using Mayavi '''
         
         if not(label):
             label = self.getAutoLabel()        
         
         if contourVals == []:            
-            s = mlab.contour3d(brain.skull, opacity = opacity)
+            s = mlab.contour3d(brain.skull, opacity = opacity, colormap=cmap)
         else:
-            s = mlab.contour3d(brain.skull, opacity = opacity, contours = contourVals)
+            s = mlab.contour3d(brain.skull, opacity = opacity, contours = contourVals, colormap=cmap)
             
         # get the object for editing
         self.skullPlots[label] = s
         
         
-    def plotIsosurface(self, brain, label = None, contourVals = [], opacity = 0.1):
+    def plotIsosurface(self, brain, label = None, contourVals = [], opacity = 0.1, cmap='autumn'):
         ''' plot an isosurface using Mayavi, almost the same as skull plotting '''
         
         if not(label):
             label = self.getAutoLabel()        
         
         if contourVals == []:            
-            s = mlab.contour3d(brain.skull, opacity = opacity)
+            s = mlab.contour3d(brain.iso, opacity = opacity, colormap=cmap)
         else:
-            s = mlab.contour3d(brain.skull, opacity = opacity, contours = contourVals)
+            s = mlab.contour3d(brain.iso, opacity = opacity, contours = contourVals, colormap=cmap)
             
         # get the object for editing
         self.isosurfacePlots[label] = s        
@@ -1372,5 +1141,57 @@ class plotObj():
         
         return label
     
+    def clusterSlices(brain, coord, nodelist, colourmap, axis='z', plotISO=True, outname='brain', skullContoursVals=[3000,8000]):
+        """
+        This function plots slices through the brain in the x,y or z axis at the specified coorinates showing nodes of the graph, or
+        another isosurface. The parcellation image must have been loaded as an isosurface beforehand. The parcels required are fed
+        in as a nodelist. All parcels specified are displayed in the same colour (according to the specified colourmap).
+        
+        """
+        ss = shape(brain.skull)
+        rangeDict = {'x':[ss[0],ss[1]], 'y':[ss[0], ss[2]], 'z':[ss[1], ss[2]]}
+        
+        # check if the nodelist are strings, and if so change them to floats
+        if type(nodelist[0]) is str:
+            nodelist = [float(v) for v in nodelist]
+        
+        if axis == 'x':
+            iso = np.copy(brain.iso[coord,:,:])
+            
+        elif axis == 'y':
+            iso = np.copy(brain.iso[:,coord,:])
+        else:
+            iso = np.copy(brain.iso[:,:,coord])
+        
+        zeroArr = zeros(iso.shape)
+                             
+        for n in nodelist:
+            nArr = np.ma.masked_where(iso != n, iso)
+            nArr.fill_value=0.0
+            zeroArr = zeroArr + nArr
+            zeroArr.mask=None
+        
+        iso = np.ma.masked_values(zeroArr,0.0)
+    
+        fig=plt.figure(frameon=False, facecolor='black')
+        
+        fig.set_size_inches((1.0/300.0) * 10.0 * rangeDict[axis][0], (1.0/300.0) * 10.0 * rangeDict[axis][1])
+        ax = plt.Axes(fig, [0., 0., 1., 1.])
+        ax.set_axis_off()
+        fig.add_axes(ax)
+        
+        
+        if axis == 'x':
+            plt.imshow(brain.skull[coord,:,:], cmap='Greys_r', vmin=skullContoursVals[0], vmax=skullContoursVals[1], aspect='normal')
+        elif axis == 'y':
+            plt.imshow(brain.skull[:,coord,:], cmap='Greys_r', vmin=skullContoursVals[0], vmax=skullContoursVals[1], aspect='normal')
+        else:
+            plt.imshow(brain.skull[:,:,coord], cmap='Greys_r', vmin=skullContoursVals[0], vmax=skullContoursVals[1], aspect='normal')
+        
+        if plotISO and len(iso.mask[iso.mask==True])!=0:
+            plt.imshow(iso, cmap=colourmap, vmin=1, vmax=1)
+        
+        #plt.show()
+        plt.savefig(outname+'_'+axis+str(coord)+'.png', dpi=300, facecolor='black', edgecolour='black')
     
 
