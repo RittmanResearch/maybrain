@@ -205,39 +205,53 @@ class brainObj:
                 tVal - give an absolute threshold value. Pairs of nodes with a corresponding adj matrix
                        value greater than this will be linked. Defaults to -1.1 to produce a fully connected graph.
         '''
+
+        # check if adjacency matrix is there
+        if self.adjMat == None:
+            print("No adjacency matrix. Please load one.")
+            return
+
         if not rethreshold:
-            # check if adjacency matrix is there
-            if self.adjMat == None:
-                print("No adjacency matrix. Please load one.")
-                return
-            
             # remove existing edges
             self.G.remove_edges_from(self.G.edges())
-            nodecount = len(self.G)
+
+        nodecount = len(self.G.nodes())
             
-            # get the number of edges to link
-            if edgePC:
-                # find threshold as a percentage of total possible edges
-                # note this works for undirected graphs because it is applied to the whole adjacency matrix
-                edgeNum = int(edgePC * nodecount * (nodecount-1))
-            elif totalEdges:
-                # allow a fixed number of edges
-                edgeNum = totalEdges
+        # get the number of edges to link
+        if edgePC:
+            # find threshold as a percentage of total possible edges
+            # note this works for undirected graphs because it is applied to the whole adjacency matrix
+            edgeNum = int(edgePC * nodecount * (nodecount-1)) # possible /2 in here??
+        elif totalEdges:
+            # allow a fixed number of edges
+            edgeNum = totalEdges
+        else:
+            edgeNum = -1
+                     
+            
+        # get threshold
+        if edgeNum>=0:
+            # get threshold value
+            if rethreshold:
+                weights = [self.G[v[0]][v[1]]['weight'] for v in self.G.edges()]
             else:
-                edgeNum = -1
-            
-            # get threshold
-            if edgeNum>=0:
-                # get threshold value
                 weights = self.adjMat.flatten()
-                weights.sort()
+            weights.sort()
+            try:
                 threshold = weights[-edgeNum]
-                print("Threshold set at: "+str(threshold))
-            else:
-                threshold  = tVal      
-                
-            self.threshold = threshold
+            except IndexError:
+                print "Check you are not trying to apply a lower threshold than the current "+str(self.threshold)
+                return
+            print("Threshold set at: "+str(threshold))
+        else:
+            threshold  = tVal      
             
+        self.threshold = threshold
+            
+        if rethresholding:
+            edgesToRemove = [v for v in self.G.edges() if self.G[v[0]][v[1]]['weight'] < threshold]
+            self.G.remove_edges_from(edgesToRemove)            
+        else:
             # carry out thresholding on adjacency matrix
             boolMat = self.adjMat>threshold
             fill_diagonal(boolMat, 0)
@@ -252,41 +266,8 @@ class brainObj:
                 node2 = edgeCos[1][ind]
                 
                 if not(self.G.has_edge(node1, node2)):
-                    self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])
-        
-        else: # rethresholds a graph with existing edges
-            if edgePC:
-                nodecount = len(self.G.nodes())
-                edgeNum = int(edgePC * ((nodecount * (nodecount-1))/2))
+                    self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
                 
-            elif totalEdges:
-                # allow a fixed number of edges
-                edgeNum = totalEdges
-            
-            else:
-                edgeNum = -1
-                
-            # get threshold
-            if edgeNum>=0:
-                # get threshold value
-                weights = [self.G[v[0]][v[1]]['weight'] for v in self.G.edges()]
-                weights.sort()
-                try:
-                    threshold = weights[-edgeNum]
-                except IndexError:
-                    print "Check you are not trying to apply a lower threshold than the current "+str(self.threshold)
-                    return
-                
-            else:
-                threshold  = tVal      
-            
-            print("Threshold set at: "+str(threshold))
-            self.threshold = threshold
-
-            del(weights)
-                
-            edgesToRemove = [v for v in self.G.edges() if self.G[v[0]][v[1]]['weight'] < threshold]
-            self.G.remove_edges_from(edgesToRemove)            
     
     def makeSubBrain(self, propName, value):
         ''' separate out nodes and edges with a certain property '''
@@ -720,6 +701,93 @@ class brainObj:
         print "Number of toxic nodes: "+str(len(nodeList))
         
         return nodeList
+
+
+    def contiguousspread(self, edgeloss, largestconnectedcomp=False, startNodes = None):
+        ''' degenerate nodes in a continuous fashion. Doesn't currently include spreadratio '''
+
+        # make sure nodes have the linkedNodes attribute
+        try:
+            self.G.node[0]['linkedNodes']
+        except:
+            self.findLinkedNodes()
+            
+        # make sure all nodes have degenerating attribute
+        try:
+            self.G.node[0]['degenerating']
+        except:
+            for n in range(len(self.G.nodes())):
+                self.G.node[n]['degenerating']=False 
+        
+        # start with a random node or set of nodes
+        if not(startNodes):
+            # start with one random node if none chosen
+            toxicNodes = [random.randint(len(self.G.nodes))]
+        else:
+            # otherwise use user provided nodes
+            toxicNodes = startNodes
+        # make all toxic nodes degenerating
+        for t in toxicNodes:
+            self.G.node[t]['degenerating'] = True
+                
+        # put at-risk nodes into a list
+        riskNodes = []
+        for t in toxicNodes:
+            l = self.G.node[t]['linkedNodes']
+            newl = []
+            # check the new indices aren't already toxic
+            for a in l:
+                if a in toxicNodes:
+                    continue
+                if self.G.node[a]['degenerating']:
+                    continue
+#                if not(a in toxicNodes)&(not(self.G.node[a]['degenerating'])):
+                newl.append(a)
+
+            riskNodes = riskNodes + newl
+
+
+        
+        # iterate number of steps
+        toxicNodeRecord = [toxicNodes[:]]
+        for count in range(edgeloss):
+            # find at risk nodes
+            ind = random.randint(0, len(riskNodes)-1)
+            deadNode = riskNodes.pop(ind) # get the index of the node to be removed and remove from list
+            # remove all instances from list
+            while deadNode in riskNodes:
+                riskNodes.remove(deadNode)
+            
+            # add to toxic list    
+            toxicNodes.append(deadNode)
+            # make it degenerate
+            self.G.node[deadNode]['degenerating'] = True
+            print('deadNode', deadNode)
+            
+            
+            # add the new at-risk nodes
+            l = self.G.node[deadNode]['linkedNodes']
+            newl = []
+            # check the new indices aren't already toxic
+            for a in l:
+                if a in toxicNodes:
+                    continue
+                if self.G.node[a]['degenerating']:
+                    continue
+                newl.append(a)
+                
+            riskNodes = riskNodes + newl
+            
+            toxicNodeRecord.append(toxicNodes[:])
+            
+            # check that there are any more nodes at risk
+            if len(riskNodes)==0:
+                break
+            
+#            print(toxicNodes)
+            
+        return toxicNodes, toxicNodeRecord
+               
             
             
     def neuronsusceptibility(self, edgeloss=1, largestconnectedcomp=False):
