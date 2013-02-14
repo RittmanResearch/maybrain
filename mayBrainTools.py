@@ -411,12 +411,16 @@ class brainObj:
     ## Analysis functions
 
     
-    def findSpatiallyNearest(self, degennodes):
+    def findSpatiallyNearest(self, nodeList):
         # find the spatially closest node as no topologically close nodes exist
         print "Finding spatially closest node"
-        duffNode = random.choice(degennodes)
+        if isinstance(nodeList, list):
+            duffNode = random.choice(nodeList)
+        else:
+            duffNode = nodeList
+            
         nodes = [v for v in self.G.nodes() if v!=duffNode]
-        nodes = [v for v in nodes if not v in degennodes]
+        nodes = [v for v in nodes if not v in nodeList]
 
         shortestnode = (None, None)
         for node in nodes:
