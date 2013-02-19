@@ -37,14 +37,14 @@ Change log:
 
 """
 
-import string,os,csv,community
+import string,os,csv #,community
 import networkx as nx
-import numpy as np
+#import numpy as np
 from networkx.drawing import *
 from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
-from numpy import shape, fill_diagonal, array, where, zeros
+from numpy import shape, fill_diagonal, array, where, zeros, abs
 from mayavi import mlab
 from string import split
 import nibabel as nb
@@ -248,7 +248,7 @@ class brainObj:
             
         self.threshold = threshold
             
-        if rethresholding:
+        if rethreshold:
             edgesToRemove = [v for v in self.G.edges() if self.G[v[0]][v[1]]['weight'] < threshold]
             self.G.remove_edges_from(edgesToRemove)            
         else:
@@ -631,7 +631,7 @@ class brainObj:
         
         The spread option recruits connected nodes of degenerating edges to the toxic nodes list.
         
-        By default this function will enact a random attack model, with a weight loss of 0.1 each iteration.
+        By default this function will enact a random attack model.
         '''  
         nodeList = [v for v in toxicNodes]
         # set limit
@@ -701,6 +701,113 @@ class brainObj:
         print "Number of toxic nodes: "+str(len(nodeList))
         
         return nodeList
+
+    def degenerateNew(self, weightloss=0.1, edgesRemovedLimit=1, weightLossLimit=None, riskNodes=None, riskEdges=None, spread=False):
+        ''' remove random edges from connections of the riskNodes set, or from the riskEdges set. This occurs either until edgesRemovedLimit
+        number of edges have been removed (use this for a thresholded weighted graph), or until the weight loss
+        limit has been reached (for a weighted graph). For a binary graph, weight loss should be set
+        to 1.
+        
+        The spread option recruits connected nodes of degenerating edges to the toxic nodes list.
+        
+        By default this function will enact a random attack model.
+        
+        What is the role of riskNodes??
+        '''  
+        
+        # generate list of at-risk nodes
+        nodeList = []
+        if riskNodes:
+            nodeList = [v for v in riskNodes]
+        else:
+            # if no toxic nodes defined, select a random node
+            if nodeList==[]:
+                nodeList = [random.choice(self.G.nodes())]
+#                nodeList = nodeList + self.G.neighbors(nodeList[0])
+#                nodeList = self.G.nodes()
+
+        # generate list of at risk edges                    
+        if not(riskEdges):
+            riskEdges = nx.edges(self.G, nodeList)
+            print('new risk edges', len(riskEdges))
+
+        # set limit in terms of total weight lost or number of edges removed
+        if weightLossLimit:
+            limit = weightLossLimit        
+        else:
+            limit = edgesRemovedLimit
+
+        # recording
+        deadEdgesRec = [[]]
+            
+        # iterate number of steps
+        while limit>0:
+            print(len(nodeList), 'nodes left')
+            if not riskEdges:
+                # find spatially closest nodes if no edges exist
+                # is it necessary to do this for all nodes?? - waste of computing power,
+                # choose node first, then calculated spatially nearest of a single node
+                newNode = self.findSpatiallyNearest(nodeList) # ugh? why for all nodes??
+                if newNode:
+                    print "Found spatially nearest node"
+                    nodeList.append(newNode)
+                    riskEdges = nx.edges(self.G, nodeList)
+                else:
+                    print "No further edges to degenerate"
+                    break
+            # choose at risk edge to degenerate from    
+            # not sure a random choice is suitable here, should be weighted by the edge weight??
+            dyingEdge = random.choice(riskEdges)
+            print("edge selected ", dyingEdge)
+                        
+            # remove specified weight from edge
+            w = self.G[dyingEdge[0]][dyingEdge[1]]['weight']            
+            # get amount to remove
+            if weightloss == 0:
+                loss = w
+            elif w>0:
+                loss = weightloss                
+            else:
+                # seems a bit weird to have a negative case!!
+                loss = -weightloss                
+            # remove amount from edge
+            new_w = max(w - loss, 0.)
+            tBool = new_w<self.threshold
+            self.G[dyingEdge[0]][dyingEdge[1]]['weight'] = new_w
+            print("old and new weights", w, new_w)
+            
+            # add nodes to toxic list if the spread option is selected
+            if spread:
+                for node in dyingEdge:
+                    if not (node in nodeList):
+                        nodeList.append(node)
+                        
+            # remove edge if below the graph threshold
+            if tBool & (self.threshold != -1):      # checks that the graph isn't fully connected and weighted, ie threshold = -1)                
+                self.G.remove_edges_from([dyingEdge])
+                riskEdges.pop(riskEdges.index(dyingEdge))
+                print ("Edge removed: " + str(dyingEdge[0]) + ' ' + str(dyingEdge[1]) )
+                
+                # recording
+                deadEdgesRec.append([dyingEdge])
+        
+            # iterate
+            if weightLossLimit:
+                limit -= loss
+            else:
+                limit = limit -1
+                
+            # redefine at risk edges
+            # not very efficient, this line
+            print(len(riskEdges))
+#            riskEdges = nx.edges(self.G, nodeList)
+
+
+        
+        print "Number of toxic nodes: "+str(len(nodeList))
+        
+        return nodeList, deadEdgesRec
+
 
 
     def contiguousspread(self, edgeloss, largestconnectedcomp=False, startNodes = None):
