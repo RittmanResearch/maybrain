@@ -392,9 +392,10 @@ def efficiencywrite(brain,outfilebase = "brain", append=True):
     
     # write results to file
     writer = csv.DictWriter(f,fieldnames = effs.keys())
-    if brain.iter == None:
+    
+    # write headers at the top of the file if append not specified
+    if not append:
         f.writelines("Localefficiency,Globalefficiency\n")
-#        writer.writeheader()
     writer.writerow(effs)
     f.close()
 
