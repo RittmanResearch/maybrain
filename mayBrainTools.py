@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-||||||| merged common ancestors
-<<<<<<< HEAD
-=======
-
->>>>>>> cb01c198b48136c09cf98ccf757cbb7b34b6e368
 # -*- coding: utf-8 -*-
 """
 Created on Fri Mar 16 18:10:07 2012
