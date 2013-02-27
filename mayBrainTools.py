@@ -39,7 +39,7 @@ Change log:
 
 import string,os,csv #,community
 import networkx as nx
-#import numpy as np
+import numpy as np
 from networkx.drawing import *
 from networkx.algorithms import centrality
 from networkx.algorithms import components
