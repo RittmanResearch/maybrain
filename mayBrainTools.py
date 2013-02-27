@@ -6,20 +6,6 @@ Created on Fri Mar 16 18:10:07 2012
 @author: -
 
 Change log:
-    - adjacency thresholding moved into separate function
-    - symmetric option for adjacency matrix
-    - fixed bug: all nodes linked to themselves
-    - contiguous spread functions
-    - function to save adjacency matrix to file
-        
-24/01/2013 Modifications from Tim's files - 13-01
-	- added degeneracy fn to brainObj
-	- binarise and largest conn comp added
-	- hub identifier can take weighted measures
-31/1/2013
-    - adjmat and edge writing functions moved to writeFns
-    - isosurface plotting added
-
 5/2/2013
     - critical bug fix: readSpatial info was assigning coordinates to the wrong nodes
     
@@ -79,8 +65,6 @@ class brainObj:
         self.hubs = []
         self.lengthEdgesRemoved = None
         self.bigconnG = None
-        
-    
 
     ## ================================================
 
@@ -411,6 +395,32 @@ class brainObj:
     
     ## Analysis functions
 
+    def reconstructAdjMat(self):
+        ''' redefine the adjacency matrix from the edges and weights '''
+        n = len(self.G.nodes())
+        adjMat = zeros([n,n])
+        
+        for e in self.G.edges():
+            try:
+                adjMat[e[0], e[1]] = e['weight']
+                adjMat[e[1], e[0]] = e['weight']
+            except:
+                print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )            
+
+        self.adjMat = adjMat
+        
+        return adjMat        
+        
+    def updateAdjMat(self, edge):
+        ''' update the adjacency matrix for a single edge '''
+        
+        try:
+            adjMat[e[0], e[1]] = e['weight']
+            adjMat[e[1], e[0]] = e['weight']
+        except:
+            print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )
+            
+        
     
     def findSpatiallyNearest(self, nodeList):
         # find the spatially closest node as no topologically close nodes exist
@@ -1374,5 +1384,3 @@ class plotObj():
         #plt.show()
         plt.savefig(outname+'_'+axis+str(coord)+'.png', dpi=300, facecolor='black', edgecolour='black')
     
-
->>>>>>> 4879ecd87456ce912568a0501de61e65cc1712b3
