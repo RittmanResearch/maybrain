@@ -1,3 +1,9 @@
+<<<<<<< HEAD
+||||||| merged common ancestors
+<<<<<<< HEAD
+=======
+
+>>>>>>> cb01c198b48136c09cf98ccf757cbb7b34b6e368
 # -*- coding: utf-8 -*-
 """
 Created on Fri Mar 16 18:10:07 2012
@@ -5,20 +11,6 @@ Created on Fri Mar 16 18:10:07 2012
 @author: -
 
 Change log:
-    - adjacency thresholding moved into separate function
-    - symmetric option for adjacency matrix
-    - fixed bug: all nodes linked to themselves
-    - contiguous spread functions
-    - function to save adjacency matrix to file
-        
-24/01/2013 Modifications from Tim's files - 13-01
-	- added degeneracy fn to brainObj
-	- binarise and largest conn comp added
-	- hub identifier can take weighted measures
-31/1/2013
-    - adjmat and edge writing functions moved to writeFns
-    - isosurface plotting added
-
 5/2/2013
     - critical bug fix: readSpatial info was assigning coordinates to the wrong nodes
     
@@ -37,14 +29,14 @@ Change log:
 
 """
 
-import string,os,csv #,community
+import string,os,csv,community
 import networkx as nx
 import numpy as np
 from networkx.drawing import *
 from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
-from numpy import shape, fill_diagonal, array, where, zeros, abs
+from numpy import shape, fill_diagonal, array, where, zeros
 from mayavi import mlab
 from string import split
 import nibabel as nb
@@ -78,8 +70,6 @@ class brainObj:
         self.hubs = []
         self.lengthEdgesRemoved = None
         self.bigconnG = None
-        
-    
 
     ## ================================================
 
@@ -248,7 +238,7 @@ class brainObj:
             
         self.threshold = threshold
             
-        if rethreshold:
+        if rethresholding:
             edgesToRemove = [v for v in self.G.edges() if self.G[v[0]][v[1]]['weight'] < threshold]
             self.G.remove_edges_from(edgesToRemove)            
         else:
@@ -410,13 +400,43 @@ class brainObj:
     
     ## Analysis functions
 
+    def reconstructAdjMat(self):
+        ''' redefine the adjacency matrix from the edges and weights '''
+        n = len(self.G.nodes())
+        adjMat = zeros([n,n])
+        
+        for e in self.G.edges():
+            try:
+                adjMat[e[0], e[1]] = e['weight']
+                adjMat[e[1], e[0]] = e['weight']
+            except:
+                print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )            
+
+        self.adjMat = adjMat
+        
+        return adjMat        
+        
+    def updateAdjMat(self, edge):
+        ''' update the adjacency matrix for a single edge '''
+        
+        try:
+            adjMat[e[0], e[1]] = e['weight']
+            adjMat[e[1], e[0]] = e['weight']
+        except:
+            print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )
+            
+        
     
-    def findSpatiallyNearest(self, degennodes):
+    def findSpatiallyNearest(self, nodeList):
         # find the spatially closest node as no topologically close nodes exist
         print "Finding spatially closest node"
-        duffNode = random.choice(degennodes)
+        if isinstance(nodeList, list):
+            duffNode = random.choice(nodeList)
+        else:
+            duffNode = nodeList
+            
         nodes = [v for v in self.G.nodes() if v!=duffNode]
-        nodes = [v for v in nodes if not v in degennodes]
+        nodes = [v for v in nodes if not v in nodeList]
 
         shortestnode = (None, None)
         for node in nodes:
@@ -631,7 +651,7 @@ class brainObj:
         
         The spread option recruits connected nodes of degenerating edges to the toxic nodes list.
         
-        By default this function will enact a random attack model.
+        By default this function will enact a random attack model, with a weight loss of 0.1 each iteration.
         '''  
         nodeList = [v for v in toxicNodes]
         # set limit
@@ -701,7 +721,7 @@ class brainObj:
         print "Number of toxic nodes: "+str(len(nodeList))
         
         return nodeList
-
+        
     def degenerateNew(self, weightloss=0.1, edgesRemovedLimit=1, weightLossLimit=None, riskNodes=None, riskEdges=None, spread=False):
         ''' remove random edges from connections of the riskNodes set, or from the riskEdges set. This occurs either until edgesRemovedLimit
         number of edges have been removed (use this for a thresholded weighted graph), or until the weight loss
@@ -807,7 +827,7 @@ class brainObj:
         print "Number of toxic nodes: "+str(len(nodeList))
         
         return nodeList, deadEdgesRec
-
+        
 
 
     def contiguousspread(self, edgeloss, largestconnectedcomp=False, startNodes = None):

@@ -226,7 +226,6 @@ class writeFns():
         histwriter.writerow(degreeHist)
         f.close()
         
-
     
     def betweennesscentrality(self, brain,outfilebase = "brain", append=True):
         """ Calculates node and hub betweenness centralities. For hub centralities there are two files, one with the values in and another
