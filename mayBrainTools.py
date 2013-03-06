@@ -65,7 +65,7 @@ class brainObj:
         self.hubs = []
         self.lengthEdgesRemoved = None
         self.bigconnG = None
-
+        
     ## ================================================
 
     ## File inputs        
@@ -371,6 +371,16 @@ class brainObj:
             
         # should also transfer the adjacency matrix here
         return subbrain
+        
+    def copy(self):
+        ''' make an exact copy of this brain '''
+        
+        newbrain = self.makeSubBrain(None, 'any')
+        newbrain.hubs = self.hubs
+        newbrain.lengthEdgesRemoved = self.lengthEdgesRemoved
+        newbrain.bigconnG = self.bigconnG
+
+        return newbrain
 
     def randomiseGraph(self, largestconnectedcomp = False):
         self.G = nx.gnm_random_graph(len(self.G.nodes()), len(self.G.edges()))
