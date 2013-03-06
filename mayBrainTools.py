@@ -58,13 +58,21 @@ class brainObj:
         self.G = nx.Graph()
         self.iter = None # not sure where this is used. It is often defined, but never actually used!
         
-        # define global variables
+        # initialise global variables
         self.adjMat = None # adjacency matrix, containing weighting of edges.
         
         self.hubs = []
         self.lengthEdgesRemoved = None
         self.bigconnG = None
         
+        self.nbskull = None
+        self.skull = None
+        self.skullHeader = None
+        
+        self.nbiso = None
+        self.iso = None
+        self.isoHeader = None
+
     ## ================================================
 
     ## File inputs        
@@ -259,48 +267,65 @@ class brainObj:
         # initialise new brain
         subBrain = brainObj()
         
-        # get nodes from the current list
-        acceptedNodes = []
-
-        # sort cases for different values
-        if type(value) == dict:
-            try:
-                v1 = float(value['min'])
-                v2 = float(value['max'])
-            except:
-                print 'min and max value not found in makeSubBrain'
-
-                   
-            for n in self.G.nodes(data = True):
-                try:
-                    v = n[1][propName]
-                    if (v>=v1)&(v<=v2):
-    #                if n[1][propName] == value:
-                        subBrain.G.add_nodes_from([n])
-                        acceptedNodes.append(n[0])
-                except:
-                    continue
-                
+        # option for making a direct copy
+        if value == "any":
+            subBrain.G = self.G
+        # use some subvalues
         else:
-            # make into a list if need be
-            if not(type(value))==list:
-                value = [value]
-
-            # check nodes to see if property is true
-            for n in self.G.nodes(data = True):
+        
+            # get nodes from the current list
+            acceptedNodes = []
+    
+            # sort cases for different values
+            if type(value) == dict:
                 try:
-#                    if self.G.node[n][propName] in value:
-                    if n[1][propName] in value:
-                        subBrain.G.add_nodes_from([n])
-                        acceptedNodes.append(n[0])
+                    v1 = float(value['min'])
+                    v2 = float(value['max'])
                 except:
-                    continue
-            
-        # add edges from the current brain if both nodes are in the current brain
-        for e in self.G.edges():
-            if (e[0] in acceptedNodes) & (e[1] in acceptedNodes):
-                subBrain.G.add_edges_from([e])
+                    print 'min and max value not found in makeSubBrain'
+    
+                       
+                for n in self.G.nodes(data = True):
+                    try:
+                        v = n[1][propName]
+                        if (v>=v1)&(v<=v2):
+        #                if n[1][propName] == value:
+                            subBrain.G.add_nodes_from([n])
+                            acceptedNodes.append(n[0])
+                    except:
+                        continue
+                    
+            else:
+                # make into a list if need be
+                if not(type(value))==list:
+                    value = [value]
+    
+                # check nodes to see if property is true
+                for n in self.G.nodes(data = True):
+                    try:
+    #                    if self.G.node[n][propName] in value:
+                        if n[1][propName] in value:
+                            subBrain.G.add_nodes_from([n])
+                            acceptedNodes.append(n[0])
+                    except:
+                        continue
                 
+            # add edges from the current brain if both nodes are in the current brain
+            for e in self.G.edges():
+                if (e[0] in acceptedNodes) & (e[1] in acceptedNodes):
+                    subBrain.G.add_edges_from([e])
+        
+        subBrain.reconstructAdjMat()
+        
+        if self.skull != None:
+            subBrain.nbskull = self.nbskull
+            subBrain.skull = self.skull
+            subBrain.skullHeader = self.skullHeader
+        if self.iso != None:
+            subBrain.nbiso = self.nbiso
+            subBrain.iso = self.iso
+            subBrain.isoHeader = self.isoHeader
+        
         return subBrain
         
         
@@ -411,8 +436,9 @@ class brainObj:
         
         for e in self.G.edges():
             try:
-                adjMat[e[0], e[1]] = e['weight']
-                adjMat[e[1], e[0]] = e['weight']
+                w = self.G[e[0]][e[1]]['weight']
+                adjMat[e[0], e[1]] = w
+                adjMat[e[1], e[0]] = w
             except:
                 print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )            
 
@@ -424,8 +450,9 @@ class brainObj:
         ''' update the adjacency matrix for a single edge '''
         
         try:
-            adjMat[e[0], e[1]] = e['weight']
-            adjMat[e[1], e[0]] = e['weight']
+            w = self.G[e[0]][e[1]]['weight']
+            adjMat[e[0], e[1]] = w
+            adjMat[e[1], e[0]] = w
         except:
             print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )
             
