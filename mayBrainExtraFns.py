@@ -11,6 +11,8 @@ import networkx as nx
 import csv
 from networkx.algorithms import cluster
 from networkx.algorithms import centrality
+import random
+from networkx.algorithms import components
 
 class extraFns():
     
@@ -75,7 +77,7 @@ class extraFns():
             return None
         
     
-    def smallworldparameters(self, brain,outfilebase = "brain", append=True):
+    def smallworldparameters(self, brain,outfilebase = "brain", append=True, smallWorldness=False, SWiters=50):
         """A calculation for average cluster coefficient and average shortest path length (as defined in Humphries
         2008 http://www.plosone.org/article/info:doi/10.1371/journal.pone.0002051).
         """
@@ -90,10 +92,14 @@ class extraFns():
         
         else:
             f= open(outfile,"wb")
-            f.writelines('ClusterCoeff\tAvShortPathLength\n')
+            if smallWorldness:
+                line = 'ClusterCoeff\tAvShortPathLength\tSmallWorldness\n'
+            else:
+                line = 'ClusterCoeff\tAvShortPathLength\n'
+            f.writelines(line)
         
         writer = csv.writer(f,delimiter='\t')       
-        cc_pl =  (None,None)
+        cc_pl =  [None,None]
         
         # check biggest connected component is define
         if not brain.bigconnG:
@@ -101,7 +107,7 @@ class extraFns():
     
         # calculate parameters
         try:
-            cc_pl = (cluster.average_clustering(brain.bigconnG),nx.average_shortest_path_length(brain.bigconnG))
+            cc_pl = [cluster.average_clustering(brain.bigconnG),nx.average_shortest_path_length(brain.bigconnG)]
         
         except:
             if brain.bigconnG.nodes() == []:
@@ -110,13 +116,40 @@ class extraFns():
             else:
                 print "No edges, can not calculate shortest path length"
                 print "Writing clustering coefficient only"
-                cc_pl = (cluster.average_clustering(brain.bigconnG),None)
+                cc_pl = [cluster.average_clustering(brain.bigconnG),None]
+        
+        if smallWorldness:
+            # peform multiple iterations for robustness
+            randcc = []
+            randpl = []
+            for i in range(SWiters):
+                # generate random brain
+                randG = nx.Graph()
+                randG.add_nodes_from([v for v in brain.G.nodes()])
+                for n in range(len(brain.G.edges())):
+                    node1 = random.choice(randG.nodes())
+                    node2 = random.choice([v for v in randG.nodes() if v != node1])
+                    randG.add_edge(node1, node2)
                 
+                # find largest connected component
+                randG = components.connected.connected_component_subgraphs(randG)[0]
+                
+                # take random brain metrics
+                randcc.append(cluster.average_clustering(randG))
+                randpl.append(nx.average_shortest_path_length(randG))
+                del(randG)
+            
+            randcc_pl = (np.mean(randcc), np.mean(randpl))
+            print randcc_pl
+            print cc_pl
+            
+            # calculate small worldness
+            sw = (cc_pl[0]/randcc_pl[0]) / (cc_pl[1]/randcc_pl[1])
+            cc_pl.append(sw)
+            
         writer.writerow(cc_pl)
         f.close()
-        
-        return cc_pl
-    
+            
 ## Everything below this line will soon be deprecated. It's currently kept for backwards
 ## compatibility.     
     

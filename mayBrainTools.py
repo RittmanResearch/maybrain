@@ -232,7 +232,7 @@ class brainObj:
             
         self.threshold = threshold
             
-        if rethresholding:
+        if rethreshold:
             edgesToRemove = [v for v in self.G.edges() if self.G[v[0]][v[1]]['weight'] < threshold]
             self.G.remove_edges_from(edgesToRemove)            
         else:
