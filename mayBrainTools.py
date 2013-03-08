@@ -174,8 +174,31 @@ class brainObj:
         '''
         self.nbiso = nb.load(fname)
         self.iso = self.nbiso.get_data()
-        self.isoHeader = self.nbiso.get_header()                 
+        self.isoHeader = self.nbiso.get_header()
+        
+    def parcels(self, nodeList):
+        """
+        Plots 3D parcels specified in the nodeList. This function assumes the parcellation template has
+        been loaded to the brain using brain.importISO.
+        """        
+        zeroArr = zeros(self.iso.shape)
                 
+        for n in nodeList:
+            nArr = np.ma.masked_where(self.iso !=n, self.iso)
+            nArr.fill_value=0.0
+            zeroArr = zeroArr + nArr
+            zeroArr.mask=None
+            
+        self.parcels = np.ma.masked_values(zeroArr, 0.0)
+
+    def exportParcelsNii(self, outname='brain'):
+        """
+        This function saves the parcels as a nifti file. It requires the
+        brain.parcels function has been run first.
+        """
+        N = nb.Nifti1Image(self.parcels, self.nbiso.get_affine(), header=self.isoHeader)
+        nb.save(N, outname+'.nii')
+        
     def inputNodeProperties(self, propertyName, nodeList, propList):
         ''' add properties to nodes, reading from a list of nodes and a list of corresponding properties '''
         
@@ -1267,8 +1290,22 @@ class plotObj():
             s = mlab.contour3d(brain.iso, opacity = opacity, contours = contourVals, colormap=cmap)
             
         # get the object for editing
-        self.isosurfacePlots[label] = s        
-    
+        self.isosurfacePlots[label] = s
+        
+    def plotParcels(self, brain, label = None, contourVals = [], opacity = 0.5, cmap='autumn'):
+        ''' plot an isosurface using Mayavi, almost the same as skull plotting '''
+        
+        if not(label):
+            label = self.getAutoLabel()        
+        
+        if contourVals == []:            
+            s = mlab.contour3d(brain.parcels, opacity = opacity, colormap=cmap)
+        else:
+            s = mlab.contour3d(brain.parcels, opacity = opacity, contours = contourVals, colormap=cmap)
+            
+        # get the object for editing
+        self.isosurfacePlots[label] = s
+            
     def changePlotProperty(self, plotType, prop, plotLabel, value = 0.):
         ''' change a specified property prop of a plot of type plotType, index is used if multiple plots of
             the same type have been made. Value is used by some properties.
@@ -1367,56 +1404,4 @@ class plotObj():
         
         return label
     
-    def clusterSlices(brain, coord, nodelist, colourmap, axis='z', plotISO=True, outname='brain', skullContoursVals=[3000,8000]):
-        """
-        This function plots slices through the brain in the x,y or z axis at the specified coorinates showing nodes of the graph, or
-        another isosurface. The parcellation image must have been loaded as an isosurface beforehand. The parcels required are fed
-        in as a nodelist. All parcels specified are displayed in the same colour (according to the specified colourmap).
         
-        """
-        ss = shape(brain.skull)
-        rangeDict = {'x':[ss[0],ss[1]], 'y':[ss[0], ss[2]], 'z':[ss[1], ss[2]]}
-        
-        # check if the nodelist are strings, and if so change them to floats
-        if type(nodelist[0]) is str:
-            nodelist = [float(v) for v in nodelist]
-        
-        if axis == 'x':
-            iso = np.copy(brain.iso[coord,:,:])
-            
-        elif axis == 'y':
-            iso = np.copy(brain.iso[:,coord,:])
-        else:
-            iso = np.copy(brain.iso[:,:,coord])
-        
-        zeroArr = zeros(iso.shape)
-                             
-        for n in nodelist:
-            nArr = np.ma.masked_where(iso != n, iso)
-            nArr.fill_value=0.0
-            zeroArr = zeroArr + nArr
-            zeroArr.mask=None
-        
-        iso = np.ma.masked_values(zeroArr,0.0)
-    
-        fig=plt.figure(frameon=False, facecolor='black')
-        
-        fig.set_size_inches((1.0/300.0) * 10.0 * rangeDict[axis][0], (1.0/300.0) * 10.0 * rangeDict[axis][1])
-        ax = plt.Axes(fig, [0., 0., 1., 1.])
-        ax.set_axis_off()
-        fig.add_axes(ax)
-        
-        
-        if axis == 'x':
-            plt.imshow(brain.skull[coord,:,:], cmap='Greys_r', vmin=skullContoursVals[0], vmax=skullContoursVals[1], aspect='normal')
-        elif axis == 'y':
-            plt.imshow(brain.skull[:,coord,:], cmap='Greys_r', vmin=skullContoursVals[0], vmax=skullContoursVals[1], aspect='normal')
-        else:
-            plt.imshow(brain.skull[:,:,coord], cmap='Greys_r', vmin=skullContoursVals[0], vmax=skullContoursVals[1], aspect='normal')
-        
-        if plotISO and len(iso.mask[iso.mask==True])!=0:
-            plt.imshow(iso, cmap=colourmap, vmin=1, vmax=1)
-        
-        #plt.show()
-        plt.savefig(outname+'_'+axis+str(coord)+'.png', dpi=300, facecolor='black', edgecolour='black')
-    
