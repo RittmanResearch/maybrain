@@ -23,7 +23,7 @@ Change log:
 
 """
 
-import string,os,csv,community
+import string,os,csv#,community
 import networkx as nx
 import numpy as np
 from networkx.drawing import *
@@ -31,10 +31,9 @@ from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
 from numpy import shape, fill_diagonal, array, where, zeros
-from mayavi import mlab
+#from mayavi import mlab
 from string import split
-import nibabel as nb
-from matplotlib import pyplot as plt
+#import nibabel as nb
 
 class brainObj:
     """
@@ -269,7 +268,11 @@ class brainObj:
         else:
             # carry out thresholding on adjacency matrix
             boolMat = self.adjMat>threshold
-            fill_diagonal(boolMat, 0)
+            try:
+                fill_diagonal(boolMat, 0)
+            except:
+                for x in range(len(boolMat[0,:])):
+                    boolMat[x,x] = 0
             edgeCos = where(boolMat) # lists of where edges should be
             
             # display coordinates (for testing only)
