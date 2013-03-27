@@ -189,14 +189,14 @@ class brainObj:
             zeroArr = zeroArr + nArr
             zeroArr.mask=None
             
-        self.parcels = np.ma.masked_values(zeroArr, 0.0)
+        self.parcelList = np.ma.masked_values(zeroArr, 0.0)
 
     def exportParcelsNii(self, outname='brain'):
         """
-        This function saves the parcels as a nifti file. It requires the
+        This function saves the parcelList as a nifti file. It requires the
         brain.parcels function has been run first.
         """
-        N = nb.Nifti1Image(self.parcels, self.nbiso.get_affine(), header=self.isoHeader)
+        N = nb.Nifti1Image(self.parcelList, self.nbiso.get_affine(), header=self.isoHeader)
         nb.save(N, outname+'.nii')
         
     def inputNodeProperties(self, propertyName, nodeList, propList):
