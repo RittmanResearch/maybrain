@@ -34,7 +34,6 @@ from numpy import shape, fill_diagonal, array, where, zeros
 from mayavi import mlab
 from string import split
 import nibabel as nb
-from matplotlib import pyplot as plt
 
 class brainObj:
     """
@@ -237,6 +236,8 @@ class brainObj:
             # find threshold as a percentage of total possible edges
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
             edgeNum = int(edgePC * nodecount * (nodecount-1)) # possible /2 in here??
+            self.edgePC=edgePC
+            
         elif totalEdges:
             # allow a fixed number of edges
             edgeNum = totalEdges
@@ -265,7 +266,7 @@ class brainObj:
             
         if rethreshold:
             edgesToRemove = [v for v in self.G.edges() if self.G[v[0]][v[1]]['weight'] < threshold]
-            self.G.remove_edges_from(edgesToRemove)            
+            self.G.remove_edges_from(edgesToRemove)
         else:
             # carry out thresholding on adjacency matrix
             boolMat = self.adjMat>threshold
@@ -1053,6 +1054,40 @@ class brainObj:
         sn = lenzeros*'0' + sn
         
         return sn
+        
+    def checkrobustness(self, conVal, step):
+        sgLen=1
+        
+        while(sgLen == 1 and conVal > 0.):
+            self.adjMatThresholding(edgePC = conVal)
+            sgLen = len(components.connected.connected_component_subgraphs(self.G))  # identify largest connected component
+            conVal -= step
+            print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
+        return conVal+ (2*step)
+        
+    def robustness(self, outfilebase="brain", conVal=1.0, decPoints=3):
+        """
+        Function to calculate robustness.
+        """
+        # record starting threhold
+        startthresh = self.threshold
+        
+        # iterate through decimal points of connectivity 
+        for decP in range(1,decPoints+1):
+            step = float(1)/(10**decP)
+            print "Step is: " + str(step)
+            conVal = self.checkrobustness(conVal, step)
+        
+        conVal = conVal-step
+        
+        log = open(outfilebase+'_Robustness.txt', "w")
+        log.writelines('\t'.join(["RobustnessConnectivity","RobustnessThresh"])+'\n')
+        log.writelines('\t'.join([str(conVal), str(self.threshold)])+ '\n')
+        log.close()
+        
+        # return graph to original threshold
+        self.adjMatThresholding(tVal=startthresh)
+        
 
 class plotObj():
     ''' classes that plot various aspects of a brain object '''
