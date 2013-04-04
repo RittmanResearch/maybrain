@@ -34,6 +34,7 @@ from numpy import shape, fill_diagonal, array, where, zeros
 from mayavi import mlab
 from string import split
 import nibabel as nb
+from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 
 class brainObj:
     """
@@ -1092,13 +1093,14 @@ class brainObj:
 class plotObj():
     ''' classes that plot various aspects of a brain object '''
     
+    
     def __init__(self):
         
         # initialise mayavi figure
         self.startMayavi()  
         
         self.nodesf = 0.5 # scale factor for nodes
-
+        
         
     def startMayavi(self):
         ''' initialise the Mayavi figure for plotting '''        
