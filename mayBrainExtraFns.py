@@ -540,10 +540,9 @@ def histograms(brain, outfilebase="brain"):
         brain.G.edge[edge[0]][edge[1]]['length'] = abs(lg.norm(np.array(brain.G.node[edge[0]]['xyz']) - np.array(brain.G.node[edge[1]]['xyz'])))
 
     # get a list of weights
-    
     weightList = brain.adjMat.copy()
     fill_diagonal(weightList, 0.)
-    weightList = weightList.flatten()
+    weightList = np.array([v for v in weightList.flatten() if not str(v)=="nan"])
     
     # plot the weights
     fig = plt.figure()
