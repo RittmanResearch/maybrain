@@ -34,6 +34,7 @@ from numpy import shape, fill_diagonal, array, where, zeros
 #from mayavi import mlab
 from string import split
 #import nibabel as nb
+from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 
 class brainObj:
     """
@@ -76,7 +77,7 @@ class brainObj:
 
     ## File inputs        
 
-    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False, delimiter=None, weighted=True):
+    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False, delimiter=None, weighted=True, NAval="nan"):
         ''' load adjacency matrix with filename and threshold for edge definition 
         Comment - I don't seem to be able to construct an unweighted directed graph, ie with edge number N(N-1) for an NxN adjacency matrix 
         '''
@@ -100,7 +101,7 @@ class brainObj:
         linesStr = reader[startLine:]
         lines = []
         for l in linesStr:
-            lines.append(map(float, [v if v != "NA" else 0 for v in split(l, sep=delimiter)]))
+            lines.append(map(float, [v if v != "nan" else np.nan for v in split(l, sep=delimiter)]))
         nodecount = len(lines)                
 
         # close file                
@@ -243,7 +244,6 @@ class brainObj:
             edgeNum = totalEdges
         else:
             edgeNum = -1
-                     
             
         # get threshold
         if edgeNum>=0:
@@ -251,7 +251,7 @@ class brainObj:
             if rethreshold:
                 weights = [self.G[v[0]][v[1]]['weight'] for v in self.G.edges()]
             else:
-                weights = self.adjMat.flatten()
+                weights = [v for v in self.adjMat.flatten() if not str(v)=="nan"]
             weights.sort()
             try:
                 threshold = weights[-edgeNum]
@@ -1069,7 +1069,7 @@ class brainObj:
             print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
         return conVal+ (2*step)
         
-    def robustness(self, outfilebase="brain", conVal=1.0, decPoints=3):
+    def robustness(self, outfilebase="brain", conVal=1.0, decPoints=3, append=True):
         """
         Function to calculate robustness.
         """
@@ -1084,7 +1084,11 @@ class brainObj:
         
         conVal = conVal-step
         
-        log = open(outfilebase+'_Robustness.txt', "w")
+        if append:
+            writeVal="a"
+        else:
+            writeVal="w"
+        log = open(outfilebase+'_Robustness.txt', writeVal)
         log.writelines('\t'.join(["RobustnessConnectivity","RobustnessThresh"])+'\n')
         log.writelines('\t'.join([str(conVal), str(self.threshold)])+ '\n')
         log.close()
@@ -1096,13 +1100,14 @@ class brainObj:
 class plotObj():
     ''' classes that plot various aspects of a brain object '''
     
+    
     def __init__(self):
         
         # initialise mayavi figure
         self.startMayavi()  
         
         self.nodesf = 0.5 # scale factor for nodes
-
+        
         
     def startMayavi(self):
         ''' initialise the Mayavi figure for plotting '''        

@@ -13,9 +13,9 @@ from networkx.algorithms import cluster
 from networkx.algorithms import centrality
 import random
 from networkx.algorithms import components
-from matplotlib import pyplot as plt
+#from matplotlib import pyplot as plt
 from numpy import linalg as lg
-from decimal import Decimal
+from numpy import fill_diagonal
 
 class extraFns():
     
@@ -540,8 +540,9 @@ def histograms(brain, outfilebase="brain"):
         brain.G.edge[edge[0]][edge[1]]['length'] = abs(lg.norm(np.array(brain.G.node[edge[0]]['xyz']) - np.array(brain.G.node[edge[1]]['xyz'])))
 
     # get a list of weights
-    weightList = [brain.G.edge[v[0]][v[1]]['weight'] for v in brain.G.edges()]
-    weightList = np.array((weightList))
+    weightList = brain.adjMat.copy()
+    fill_diagonal(weightList, 0.)
+    weightList = np.array([v for v in weightList.flatten() if not str(v)=="nan"])
     
     # plot the weights
     fig = plt.figure()
