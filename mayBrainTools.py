@@ -34,7 +34,7 @@ from numpy import shape, fill_diagonal, array, where, zeros
 #from mayavi import mlab
 from string import split
 #import nibabel as nb
-from mayavi.core.ui.api import MlabSceneModel, SceneEditor
+#from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 
 class brainObj:
     """
