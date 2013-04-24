@@ -257,7 +257,12 @@ class brainObj:
                 threshold = weights[-edgeNum]
             except IndexError:
                 print "Check you are not trying to apply a lower threshold than the current "+str(self.threshold)
-                return
+                
+                if not 'self.threshold' in locals():
+                    threshold = -1                
+                else:
+                    return
+                
             print("Threshold set at: "+str(threshold))
         else:
             threshold  = tVal      
@@ -1056,9 +1061,14 @@ class brainObj:
         return sn
         
     def checkrobustness(self, conVal, step):
-        sgLen=1
+        self.adjMatThresholding(edgePC = conVal)
+        conVal -= step
         
-        while(sgLen == 1 and conVal > 0.):
+        sgLenStart = len(components.connected.connected_component_subgraphs(self.G))
+        print "Starting sgLen: "+str(sgLenStart)
+        sgLen = sgLenStart
+
+        while(sgLen == sgLenStart and conVal > 0.):
             self.adjMatThresholding(edgePC = conVal)
             sgLen = len(components.connected.connected_component_subgraphs(self.G))  # identify largest connected component
             conVal -= step
