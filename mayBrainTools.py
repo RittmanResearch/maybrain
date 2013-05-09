@@ -716,7 +716,7 @@ class brainObj:
         else:
             self.modularity = 0
             
-    def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, weightLossLimit=None, toxicNodes=None, riskEdges=None, spread=False):
+    def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, weightLossLimit=None, toxicNodes=None, riskEdges=None, spread=False, updateAdjmat=True):
         ''' remove random edges from connections of the toxicNodes set, or from the riskEdges set. This occurs either until edgesRemovedLimit
         number of edges have been removed (use this for a thresholded weighted graph), or until the weight loss
         limit has been reached (for a weighted graph). For a binary graph, weight loss should be set
@@ -764,15 +764,22 @@ class brainObj:
             
             if np.absolute(w) < weightloss:
                 loss = w
-                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] = 0
+                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] = 0.
             
             elif w>0:
                 loss = weightloss
                 self.G[dyingEdge[0]][dyingEdge[1]]['weight'] -= weightloss
                 
+                
             else:
                 loss = weightloss
                 self.G[dyingEdge[0]][dyingEdge[1]]['weight'] += weightloss
+            
+            # update the adjacency matrix (essential if robustness is to be calculated)            
+            if updateAdjmat:
+                self.adjMat[dyingEdge[0]][dyingEdge[1]] = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
+                self.adjMat[dyingEdge[1]][dyingEdge[0]] = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
+                            
             # add nodes to toxic list if the spread option is selected
             if spread:
                 for node in dyingEdge:
