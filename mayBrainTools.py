@@ -23,7 +23,8 @@ Change log:
 
 """
 
-import string,os,csv#,community
+import string,os,csv,community
+from shutil import move
 import networkx as nx
 import numpy as np
 from networkx.drawing import *
@@ -212,7 +213,7 @@ class brainObj:
     
     ## Functions to alter the brain
 
-    def adjMatThresholding(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False):
+    def adjMatThresholding(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, doPrint=True):
         ''' apply thresholding to the adjacency matrix. This can be done in one of
             three ways (in order of decreasing precendence):
                 edgePC - this percentage of nodes will be linked
@@ -262,8 +263,8 @@ class brainObj:
                     threshold = -1                
                 else:
                     return
-                
-            print("Threshold set at: "+str(threshold))
+            if doPrint:
+                print("Threshold set at: "+str(threshold))
         else:
             threshold  = tVal      
             
@@ -545,9 +546,12 @@ class brainObj:
                 self.G.node[l[1]]['linkedNodes'] = self.G.node[l[1]]['linkedNodes'] + [l[0]]
             except:
                 self.G.node[l[1]]['linkedNodes'] = [l[0]]
-                                                
+    
+    def hubHelper(self, node):
+        hubscore = self.betweenessCentrality[node] + self.closenessCentrality[node] + self.degrees[node]
+        return(hubscore)
 
-    def hubIdentifier(self, weighted=False):
+    def hubIdentifier(self, weighted=False, assign=False):
         """ 
         define hubs by generating a hub score, based on the sum of normalised scores for:
             betweenness centrality
@@ -558,6 +562,8 @@ class brainObj:
         
         defines self.hubs
         
+        if assign is true, then each node's dictionary is assigned a hub score
+        
         Changelog 7/12/12:
             - added possibility of weighted measures
         """
@@ -566,38 +572,45 @@ class brainObj:
         
     #    get centrality measures
         if weighted:
-            betweenessCentrality = centrality.betweenness_centrality(self.G, weight='weight')
-            closenessCentrality = centrality.closeness_centrality(self.G, distance=True)
-            degrees = nx.degree(self.G, weight='weight')
+            self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='weight').values()))
+            self.closenessCentrality = np.array((centrality.closeness_centrality(self.G, distance=True).values()))
+            self.degrees = np.array((nx.degree(self.G, weight='weight').values()))
             
             
         else:
-            betweenessCentrality = centrality.betweenness_centrality(self.G)
-            closenessCentrality = centrality.closeness_centrality(self.G)
-            degrees = nx.degree(self.G)
+            self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G).values()))
+            self.closenessCentrality = np.array((centrality.closeness_centrality(self.G).values()))
+            self.degrees = np.array((nx.degree(self.G).values()))
             
-        sum_degrees = np.sum(degrees.values())
-        sum_betweenness = np.sum(betweenessCentrality.values())        
-        sum_closeness = np.sum(closenessCentrality.values())
+        self.betweenessCentrality /= np.sum(self.betweenessCentrality)
+        self.closenessCentrality /=  np.sum(self.closenessCentrality)        
+        self.degrees /= np.sum(self.degrees)
         
-    #    combine normalised measures for each node to generate a hub score
-        hubScores = []
-        for node in self.G.nodes():
-            if weighted:
-                self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
-            else:
-                self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
-                
-            
-            hubScores.append(self.G.node[node]['hubScore'])
+        
+        # deprecated code follows:
+#    #    combine normalised measures for each node to generate a hub score
+#        hubScores = []
+#        for node in self.G.nodes():
+#            if weighted:
+#                self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
+#            else:
+#                self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
+#                
+#            
+#            hubScores.append(self.G.node[node]['hubScore'])
+
+        hubScores = map(self.hubHelper, self.G.nodes())
+        
+        if assign:
+            for node in self.G.nodes():
+                self.G.node['hubscore'] = hubScores[node]
             
     #   find standard deviation of hub score
         upperLimit = np.mean(np.array(hubScores)) + 2*np.std(np.array(hubScores))
     
     #   identify nodes as hubs if 2 standard deviations above hub score
-        for node in self.G.nodes():
-            if self.G.node[node]['hubScore'] > upperLimit:
-                self.hubs.append(node)
+        
+        self.hubs = [n for n,v in enumerate(hubScores) if v > upperLimit]
                 
     def psuedohubIdentifier(self):
         """ 
@@ -1065,20 +1078,20 @@ class brainObj:
         return sn
         
     def checkrobustness(self, conVal, step):
-        self.adjMatThresholding(edgePC = conVal)
+        self.adjMatThresholding(edgePC = conVal, doPrint=False)
         conVal -= step
         
         sgLenStart = len(components.connected.connected_component_subgraphs(self.G))
-        print "Starting sgLen: "+str(sgLenStart)
+        #print "Starting sgLen: "+str(sgLenStart)
         sgLen = sgLenStart
 
         while(sgLen == sgLenStart and conVal > 0.):
-            self.adjMatThresholding(edgePC = conVal)
+            self.adjMatThresholding(edgePC = conVal, doPrint=False)
             sgLen = len(components.connected.connected_component_subgraphs(self.G))  # identify largest connected component
             conVal -= step
-            print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
+            # print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
         return conVal+ (2*step)
-        
+    
     def robustness(self, outfilebase="brain", conVal=1.0, decPoints=3, append=True):
         """
         Function to calculate robustness.
@@ -1086,20 +1099,29 @@ class brainObj:
         # record starting threhold
         startthresh = self.threshold
         
+        if append:
+            writeMode="a"
+        else:
+            if os.path.exists(outfilebase+'_Robustness.txt'):
+                move(outfilebase+'_Robustness.txt', outfilebase+'_Robustness.txt.old')
+                print ' '.join(["Moving", outfilebase+'_Robustness.txt', "to", outfilebase+'_Robustness.txt.old' ]) 
+            writeMode="w"
+        
         # iterate through decimal points of connectivity 
         for decP in range(1,decPoints+1):
             step = float(1)/(10**decP)
-            print "Step is: " + str(step)
+            #print "Step is: " + str(step)
             conVal = self.checkrobustness(conVal, step)
         
         conVal = conVal-step
         
-        if append:
-            writeVal="a"
+        if not os.path.exists(outfilebase+'_Robustness.txt'):
+            
+            log = open(outfilebase+'_Robustness.txt', writeMode)
+            log.writelines('\t'.join(["RobustnessConnectivity","RobustnessThresh"])+'\n')
         else:
-            writeVal="w"
-        log = open(outfilebase+'_Robustness.txt', writeVal)
-        log.writelines('\t'.join(["RobustnessConnectivity","RobustnessThresh"])+'\n')
+            log = open(outfilebase+'_Robustness.txt', "a")
+        
         log.writelines('\t'.join([str(conVal), str(self.threshold)])+ '\n')
         log.close()
         
