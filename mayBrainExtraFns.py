@@ -77,7 +77,7 @@ class extraFns():
         nodecalcs = np.array(nodecalcs, dtype="float32")
         
         try:
-            loceff = np.sum(nodecalcs) / len(G.nodes())
+            loceff = np.nansum(nodecalcs) / len(G.nodes())
             return(loceff)
         
         except:
