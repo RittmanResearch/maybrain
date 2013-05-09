@@ -345,8 +345,10 @@ class brainObj:
                 if (e[0] in acceptedNodes) & (e[1] in acceptedNodes):
                     subBrain.G.add_edges_from([e])
         
+        # construct adjacency matrix in new brain
         subBrain.reconstructAdjMat()
         
+        # transfer skull and isosurface
         if self.skull != None:
             subBrain.nbskull = self.nbskull
             subBrain.skull = self.skull
@@ -362,7 +364,8 @@ class brainObj:
     def makeSubBrainEdges(self, propName, value):
         ''' separate out edges with a certain property
 
-            value can be a defined range, given as a dictionary e.g. {'min': 0, 'max':1}
+            value can be a a single value, or a defined range. The latter is 
+            given as a dictionary e.g. {'min': 0, 'max':1}
         
         '''
 
@@ -406,7 +409,19 @@ class brainObj:
                         acceptedEdges.append(n[0])
                 except:
                     continue
-                
+
+        # construct adjacency matrix in new brain
+        subBrain.reconstructAdjMat()
+        
+        # transfer skull and isosurface
+        if self.skull != None:
+            subBrain.nbskull = self.nbskull
+            subBrain.skull = self.skull
+            subBrain.skullHeader = self.skullHeader
+        if self.iso != None:
+            subBrain.nbiso = self.nbiso
+            subBrain.iso = self.iso
+            subBrain.isoHeader = self.isoHeader            
                             
         return subBrain    
         
@@ -422,6 +437,19 @@ class brainObj:
         for e in self.G.edges():
             if (e[0] in indices) & (e[1] in indices):
                 subbrain.G.add_edges_from([e])                      
+            
+        # construct adjacency matrix in new brain
+        subbrain.reconstructAdjMat()
+        
+        # transfer skull and isosurface
+        if self.skull != None:
+            subBrain.nbskull = self.nbskull
+            subBrain.skull = self.skull
+            subBrain.skullHeader = self.skullHeader
+        if self.iso != None:
+            subBrain.nbiso = self.nbiso
+            subBrain.iso = self.iso
+            subBrain.isoHeader = self.isoHeader            
             
         # should also transfer the adjacency matrix here
         return subbrain
@@ -798,6 +826,9 @@ class brainObj:
             # redefine at risk edges
             riskEdges = nx.edges(self.G, nodeList)
         
+        # Update adjacency matrix to reflect changes
+        self.reconstructAdjMat()
+        
         print "Number of toxic nodes: "+str(len(nodeList))
         
         return nodeList
@@ -902,7 +933,8 @@ class brainObj:
             print(len(riskEdges))
 #            riskEdges = nx.edges(self.G, nodeList)
 
-
+        # Update adjacency matrix to reflect changes
+        self.reconstructAdjMat()
         
         print "Number of toxic nodes: "+str(len(nodeList))
         
@@ -993,8 +1025,10 @@ class brainObj:
             
 #            print(toxicNodes)
             
-        return toxicNodes, toxicNodeRecord
-               
+        # Update adjacency matrix to reflect changes
+        self.reconstructAdjMat()
+            
+        return toxicNodes, toxicNodeRecord              
             
             
     def neuronsusceptibility(self, edgeloss=1, largestconnectedcomp=False):
@@ -1047,6 +1081,9 @@ class brainObj:
         
         if largestconnectedcomp:
             self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
+            
+        # Update adjacency matrix to reflect changes
+        self.reconstructAdjMat()                      
                       
         
     def percentConnected(self):
