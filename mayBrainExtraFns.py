@@ -18,6 +18,27 @@ from numpy import linalg as lg
 from numpy import fill_diagonal
 
 class extraFns():
+    def globalefficiencyhelper(self, node, G):
+        # nicked from nx.single_source_shortest_path_length to sum shortest lengths
+        seen={}                  # level (number of hops) when seen in BFS
+        level=0                  # the current level
+        nextlevel={node:1}  # dict of nodes to check at next level
+        while nextlevel:
+            thislevel=nextlevel  # advance to next level
+            nextlevel={}         # and start a new list (fringe)
+            for v in thislevel:
+                if v not in seen: 
+                    seen[v]=level # set the level of vertex v
+                    nextlevel.update(G[v]) # add neighbors of v
+            level=level+1
+        if sum(seen.values())>0:
+            invpls = [1/float(v) for v in seen.values() if v!=0 ]
+            invpl = np.sum(invpls)
+        else:
+            invpl = 0.
+            
+        return(invpl)
+    
     
     def globalefficiency(self, G):
         """
@@ -27,24 +48,9 @@ class extraFns():
     
         N = len(G.nodes())      # count nodes
         ssl = 0            # sum of inverse of the shortest path lengths
-    
-        # nicked from nx.single_source_shortest_path_length to sum shortest lengths
-        for node in G.nodes():
-            seen={}                  # level (number of hops) when seen in BFS
-            level=0                  # the current level
-            nextlevel={node:1}  # dict of nodes to check at next level
-            while nextlevel:
-                thislevel=nextlevel  # advance to next level
-                nextlevel={}         # and start a new list (fringe)
-                for v in thislevel:
-                    if v not in seen: 
-                        seen[v]=level # set the level of vertex v
-                        nextlevel.update(G[v]) # add neighbors of v
-                level=level+1
-            if sum(seen.values())>0:
-                invpls = [1/float(v) for v in seen.values() if v!=0 ]
-                invpl = np.sum(invpls)
-                ssl += invpl         # sum inverse shortest path lengths
+        
+        ssl = [ extraFns.globalefficiencyhelper(self, v, G) for v in G.nodes() ]
+        ssl = np.sum(np.array((ssl)))
         
         if N>1:
             Geff = (1/(float(N)*(float(N-1))))*float(ssl)
@@ -54,24 +60,24 @@ class extraFns():
             return None
         
     
+    def localeffhelper(self, node, G):
+        Ginodes = nx.neighbors(G,node)
+        Giedges = G.edges(Ginodes)
+        Gi = nx.Graph()
+        Gi.add_nodes_from(Ginodes)
+        Gi.add_edges_from(Giedges)
+        
+        Gi_globeff = self.globalefficiency(Gi)
+        
+        return(Gi_globeff)
+    
     def localefficiency(self, G):
-        nodecalcs = []
+        nodecalcs = [ extraFns.localeffhelper(self, node, G) for node in G.nodes() ]
         
-        for node in G.nodes():
-            Ginodes = nx.neighbors(G,node)
-            Giedges = G.edges(Ginodes)
-            Gi = nx.Graph()
-            Gi.add_nodes_from(Ginodes)
-            Gi.add_edges_from(Giedges)
-            
-            Gi_globeff = self.globalefficiency(Gi)
-            
-            nodecalcs.append(Gi_globeff)
-        
-        nodecalcs = [float(v) for v in nodecalcs if v]
+        nodecalcs = np.array(nodecalcs, dtype="float32")
         
         try:
-            loceff = np.sum(nodecalcs) / float(len(G.nodes()))
+            loceff = np.sum(nodecalcs) / len(G.nodes())
             return(loceff)
         
         except:
@@ -419,7 +425,7 @@ def efficiencywrite(brain,outfilebase = "brain", append=True):
     
     # set headers
     effs = {"Globalefficiency":None,"Localefficiency":None}
-            
+    
     # local efficiency
     effs["Localefficiency"] = analysis.localefficiency(brain.G)
         
