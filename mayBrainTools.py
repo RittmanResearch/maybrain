@@ -546,13 +546,81 @@ class brainObj:
         return shortestnode[0]
         
     
-    def findSpatiallyNearestNew(self, nodeList, threshold):
+    def findSpatiallyNearestNew(self, nodeList, threshold=1.):
         ''' find the spatially nearest nodes to each node within a treshold 
         
         Comment - did you have something in mind for this?
         '''
         
-        a = 1
+        randNode = random.choice(nodeList)
+            
+        nodes = [v for v in self.G.nodes() if v!=randNode]
+        nodes = [v for v in nodes if not v in nodeList]
+        
+        # get list of node positions
+        xyzList = []
+        count = 0
+        for node in nodes:
+            xyzList.append([count] + list(self.G.node[node]['xyz']))
+            count = count  + 1
+
+        # cut down in x,y and z coords
+        xyz0 = self.G.node[randNode]['xyz']
+        xyzmax = [0, xyz0[0] + threshold, xyz0[1] + threshold, xyz0[2] + threshold]
+        xyzmin = [0, xyz0[0] - threshold, xyz0[1] - threshold, xyz0[2] - threshold]
+        
+        # check so that you don't get an empty answer
+        count = 0
+        countmax = 10
+        newxyzList = []
+        while (newxyzList==[]) & (count <countmax):           
+            # see if it's close to orig point            
+            for l in xyzList:
+                cond = 1
+                # check x, y and z coords
+                for ind in [1,2,3]:
+                    cond = (l[ind]>xyzmin[ind]) & (l[ind]<xyzmax[ind])
+                    
+                    if cond==0:
+                        break
+                    
+                # append to new list if close
+                if cond:
+                    newxyzList.append(l)
+                    cond = False
+                    
+            # increase threshold for next run, if solution is empty
+            threshold = threshold * 2
+
+        if newxyzList == []:
+            print('unable to find a spatially nearest node')
+            return -1, 0
+        
+        # find shortest distance
+        
+        # find distances
+        dists = []
+        print 'newxyzlist'
+        print newxyzList
+        for l in newxyzList:
+            d = sqrt((l[1]-xyz0[0])**2 + (l[2]-xyz0[1])**2 + (l[3]-xyz0[2]**2))
+            dists = dists + [(d, l[0])]
+        
+        print('presort')
+        print(dists)
+        # sort distances
+        dtype = [('d', float), ('ind', int)]
+        dists = array(dists, dtype = dtype)
+        dists = sort(dists, order = ['d', 'ind'])
+        print('postsort')
+        print(dists)
+        
+        # get shortest node
+        nodeIndex = dists[0][1]        
+        closestNode = self.G.node[nodeIndex]
+
+        return nodeIndex, closestNode        
+
         
         
     def findLinkedNodes(self):
