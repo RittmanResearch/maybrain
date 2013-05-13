@@ -24,6 +24,7 @@ Change log:
 """
 
 import string,os,csv,community
+from shutil import move
 import networkx as nx
 import numpy as np
 from networkx.drawing import *
@@ -34,7 +35,7 @@ from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort
 from mayavi import mlab
 from string import split
 import nibabel as nb
-from matplotlib import pyplot as plt
+from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 
 class brainObj:
     """
@@ -77,7 +78,7 @@ class brainObj:
 
     ## File inputs        
 
-    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False, delimiter=None, weighted=True):
+    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False, delimiter=None, weighted=True, NAval="nan"):
         ''' load adjacency matrix with filename and threshold for edge definition 
         Comment - I don't seem to be able to construct an unweighted directed graph, ie with edge number N(N-1) for an NxN adjacency matrix 
         '''
@@ -101,7 +102,7 @@ class brainObj:
         linesStr = reader[startLine:]
         lines = []
         for l in linesStr:
-            lines.append(map(float, [v if v != "NA" else 0 for v in split(l, sep=delimiter)]))
+            lines.append(map(float, [v if v != "nan" else np.nan for v in split(l, sep=delimiter)]))
         nodecount = len(lines)                
 
         # close file                
@@ -189,14 +190,14 @@ class brainObj:
             zeroArr = zeroArr + nArr
             zeroArr.mask=None
             
-        self.parcels = np.ma.masked_values(zeroArr, 0.0)
+        self.parcelList = np.ma.masked_values(zeroArr, 0.0)
 
     def exportParcelsNii(self, outname='brain'):
         """
-        This function saves the parcels as a nifti file. It requires the
+        This function saves the parcelList as a nifti file. It requires the
         brain.parcels function has been run first.
         """
-        N = nb.Nifti1Image(self.parcels, self.nbiso.get_affine(), header=self.isoHeader)
+        N = nb.Nifti1Image(self.parcelList, self.nbiso.get_affine(), header=self.isoHeader)
         nb.save(N, outname+'.nii')
         
     def inputNodeProperties(self, propertyName, nodeList, propList):
@@ -212,7 +213,7 @@ class brainObj:
     
     ## Functions to alter the brain
 
-    def adjMatThresholding(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False):
+    def adjMatThresholding(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, doPrint=True):
         ''' apply thresholding to the adjacency matrix. This can be done in one of
             three ways (in order of decreasing precendence):
                 edgePC - this percentage of nodes will be linked
@@ -237,12 +238,13 @@ class brainObj:
             # find threshold as a percentage of total possible edges
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
             edgeNum = int(edgePC * nodecount * (nodecount-1)) # possible /2 in here??
+            self.edgePC=edgePC
+            
         elif totalEdges:
             # allow a fixed number of edges
             edgeNum = totalEdges
         else:
             edgeNum = -1
-                     
             
         # get threshold
         if edgeNum>=0:
@@ -250,14 +252,19 @@ class brainObj:
             if rethreshold:
                 weights = [self.G[v[0]][v[1]]['weight'] for v in self.G.edges()]
             else:
-                weights = self.adjMat.flatten()
+                weights = [v for v in self.adjMat.flatten() if not str(v)=="nan"]
             weights.sort()
             try:
                 threshold = weights[-edgeNum]
             except IndexError:
                 print "Check you are not trying to apply a lower threshold than the current "+str(self.threshold)
-                return
-            print("Threshold set at: "+str(threshold))
+                
+                if not 'self.threshold' in locals():
+                    threshold = -1                
+                else:
+                    return
+            if doPrint:
+                print("Threshold set at: "+str(threshold))
         else:
             threshold  = tVal      
             
@@ -265,7 +272,7 @@ class brainObj:
             
         if rethreshold:
             edgesToRemove = [v for v in self.G.edges() if self.G[v[0]][v[1]]['weight'] < threshold]
-            self.G.remove_edges_from(edgesToRemove)            
+            self.G.remove_edges_from(edgesToRemove)
         else:
             # carry out thresholding on adjacency matrix
             boolMat = self.adjMat>threshold
@@ -630,9 +637,12 @@ class brainObj:
                 self.G.node[l[1]]['linkedNodes'] = self.G.node[l[1]]['linkedNodes'] + [l[0]]
             except:
                 self.G.node[l[1]]['linkedNodes'] = [l[0]]
-                                                
+    
+    def hubHelper(self, node):
+        hubscore = self.betweenessCentrality[node] + self.closenessCentrality[node] + self.degrees[node]
+        return(hubscore)
 
-    def hubIdentifier(self, weighted=False):
+    def hubIdentifier(self, weighted=False, assign=False):
         """ 
         define hubs by generating a hub score, based on the sum of normalised scores for:
             betweenness centrality
@@ -643,6 +653,8 @@ class brainObj:
         
         defines self.hubs
         
+        if assign is true, then each node's dictionary is assigned a hub score
+        
         Changelog 7/12/12:
             - added possibility of weighted measures
         """
@@ -651,38 +663,45 @@ class brainObj:
         
     #    get centrality measures
         if weighted:
-            betweenessCentrality = centrality.betweenness_centrality(self.G, weight='weight')
-            closenessCentrality = centrality.closeness_centrality(self.G, distance=True)
-            degrees = nx.degree(self.G, weight='weight')
+            self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='weight').values()))
+            self.closenessCentrality = np.array((centrality.closeness_centrality(self.G, distance=True).values()))
+            self.degrees = np.array((nx.degree(self.G, weight='weight').values()))
             
             
         else:
-            betweenessCentrality = centrality.betweenness_centrality(self.G)
-            closenessCentrality = centrality.closeness_centrality(self.G)
-            degrees = nx.degree(self.G)
+            self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G).values()))
+            self.closenessCentrality = np.array((centrality.closeness_centrality(self.G).values()))
+            self.degrees = np.array((nx.degree(self.G).values()))
             
-        sum_degrees = np.sum(degrees.values())
-        sum_betweenness = np.sum(betweenessCentrality.values())        
-        sum_closeness = np.sum(closenessCentrality.values())
+        self.betweenessCentrality /= np.sum(self.betweenessCentrality)
+        self.closenessCentrality /=  np.sum(self.closenessCentrality)        
+        self.degrees /= np.sum(self.degrees)
         
-    #    combine normalised measures for each node to generate a hub score
-        hubScores = []
-        for node in self.G.nodes():
-            if weighted:
-                self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
-            else:
-                self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
-                
-            
-            hubScores.append(self.G.node[node]['hubScore'])
+        
+        # deprecated code follows:
+#    #    combine normalised measures for each node to generate a hub score
+#        hubScores = []
+#        for node in self.G.nodes():
+#            if weighted:
+#                self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
+#            else:
+#                self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
+#                
+#            
+#            hubScores.append(self.G.node[node]['hubScore'])
+
+        hubScores = map(self.hubHelper, self.G.nodes())
+        
+        if assign:
+            for node in self.G.nodes():
+                self.G.node['hubscore'] = hubScores[node]
             
     #   find standard deviation of hub score
         upperLimit = np.mean(np.array(hubScores)) + 2*np.std(np.array(hubScores))
     
     #   identify nodes as hubs if 2 standard deviations above hub score
-        for node in self.G.nodes():
-            if self.G.node[node]['hubScore'] > upperLimit:
-                self.hubs.append(node)
+        
+        self.hubs = [n for n,v in enumerate(hubScores) if v > upperLimit]
                 
     def psuedohubIdentifier(self):
         """ 
@@ -792,7 +811,7 @@ class brainObj:
         else:
             self.modularity = 0
             
-    def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, weightLossLimit=None, toxicNodes=None, riskEdges=None, spread=False):
+    def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, weightLossLimit=None, toxicNodes=None, riskEdges=None, spread=False, updateAdjmat=True):
         ''' remove random edges from connections of the toxicNodes set, or from the riskEdges set. This occurs either until edgesRemovedLimit
         number of edges have been removed (use this for a thresholded weighted graph), or until the weight loss
         limit has been reached (for a weighted graph). For a binary graph, weight loss should be set
@@ -840,15 +859,22 @@ class brainObj:
             
             if np.absolute(w) < weightloss:
                 loss = w
-                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] = 0
+                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] = 0.
             
             elif w>0:
                 loss = weightloss
                 self.G[dyingEdge[0]][dyingEdge[1]]['weight'] -= weightloss
                 
+                
             else:
                 loss = weightloss
                 self.G[dyingEdge[0]][dyingEdge[1]]['weight'] += weightloss
+            
+            # update the adjacency matrix (essential if robustness is to be calculated)            
+            if updateAdjmat:
+                self.adjMat[dyingEdge[0]][dyingEdge[1]] = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
+                self.adjMat[dyingEdge[1]][dyingEdge[0]] = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
+                            
             # add nodes to toxic list if the spread option is selected
             if spread:
                 for node in dyingEdge:
@@ -1157,9 +1183,62 @@ class brainObj:
         sn = lenzeros*'0' + sn
         
         return sn
+        
+    def checkrobustness(self, conVal, step):
+        self.adjMatThresholding(edgePC = conVal, doPrint=False)
+        conVal -= step
+        
+        sgLenStart = len(components.connected.connected_component_subgraphs(self.G))
+        #print "Starting sgLen: "+str(sgLenStart)
+        sgLen = sgLenStart
+
+        while(sgLen == sgLenStart and conVal > 0.):
+            self.adjMatThresholding(edgePC = conVal, doPrint=False)
+            sgLen = len(components.connected.connected_component_subgraphs(self.G))  # identify largest connected component
+            conVal -= step
+            # print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
+        return conVal+ (2*step)
+    
+    def robustness(self, outfilebase="brain", conVal=1.0, decPoints=3, append=True):
+        """
+        Function to calculate robustness.
+        """
+        # record starting threhold
+        startthresh = self.threshold
+        
+        if append:
+            writeMode="a"
+        else:
+            if os.path.exists(outfilebase+'_Robustness.txt'):
+                move(outfilebase+'_Robustness.txt', outfilebase+'_Robustness.txt.old')
+                print ' '.join(["Moving", outfilebase+'_Robustness.txt', "to", outfilebase+'_Robustness.txt.old' ]) 
+            writeMode="w"
+        
+        # iterate through decimal points of connectivity 
+        for decP in range(1,decPoints+1):
+            step = float(1)/(10**decP)
+            #print "Step is: " + str(step)
+            conVal = self.checkrobustness(conVal, step)
+        
+        conVal = conVal-step
+        
+        if not os.path.exists(outfilebase+'_Robustness.txt'):
+            
+            log = open(outfilebase+'_Robustness.txt', writeMode)
+            log.writelines('\t'.join(["RobustnessConnectivity","RobustnessThresh"])+'\n')
+        else:
+            log = open(outfilebase+'_Robustness.txt', "a")
+        
+        log.writelines('\t'.join([str(conVal), str(self.threshold)])+ '\n')
+        log.close()
+        
+        # return graph to original threshold
+        self.adjMatThresholding(tVal=startthresh)
+        
 
 class plotObj():
     ''' classes that plot various aspects of a brain object '''
+    
     
     def __init__(self):
         
@@ -1167,7 +1246,7 @@ class plotObj():
         self.startMayavi()  
         
         self.nodesf = 0.5 # scale factor for nodes
-
+        
         
     def startMayavi(self):
         ''' initialise the Mayavi figure for plotting '''        

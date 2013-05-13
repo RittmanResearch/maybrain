@@ -13,8 +13,32 @@ from networkx.algorithms import cluster
 from networkx.algorithms import centrality
 import random
 from networkx.algorithms import components
+from matplotlib import pyplot as plt
+from numpy import linalg as lg
+from numpy import fill_diagonal
 
 class extraFns():
+    def globalefficiencyhelper(self, node, G):
+        # nicked from nx.single_source_shortest_path_length to sum shortest lengths
+        seen={}                  # level (number of hops) when seen in BFS
+        level=0                  # the current level
+        nextlevel={node:1}  # dict of nodes to check at next level
+        while nextlevel:
+            thislevel=nextlevel  # advance to next level
+            nextlevel={}         # and start a new list (fringe)
+            for v in thislevel:
+                if v not in seen: 
+                    seen[v]=level # set the level of vertex v
+                    nextlevel.update(G[v]) # add neighbors of v
+            level=level+1
+        if sum(seen.values())>0:
+            invpls = [1/float(v) for v in seen.values() if v!=0 ]
+            invpl = np.sum(invpls)
+        else:
+            invpl = 0.
+            
+        return(invpl)
+    
     
     def globalefficiency(self, G):
         """
@@ -24,24 +48,9 @@ class extraFns():
     
         N = len(G.nodes())      # count nodes
         ssl = 0            # sum of inverse of the shortest path lengths
-    
-        # nicked from nx.single_source_shortest_path_length to sum shortest lengths
-        for node in G.nodes():
-            seen={}                  # level (number of hops) when seen in BFS
-            level=0                  # the current level
-            nextlevel={node:1}  # dict of nodes to check at next level
-            while nextlevel:
-                thislevel=nextlevel  # advance to next level
-                nextlevel={}         # and start a new list (fringe)
-                for v in thislevel:
-                    if v not in seen: 
-                        seen[v]=level # set the level of vertex v
-                        nextlevel.update(G[v]) # add neighbors of v
-                level=level+1
-            if sum(seen.values())>0:
-                invpls = [1/float(v) for v in seen.values() if v!=0 ]
-                invpl = np.sum(invpls)
-                ssl += invpl         # sum inverse shortest path lengths
+        
+        ssl = [ extraFns.globalefficiencyhelper(self, v, G) for v in G.nodes() ]
+        ssl = np.sum(np.array((ssl)))
         
         if N>1:
             Geff = (1/(float(N)*(float(N-1))))*float(ssl)
@@ -51,24 +60,24 @@ class extraFns():
             return None
         
     
+    def localeffhelper(self, node, G):
+        Ginodes = nx.neighbors(G,node)
+        Giedges = G.edges(Ginodes)
+        Gi = nx.Graph()
+        Gi.add_nodes_from(Ginodes)
+        Gi.add_edges_from(Giedges)
+        
+        Gi_globeff = self.globalefficiency(Gi)
+        
+        return(Gi_globeff)
+    
     def localefficiency(self, G):
-        nodecalcs = []
+        nodecalcs = [ extraFns.localeffhelper(self, node, G) for node in G.nodes() ]
         
-        for node in G.nodes():
-            Ginodes = nx.neighbors(G,node)
-            Giedges = G.edges(Ginodes)
-            Gi = nx.Graph()
-            Gi.add_nodes_from(Ginodes)
-            Gi.add_edges_from(Giedges)
-            
-            Gi_globeff = self.globalefficiency(Gi)
-            
-            nodecalcs.append(Gi_globeff)
-        
-        nodecalcs = [float(v) for v in nodecalcs if v]
+        nodecalcs = np.array(nodecalcs, dtype="float32")
         
         try:
-            loceff = np.sum(nodecalcs) / float(len(G.nodes()))
+            loceff = np.nansum(nodecalcs) / len(G.nodes())
             return(loceff)
         
         except:
@@ -416,7 +425,7 @@ def efficiencywrite(brain,outfilebase = "brain", append=True):
     
     # set headers
     effs = {"Globalefficiency":None,"Localefficiency":None}
-            
+    
     # local efficiency
     effs["Localefficiency"] = analysis.localefficiency(brain.G)
         
@@ -526,4 +535,48 @@ def writeEdgeNumber(brain, outfilebase = "brain", append=True):
     writer = csv.writer(f,delimiter='\t')
     writer.writerow([edgeNum])
     f.close()
+    
+def histograms(brain, outfilebase="brain"):
+    """ 
+    Produces histograms of association matrix weights and edge lengths.
+    Requires spatial information to have been loaded on to the graph.
+    """
+    # define lengths for each edge
+    for edge in brain.G.edges():
+        brain.G.edge[edge[0]][edge[1]]['length'] = abs(lg.norm(np.array(brain.G.node[edge[0]]['xyz']) - np.array(brain.G.node[edge[1]]['xyz'])))
+
+    # get a list of weights
+    weightList = brain.adjMat.copy()
+    fill_diagonal(weightList, 0.)
+    weightList = np.array([v for v in weightList.flatten() if not str(v)=="nan"])
+    
+    # plot the weights
+    fig = plt.figure()
+    ax1 = fig.add_subplot(211)
+    ax1.set_title("Weights")
+    ax1.hist(weightList)
+    
+    # add a second axis
+    ax2 = fig.add_axes([0.15, 0.1, 0.7, 0.3])    
+
+    # get a list of lengths
+    lengths = [brain.G.edge[v[0]][v[1]]['length'] for v in brain.G.edges()]
+    lengths=np.array((lengths))
+    
+    # Title for lengths
+    if not brain.threshold:
+        title = "Lengths at no threshold"
+        print "You have not set a threshold on the graph, so all edge lengths will be included giving a normal distribution"
+    else:
+        try:
+            title = "Lengths at " + "{0:.1f}".format(brain.edgePC*100) + "% connectivity"
+        except AttributeError:
+            title = "Lengths at " + "{0.2f}".format(brain.threshold) + " threshold"
+    ax2.set_title(title)
+    
+    # plot the lengths
+    ax2.hist(lengths)
+    
+    # save the figure
+    fig.savefig(outfilebase+"_histograms.png")
     
