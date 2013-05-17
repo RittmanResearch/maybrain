@@ -1185,6 +1185,11 @@ class brainObj:
         return sn
         
     def checkrobustness(self, conVal, step):
+        ''' Robustness is a measure that starts with a fully connected graph, \
+        then reduces the threshold incrementally until the graph breaks up in \
+        to more than one connected component. The robustness level is the \
+        threshold at which this occurs. '''
+
         self.adjMatThresholding(edgePC = conVal, doPrint=False)
         conVal -= step
         
@@ -1198,6 +1203,92 @@ class brainObj:
             conVal -= step
             # print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
         return conVal+ (2*step)
+
+
+    def checkrobustnessNew(self, conVal, step = 0.1, t0low = 0.):
+        ''' Robustness is a measure that starts with a fully connected graph, \
+        then reduces the threshold incrementally until the graph breaks up in \
+        to more than one connected component. The robustness level is the \
+        threshold at which this occurs. 
+        
+        t0low is the value of the lowest starting threshold
+        step is the resolution of the threshold to find
+        
+        uses a simple 3 point comparison algorithm (there's probably a fancier name
+        for this, but I can't remember it).
+        
+        '''
+
+        self.adjMatThresholding(edgePC = conVal, doPrint=False)
+        conVal -= step
+        
+#        sgLenStart = len(components.connected.connected_component_subgraphs(self.G))
+        #print "Starting sgLen: "+str(sgLenStart)
+        sgLen = sgLenStart
+        
+        # new method
+        # get starting threshold values
+        ths = [self.threshold, 0.5*(self.threshold), t0low0]
+
+        
+        # check to see if tlow0 is too high        
+        if sgLen2 == sgLen0:
+            
+            return
+        
+        contBool = 1
+        count = 0
+        maxCounts = 1000
+        while contBool:
+            
+            # get the connectedness for each threshold value
+            self.adjMatThresholding(edgePC = ths[0], doPrint=False)
+            sgLen0 = len(components.connected.connected_component_subgraphs(self.G))
+            self.adjMatThresholding(edgePC = ths[1], doPrint=False)
+            sgLen1 = len(components.connected.connected_component_subgraphs(self.G))
+            self.adjMatThresholding(edgePC = ths[2], doPrint=False)
+            sgLen2 = len(components.connected.connected_component_subgraphs(self.G))
+            sgLen = [sgLen0, sgLen1, sgLen2]                        
+            
+            # compare connectedness of the three values, take the interval in which
+            # a difference is found
+            if sgLen[0]!=sgLen[1]:
+                # case where there's a difference between 0th and 1st components
+                ths = [ths[0], 0.5*(ths[0] + ths[1]), ths[1]]
+                
+            elif sgLen[1]!=sgLen[2]:
+                # case where there's a difference between 1st and 2nd components
+                ths = [ths[1], 0.5*(ths[1] + ths[2]), ths[2]]
+            else:
+                # case where all components are the same (condition satisfied)
+                contBool = 0
+            
+            # check if final condition satisfied
+            if abs(ths[2]-ths[1])<step:
+                contBool = 0
+                
+            # stop if too slow
+            count = count+1
+            if count == maxCounts:
+                print('maximum iteration steps exceeded in robustness check')
+                print( 'resolution reached: ', str( abs(ths[1]-ths[1]) ) )
+                contBool = 0
+                
+        # check that something happened in the above loop
+        if count == 1:
+            print("starting threshold error in robustness check, is t0low0 value correct?"+ str(t0low0))
+
+        # return the maximum threshold value where they were found to be the same
+        return ths[1]            
+            
+
+        while(sgLen == sgLenStart and conVal > 0.):
+            self.adjMatThresholding(edgePC = conVal, doPrint=False)
+            sgLen = len(components.connected.connected_component_subgraphs(self.G))  # identify largest connected component
+            conVal -= step
+            # print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
+        return conVal+ (2*step)
+
     
     def robustness(self, outfilebase="brain", conVal=1.0, decPoints=3, append=True):
         """
