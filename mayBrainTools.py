@@ -349,8 +349,10 @@ class brainObj:
                 if (e[0] in acceptedNodes) & (e[1] in acceptedNodes):
                     subBrain.G.add_edges_from([e])
         
+        # construct adjacency matrix in new brain
         subBrain.reconstructAdjMat()
         
+        # transfer skull and isosurface
         if self.skull != None:
             subBrain.nbskull = self.nbskull
             subBrain.skull = self.skull
@@ -366,7 +368,8 @@ class brainObj:
     def makeSubBrainEdges(self, propName, value):
         ''' separate out edges with a certain property
 
-            value can be a defined range, given as a dictionary e.g. {'min': 0, 'max':1}
+            value can be a a single value, or a defined range. The latter is 
+            given as a dictionary e.g. {'min': 0, 'max':1}
         
         '''
 
@@ -410,7 +413,19 @@ class brainObj:
                         acceptedEdges.append(n[0])
                 except:
                     continue
-                
+
+        # construct adjacency matrix in new brain
+        subBrain.reconstructAdjMat()
+        
+        # transfer skull and isosurface
+        if self.skull != None:
+            subBrain.nbskull = self.nbskull
+            subBrain.skull = self.skull
+            subBrain.skullHeader = self.skullHeader
+        if self.iso != None:
+            subBrain.nbiso = self.nbiso
+            subBrain.iso = self.iso
+            subBrain.isoHeader = self.isoHeader            
                             
         return subBrain    
         
@@ -426,6 +441,19 @@ class brainObj:
         for e in self.G.edges():
             if (e[0] in indices) & (e[1] in indices):
                 subbrain.G.add_edges_from([e])                      
+            
+        # construct adjacency matrix in new brain
+        subbrain.reconstructAdjMat()
+        
+        # transfer skull and isosurface
+        if self.skull != None:
+            subBrain.nbskull = self.nbskull
+            subBrain.skull = self.skull
+            subBrain.skullHeader = self.skullHeader
+        if self.iso != None:
+            subBrain.nbiso = self.nbiso
+            subBrain.iso = self.iso
+            subBrain.isoHeader = self.isoHeader            
             
         # should also transfer the adjacency matrix here
         return subbrain
@@ -522,13 +550,81 @@ class brainObj:
         return shortestnode[0]
         
     
-    def findSpatiallyNearestNew(self, nodeList, threshold):
+    def findSpatiallyNearestNew(self, nodeList, threshold=1.):
         ''' find the spatially nearest nodes to each node within a treshold 
         
         Comment - did you have something in mind for this?
         '''
         
-        a = 1
+        randNode = random.choice(nodeList)
+            
+        nodes = [v for v in self.G.nodes() if v!=randNode]
+        nodes = [v for v in nodes if not v in nodeList]
+        
+        # get list of node positions
+        xyzList = []
+        count = 0
+        for node in nodes:
+            xyzList.append([count] + list(self.G.node[node]['xyz']))
+            count = count  + 1
+
+        # cut down in x,y and z coords
+        xyz0 = self.G.node[randNode]['xyz']
+        xyzmax = [0, xyz0[0] + threshold, xyz0[1] + threshold, xyz0[2] + threshold]
+        xyzmin = [0, xyz0[0] - threshold, xyz0[1] - threshold, xyz0[2] - threshold]
+        
+        # check so that you don't get an empty answer
+        count = 0
+        countmax = 10
+        newxyzList = []
+        while (newxyzList==[]) & (count <countmax):           
+            # see if it's close to orig point            
+            for l in xyzList:
+                cond = 1
+                # check x, y and z coords
+                for ind in [1,2,3]:
+                    cond = (l[ind]>xyzmin[ind]) & (l[ind]<xyzmax[ind])
+                    
+                    if cond==0:
+                        break
+                    
+                # append to new list if close
+                if cond:
+                    newxyzList.append(l)
+                    cond = False
+                    
+            # increase threshold for next run, if solution is empty
+            threshold = threshold * 2
+
+        if newxyzList == []:
+            print('unable to find a spatially nearest node')
+            return -1, 0
+        
+        # find shortest distance
+        
+        # find distances
+        dists = []
+        print 'newxyzlist'
+        print newxyzList
+        for l in newxyzList:
+            d = sqrt((l[1]-xyz0[0])**2 + (l[2]-xyz0[1])**2 + (l[3]-xyz0[2]**2))
+            dists = dists + [(d, l[0])]
+        
+        print('presort')
+        print(dists)
+        # sort distances
+        dtype = [('d', float), ('ind', int)]
+        dists = array(dists, dtype = dtype)
+        dists = sort(dists, order = ['d', 'ind'])
+        print('postsort')
+        print(dists)
+        
+        # get shortest node
+        nodeIndex = dists[0][1]        
+        closestNode = self.G.node[nodeIndex]
+
+        return nodeIndex, closestNode        
+
         
         
     def findLinkedNodes(self):
@@ -720,7 +816,7 @@ class brainObj:
         else:
             self.modularity = 0
             
-    def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, weightLossLimit=None, toxicNodes=None, riskEdges=None, spread=False):
+    def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, weightLossLimit=None, toxicNodes=None, riskEdges=None, spread=False, updateAdjmat=True):
         ''' remove random edges from connections of the toxicNodes set, or from the riskEdges set. This occurs either until edgesRemovedLimit
         number of edges have been removed (use this for a thresholded weighted graph), or until the weight loss
         limit has been reached (for a weighted graph). For a binary graph, weight loss should be set
@@ -730,7 +826,8 @@ class brainObj:
         
         By default this function will enact a random attack model, with a weight loss of 0.1 each iteration.
         '''  
-        nodeList = [v for v in toxicNodes]
+        if toxicNodes:
+            nodeList = [v for v in toxicNodes]
         # set limit
         if weightLossLimit:
             limit = weightLossLimit
@@ -745,6 +842,7 @@ class brainObj:
             
             # generate list of at risk edges
             riskEdges = nx.edges(self.G, nodeList)
+            
         # iterate number of steps
         while limit>0:
             print len(nodeList)
@@ -768,15 +866,22 @@ class brainObj:
             
             if np.absolute(w) < weightloss:
                 loss = w
-                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] = 0
+                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] = 0.
             
             elif w>0:
                 loss = weightloss
                 self.G[dyingEdge[0]][dyingEdge[1]]['weight'] -= weightloss
                 
+                
             else:
                 loss = weightloss
                 self.G[dyingEdge[0]][dyingEdge[1]]['weight'] += weightloss
+            
+            # update the adjacency matrix (essential if robustness is to be calculated)            
+            if updateAdjmat:
+                self.adjMat[dyingEdge[0]][dyingEdge[1]] = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
+                self.adjMat[dyingEdge[1]][dyingEdge[0]] = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
+                            
             # add nodes to toxic list if the spread option is selected
             if spread:
                 for node in dyingEdge:
@@ -794,6 +899,9 @@ class brainObj:
                 
             # redefine at risk edges
             riskEdges = nx.edges(self.G, nodeList)
+        
+        # Update adjacency matrix to reflect changes
+        self.reconstructAdjMat()
         
         print "Number of toxic nodes: "+str(len(nodeList))
         
@@ -899,7 +1007,8 @@ class brainObj:
             print(len(riskEdges))
 #            riskEdges = nx.edges(self.G, nodeList)
 
-
+        # Update adjacency matrix to reflect changes
+        self.reconstructAdjMat()
         
         print "Number of toxic nodes: "+str(len(nodeList))
         
@@ -990,8 +1099,10 @@ class brainObj:
             
 #            print(toxicNodes)
             
-        return toxicNodes, toxicNodeRecord
-               
+        # Update adjacency matrix to reflect changes
+        self.reconstructAdjMat()
+            
+        return toxicNodes, toxicNodeRecord              
             
             
     def neuronsusceptibility(self, edgeloss=1, largestconnectedcomp=False):
@@ -1044,6 +1155,9 @@ class brainObj:
         
         if largestconnectedcomp:
             self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
+            
+        # Update adjacency matrix to reflect changes
+        self.reconstructAdjMat()                      
                       
         
     def percentConnected(self):
