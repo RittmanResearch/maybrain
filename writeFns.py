@@ -423,12 +423,14 @@ class writeFns():
             n2.append(brain.G.node[edge[1]]['xyz'])
         n1 = array(n1)
         n2 = array(n2)
-        print("in writeEdgeLengths")
-        print(shape(n1), shape(n2))
         
         # calculate mean edge length
         l = sqrt(sum((n1-n2)**2, axis=1))
-        meanEdgeLengths = mean(l)        
+        meanEdgeLengths = mean(l)       
+        print('edge lengths')
+        for s in l:
+            print(s)
+        print('mean edge length ' + str(meanEdgeLengths))
         
         # do the same for hubs
         if len(brain.hubs) == 0:
@@ -462,6 +464,8 @@ class writeFns():
         writeObj = writer(f,delimiter='\t')
         writeObj.writerow([meanEdgeLengths, meanHubLengths])
         f.close()
+        
+        return meanEdgeLengths
         
     def edgeNumber(self, brain, outfilebase = "brain", append=True):
         ''' Write number of edges to file'''
