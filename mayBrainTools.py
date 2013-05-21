@@ -825,9 +825,13 @@ class brainObj:
         The spread option recruits connected nodes of degenerating edges to the toxic nodes list.
         
         By default this function will enact a random attack model, with a weight loss of 0.1 each iteration.
-        '''  
+        '''
+        
         if toxicNodes:
             nodeList = [v for v in toxicNodes]
+        else:
+            nodeList = []
+            
         # set limit
         if weightLossLimit:
             limit = weightLossLimit
@@ -836,12 +840,15 @@ class brainObj:
             limit = edgesRemovedLimit
         
         if not riskEdges:
+            reDefineEdges=True
             # if no toxic nodes defined, select the whole graph
             if not nodeList:
                 nodeList = self.G.nodes()
             
             # generate list of at risk edges
             riskEdges = nx.edges(self.G, nodeList)
+        else:
+            reDefineEdges=False
             
         # iterate number of steps
         while limit>0:
@@ -898,7 +905,8 @@ class brainObj:
                 limit -= loss
                 
             # redefine at risk edges
-            riskEdges = nx.edges(self.G, nodeList)
+            if reDefineEdges:
+                riskEdges = nx.edges(self.G, nodeList)
         
         # Update adjacency matrix to reflect changes
         self.reconstructAdjMat()
