@@ -754,7 +754,8 @@ class brainObj:
         
         By default this function will enact a random attack model, with a weight loss of 0.1 each iteration.
         '''  
-        nodeList = [v for v in toxicNodes]
+        if toxicNodes:
+            nodeList = [v for v in toxicNodes]
         # set limit
         if weightLossLimit:
             limit = weightLossLimit
@@ -769,6 +770,7 @@ class brainObj:
             
             # generate list of at risk edges
             riskEdges = nx.edges(self.G, nodeList)
+            
         # iterate number of steps
         while limit>0:
             print len(nodeList)
