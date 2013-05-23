@@ -145,7 +145,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         else:
             br = self.brains['mainBrain']
         # read in files
-        br.readAdjFile(f, thold)
+        br.readAdjFile(f, threshold = thold) # need to allow different methods here
         br.readSpatialInfo(g)
                 
         # enable plot button
@@ -207,7 +207,7 @@ class mayBrainGUI(QtGui.QMainWindow):
             
         # change plot button to replot
         QtCore.QObject.disconnect(self.ui.brainPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
-        print('disconnected')
+        print('disconnected') # NOT NECESSARY!!
 #        self.ui.brainPlot.disconnect()
         QtCore.QObject.connect(self.ui.brainPlot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
             
@@ -274,7 +274,7 @@ class mayBrainGUI(QtGui.QMainWindow):
     ## setting and altering plot properties e.g. visibility, opacity
     
     def setPlotValues(self, item):
-        ''' change the values for sliders and stuff of a specific plot '''
+        ''' update all values for sliders and stuff of a specific plot '''
         
         # set the selected plot
         self.selectedPlot = str(item.text(1))
@@ -305,10 +305,24 @@ class mayBrainGUI(QtGui.QMainWindow):
                 self.ui.blueValueBox.setValue(v[2])
                 
     def setOpacity(self):
-        ''' set the opacity from the slider '''
+        ''' set the opacity for the currently selected plot from the slider '''
 
         v = float(self.ui.opacitySlider.value())
         v = (10**(v/100.)-1.)/9.
+        # update value in box
+        self.ui.opacityBox.setValue(v)
+        # update plot
+        self.plot.changePlotProperty(self.selectedPlotType, 'opacity', self.selectedPlot, v)
+        
+
+    def setOpacityBox(self):
+        ''' set the opacity from a box (which doesn't exist yet) '''
+        
+        v = self.ui.opacityBox.value()
+        # set value in slider
+        vs = log10(9.*v+1.)*100.
+        self.ui.opacitySlider.setValue(vs)
+        # change value in plot
         self.plot.changePlotProperty(self.selectedPlotType, 'opacity', self.selectedPlot, v)
 
         
