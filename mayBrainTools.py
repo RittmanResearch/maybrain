@@ -31,7 +31,7 @@ from networkx.drawing import *
 from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
-from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort
+from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort, min, max
 from mayavi import mlab
 from string import split
 import nibabel as nb
@@ -1234,10 +1234,14 @@ class brainObj:
         '''
 
         oldThr = self.threshold
+        
+        print('min max of adjmat')
+        print(min(self.adjMat), max(self.adjMat))
                 
         # new method
         # get starting threshold values
         ths = [t0low, 0.5*(self.threshold), conVal]
+        ths.sort()
 
         # get the connectedness for each threshold value
         self.adjMatThresholding(tVal = ths[0], doPrint=False)
@@ -1261,7 +1265,20 @@ class brainObj:
             
             # compare connectedness of the three values, take the interval in which
             # a difference is found
-            if sgLen[1]!=sgLen[2]:
+
+
+            if sgLen[0]!=sgLen[1]:
+                # case where there's a difference between 0th and 1st components
+                
+                # set thresholds
+                ths = [ths[0], 0.5*(ths[0] + ths[1]), ths[1]]
+                
+                # get corresponding connectedness
+                self.adjMatThresholding(tVal = ths[1], doPrint=False)
+                sgLenNew = len(components.connected.connected_component_subgraphs(self.G))
+                sgLen = [sgLen[0], sgLenNew, sgLen[1]]
+                                
+            elif sgLen[1]!=sgLen[2]:
                 # case where there's a difference between 1st and 2nd components
                 
                 # get thresholds
@@ -1274,17 +1291,6 @@ class brainObj:
                 sgLen = [sgLen[1], sgLenNew, sgLen[2]]                
                 
 
-            elif sgLen[0]!=sgLen[1]:
-                # case where there's a difference between 0th and 1st components
-                
-                # set thresholds
-                ths = [ths[0], 0.5*(ths[0] + ths[1]), ths[1]]
-                
-                # get corresponding connectedness
-                self.adjMatThresholding(tVal = ths[1], doPrint=False)
-                sgLenNew = len(components.connected.connected_component_subgraphs(self.G))
-                sgLen = [sgLen[0], sgLenNew, sgLen[1]]
-                                
 
             else:
                 # case where all components are the same (condition satisfied)
@@ -1313,6 +1319,7 @@ class brainObj:
         self.adjMatThresholding(tVal = self.threshold, doPrint = False)
 
         # return the maximum threshold value where they were found to be the same
+        # SHOULD ROUND VALUE BEFORE RETURNING
         return ths[1]            
             
     
