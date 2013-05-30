@@ -61,6 +61,7 @@ class brainObj:
         
         # initialise global variables
         self.adjMat = None # adjacency matrix, containing weighting of edges.
+        self.threshold = 0
         
         self.hubs = []
         self.lengthEdgesRemoved = None
@@ -1220,9 +1221,9 @@ class brainObj:
 
 
     def checkrobustnessNew(self, conVal, step = 0.1, t0low = 0.):
-        ''' Robustness is a measure that starts with a fully connected graph, \
-        then reduces the threshold incrementally until the graph breaks up in \
-        to more than one connected component. The robustness level is the \
+        ''' Robustness is a measure that starts with a fully connected graph,
+        then reduces the threshold incrementally until the graph breaks up in
+        to more than one connected component. The robustness level is the
         threshold at which this occurs. 
         
         t0low is the value of the lowest starting threshold
@@ -1233,27 +1234,24 @@ class brainObj:
         '''
 
         oldThr = self.threshold
-        
-#        sgLenStart = len(components.connected.connected_component_subgraphs(self.G))
-        #print "Starting sgLen: "+str(sgLenStart)
-        sgLen = sgLenStart
-        
+                
         # new method
         # get starting threshold values
-        ths = [self.threshold, 0.5*(self.threshold), t0low0]
+        ths = [t0low, 0.5*(self.threshold), conVal]
 
         # get the connectedness for each threshold value
-        self.adjMatThresholding(edgePC = ths[0], doPrint=False)
+        self.adjMatThresholding(tVal = ths[0], doPrint=False)
         sgLen0 = len(components.connected.connected_component_subgraphs(self.G))
-        self.adjMatThresholding(edgePC = ths[1], doPrint=False)
+        self.adjMatThresholding(tVal = ths[1], doPrint=False)
         sgLen1 = len(components.connected.connected_component_subgraphs(self.G))
-        self.adjMatThresholding(edgePC = ths[2], doPrint=False)
+        self.adjMatThresholding(tVal = ths[2], doPrint=False)
         sgLen2 = len(components.connected.connected_component_subgraphs(self.G))
         sgLen = [sgLen0, sgLen1, sgLen2]                        
         
         # check to see if tlow0 is too high        
         if sgLen2 == sgLen0:
-            
+            print('wrong boundaries for robustness checking')
+            print(sgLen, ths)
             return
         
         contBool = 1
@@ -1263,28 +1261,31 @@ class brainObj:
             
             # compare connectedness of the three values, take the interval in which
             # a difference is found
-            if sgLen[0]!=sgLen[1]:
-                # case where there's a difference between 0th and 1st components
-                
-                # set thresholds
-                ths = [ths[0], 0.5*(ths[0] + ths[1]), ths[1]]
-                
-                # get corresponding connectedness
-                self.adjMatThresholding(edgePC = ths[1], doPrint=False)
-                sgLenNew = len(components.connected.connected_component_subgraphs(self.G))
-                sgLen = [sgLen[0], sgLenNew, sgLen[1]]
-                                
-            elif sgLen[1]!=sgLen[2]:
+            if sgLen[1]!=sgLen[2]:
                 # case where there's a difference between 1st and 2nd components
                 
                 # get thresholds
                 ths = [ths[1], 0.5*(ths[1] + ths[2]), ths[2]]
                 
                 # get corresponding connectedness
-                self.adjMatThresholding(edgePC = ths[1], doPrint=False)
+                self.adjMatThresholding(tVal = ths[1], doPrint=False)
                 sgLenNew = len(components.connected.connected_component_subgraphs(self.G))
+                
                 sgLen = [sgLen[1], sgLenNew, sgLen[2]]                
                 
+
+            elif sgLen[0]!=sgLen[1]:
+                # case where there's a difference between 0th and 1st components
+                
+                # set thresholds
+                ths = [ths[0], 0.5*(ths[0] + ths[1]), ths[1]]
+                
+                # get corresponding connectedness
+                self.adjMatThresholding(tVal = ths[1], doPrint=False)
+                sgLenNew = len(components.connected.connected_component_subgraphs(self.G))
+                sgLen = [sgLen[0], sgLenNew, sgLen[1]]
+                                
+
             else:
                 # case where all components are the same (condition satisfied)
                 contBool = 0
@@ -1292,6 +1293,8 @@ class brainObj:
             # check if final condition satisfied
             if abs(ths[2]-ths[1])<step:
                 contBool = 0
+
+            print(sgLen, ths)                
                 
             # stop if too slow
             count = count+1
@@ -1306,8 +1309,8 @@ class brainObj:
 
 
         # reset threshold to old value
-        self.threshold = oldThreshold
-        self.adjMatThresholding(edgePC = self.threshold, doPrint = False)
+        self.threshold = oldThr
+        self.adjMatThresholding(tVal = self.threshold, doPrint = False)
 
         # return the maximum threshold value where they were found to be the same
         return ths[1]            
