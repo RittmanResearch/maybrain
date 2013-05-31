@@ -1220,7 +1220,7 @@ class brainObj:
         return conVal+ (2*step)
 
 
-    def checkrobustnessNew(self, conVal, step = 0.1, t0low = 0.):
+    def checkrobustnessNew(self, minThr = None, maxThr = None, step = 0.1, t0low = 0.):
         ''' Robustness is a measure that starts with a fully connected graph,
         then reduces the threshold incrementally until the graph breaks up in
         to more than one connected component. The robustness level is the
@@ -1234,6 +1234,13 @@ class brainObj:
         '''
 
         oldThr = self.threshold
+
+        if not(minThr):
+            minThr = min(self.adjMat)
+        if not(maxThr):
+            maxThr = max(self.adjMat)
+            
+            
         
         print('min max of adjmat')
         print(min(self.adjMat), max(self.adjMat))
