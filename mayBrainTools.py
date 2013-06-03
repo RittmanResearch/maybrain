@@ -513,11 +513,11 @@ class brainObj:
         ''' update the adjacency matrix for a single edge '''
         
         try:
-            w = self.G[e[0]][e[1]]['weight']
-            adjMat[e[0], e[1]] = w
-            adjMat[e[1], e[0]] = w
+            w = self.G[edge[0]][edge[1]]['weight']
+            adjMat[edge[0], edge[1]] = w
+            adjMat[edge[1], edge[0]] = w
         except:
-            print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )
+            print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
             
         
     
@@ -886,8 +886,7 @@ class brainObj:
             
             # update the adjacency matrix (essential if robustness is to be calculated)            
             if updateAdjmat:
-                self.adjMat[dyingEdge[0]][dyingEdge[1]] = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
-                self.adjMat[dyingEdge[1]][dyingEdge[0]] = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
+                self.updateAdjMat(dyingEdge)
                             
             # add nodes to toxic list if the spread option is selected
             if spread:
@@ -1249,11 +1248,10 @@ class brainObj:
 #                
         # new method
         # get starting threshold values
-        mul=0.5
         if not edgePCBool:
-            ths = [t0low, mul*(self.threshold), self.threshold]
+            ths = [t0low, np.mean(np.array((self.threshold, t0low))), self.threshold]
         else:
-            ths = [self.edgePC, self.edgePC + (mul*(1-self.edgePC)), 1.]
+            ths = [self.edgePC, np.mean(np.array(((self.edgePC), 1.))), 1.]
         ths.sort()
         
         if edgePCBool:
@@ -1285,7 +1283,7 @@ class brainObj:
                 # case where there's a difference between 0th and 1st components
                 
                 # set thresholds
-                ths = [ths[0], mul*(ths[0] + ths[1]), ths[1]]
+                ths = [ths[0], np.mean(np.array((ths[0], ths[1]))), ths[1]]
                 
                 # get corresponding connectedness
                 if not edgePCBool:
@@ -1299,7 +1297,7 @@ class brainObj:
                 # case where there's a difference between 1st and 2nd components
                 
                 # get thresholds
-                ths = [ths[1], mul*(ths[1] + ths[2]), ths[2]]
+                ths = [ths[1], np.mean(np.array((ths[1], ths[2]))), ths[2]]
                 
                 # get corresponding connectedness
                 if not edgePCBool:

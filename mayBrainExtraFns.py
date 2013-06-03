@@ -110,7 +110,7 @@ class extraFns():
         writer = csv.writer(f,delimiter='\t')       
         cc_pl =  [None,None]
         
-        # check biggest connected component is define
+        # check biggest connected component is defined
         if not brain.bigconnG:
             brain.largestConnComp()
     
