@@ -1220,7 +1220,7 @@ class brainObj:
         return conVal+ (2*step)
 
 
-    def checkrobustnessNew(self, minThr = None, maxThr = None, step = 0.1, t0low = -1., edgePC=False):
+    def checkrobustnessNew(self, minThr = None, maxThr = None, decs = 1, t0low = -1., edgePCBool=False):
         ''' Robustness is a measure that starts with a fully connected graph,
         then reduces the threshold incrementally until the graph breaks up in
         to more than one connected component. The robustness level is the
@@ -1230,6 +1230,8 @@ class brainObj:
         step is the resolution of the threshold to find
         
         uses a simple 3 point interpolation algorithm 
+        
+        decs gives the number of decimal places for the output
         
         '''
 
@@ -1247,20 +1249,26 @@ class brainObj:
 #                
         # new method
         # get starting threshold values
-        if not edgePC:
-            ths = [t0low, 0.5*(self.threshold), self.threshold]
+        mul=0.5
+        if not edgePCBool:
+            ths = [t0low, mul*(self.threshold), self.threshold]
         else:
-            ths = [0., 0.5*(self.edgePC), self.edgePC]
+            ths = [self.edgePC, mul*(self.edgePC), 1.]
         ths.sort()
         
+        if edgePCBool:
+            ths.reverse()
+            
         # get the connectedness for each threshold value
         sgLen=[]
         for n in range(3):
-            if not edgePC:
+            if not edgePCBool:
                 self.adjMatThresholding(tVal = ths[n], doPrint=False)
             else:
-                self.adjMatThresholding(edgePC = ths[n], doPrint=False, rethreshold=True)
+                self.adjMatThresholding(edgePC = ths[n], doPrint=False)
             sgLen.append(len(components.connected.connected_component_subgraphs(self.G)))
+        
+        
         
         # check to see if tlow0 is too high        
         if sgLen[2] == sgLen[0]:
@@ -1279,13 +1287,13 @@ class brainObj:
                 # case where there's a difference between 0th and 1st components
                 
                 # set thresholds
-                ths = [ths[0], 0.5*(ths[0] + ths[1]), ths[1]]
+                ths = [ths[0], mul*(ths[0] + ths[1]), ths[1]]
                 
                 # get corresponding connectedness
-                if not edgePC:
+                if not edgePCBool:
                     self.adjMatThresholding(tVal = ths[1], doPrint=False)
                 else:
-                    self.adjMatThresholding(edgePC = ths[1], doPrint=False, rethreshold=True)
+                    self.adjMatThresholding(edgePC = ths[1], doPrint=False)
                 sgLenNew = len(components.connected.connected_component_subgraphs(self.G))
                 sgLen = [sgLen[0], sgLenNew, sgLen[1]]
                                 
@@ -1293,13 +1301,13 @@ class brainObj:
                 # case where there's a difference between 1st and 2nd components
                 
                 # get thresholds
-                ths = [ths[1], 0.5*(ths[1] + ths[2]), ths[2]]
+                ths = [ths[1], mul*(ths[1] + ths[2]), ths[2]]
                 
                 # get corresponding connectedness
-                if not edgePC:
+                if not edgePCBool:
                     self.adjMatThresholding(tVal = ths[1], doPrint=False)
                 else:
-                    self.adjMatThresholding(edgePC = ths[1], doPrint=False, rethreshold=True)
+                    self.adjMatThresholding(edgePC = ths[1], doPrint=False)
                 sgLenNew = len(components.connected.connected_component_subgraphs(self.G))
                 
                 sgLen = [sgLen[1], sgLenNew, sgLen[2]]                
@@ -1308,15 +1316,15 @@ class brainObj:
 
             else:
                 # case where all components are the same (condition satisfied)
-                print(sgLen, ths)
+#                print(sgLen, ths)
                 contBool = 0
             
             # check if final condition satisfied
-            if abs(ths[2]-ths[1])<step:
+            if abs(ths[2]-ths[1])< (0.1**decs):
                 print(sgLen, ths)
                 contBool = 0
 
-            print(sgLen, ths)
+#            print(sgLen, ths)
                 
             # stop if too slow
             count = count+1
@@ -1331,15 +1339,14 @@ class brainObj:
 
 
         # reset threshold to old value
-        if edgePC:
+        if edgePCBool:
             outThs = self.threshold
         self.threshold = oldThr
         self.adjMatThresholding(tVal = self.threshold, doPrint = False)
 
         # return the maximum threshold value where they were found to be the same
-        # SHOULD ROUND VALUE BEFORE RETURNING
-        fm = "{:."+str(len(str(step))-2) +"f}"
-        if not edgePC:
+        fm = "{:."+str(decs)+"f}"
+        if not edgePCBool:
             return fm.format(ths[2])
         else:
             return([fm.format(v) for v in [ths[2],outThs]])
