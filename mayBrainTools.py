@@ -102,7 +102,7 @@ class brainObj:
         linesStr = reader[startLine:]
         lines = []
         for l in linesStr:
-            lines.append(map(float, [v if v != "nan" else np.nan for v in split(l, sep=delimiter)]))
+            lines.append(map(float, [v if v != "NA" else np.nan for v in split(l, sep=delimiter)]))
         nodecount = len(lines)                
 
         # close file                
