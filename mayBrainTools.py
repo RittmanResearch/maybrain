@@ -1235,20 +1235,16 @@ class brainObj:
 
         oldThr = self.threshold
 
+        # get min/max thresholds
         if not(minThr):
             minThr = min(self.adjMat)
         if not(maxThr):
             maxThr = max(self.adjMat)
-            
-            
-        
-        print('min max of adjmat')
-        print(min(self.adjMat), max(self.adjMat))
-                
-        # new method
+                            
         # get starting threshold values
-        ths = [t0low, 0.5*(self.threshold), conVal]
-        ths.sort()
+        midThr = 0.5*(maxThr+minThr)
+        ths = [minThr, midThr, maxThr]
+        ths.sort() # it's important that the values are in the correct order!
 
         # get the connectedness for each threshold value
         self.adjMatThresholding(tVal = ths[0], doPrint=False)
@@ -1273,7 +1269,6 @@ class brainObj:
             # compare connectedness of the three values, take the interval in which
             # a difference is found
 
-
             if sgLen[0]!=sgLen[1]:
                 # case where there's a difference between 0th and 1st components
                 
@@ -1296,8 +1291,6 @@ class brainObj:
                 sgLenNew = len(components.connected.connected_component_subgraphs(self.G))
                 
                 sgLen = [sgLen[1], sgLenNew, sgLen[2]]                
-                
-
 
             else:
                 # case where all components are the same (condition satisfied)
@@ -1318,7 +1311,7 @@ class brainObj:
                 
         # check that something happened in the above loop
         if count == 1:
-            print("starting threshold error in robustness check, is t0low0 value correct?"+ str(t0low0))
+            print("starting threshold error in robustness check, is thrMin value correct?"+ str(t0low0))
 
 
         # reset threshold to old value
