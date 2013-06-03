@@ -427,10 +427,10 @@ def efficiencywrite(brain,outfilebase = "brain", append=True):
     effs = {"Globalefficiency":None,"Localefficiency":None}
     
     # local efficiency
-    effs["Localefficiency"] = analysis.localefficiency(brain.G)
+    effs["Localefficiency"] = analysis.localefficiency(brain.bigconnG)
         
     # global efficiency
-    effs["Globalefficiency"] = analysis.globalefficiency(brain.G)
+    effs["Globalefficiency"] = analysis.globalefficiency(brain.bigconnG)
     
     # write results to file
     writer = csv.DictWriter(f,fieldnames = effs.keys())

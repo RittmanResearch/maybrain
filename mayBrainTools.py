@@ -1220,7 +1220,7 @@ class brainObj:
         return conVal+ (2*step)
 
 
-    def checkrobustnessNew(self, minThr = None, maxThr = None, decs = 1, t0low = -1., edgePCBool=False):
+    def checkrobustnessNew(self, decs = 1, t0low = -1., edgePCBool=False):  #, minThr = None, maxThr = None
         ''' Robustness is a measure that starts with a fully connected graph,
         then reduces the threshold incrementally until the graph breaks up in
         to more than one connected component. The robustness level is the
@@ -1253,7 +1253,7 @@ class brainObj:
         if not edgePCBool:
             ths = [t0low, mul*(self.threshold), self.threshold]
         else:
-            ths = [self.edgePC, mul*(self.edgePC), 1.]
+            ths = [self.edgePC, self.edgePC + (mul*(1-self.edgePC)), 1.]
         ths.sort()
         
         if edgePCBool:
@@ -1267,8 +1267,6 @@ class brainObj:
             else:
                 self.adjMatThresholding(edgePC = ths[n], doPrint=False)
             sgLen.append(len(components.connected.connected_component_subgraphs(self.G)))
-        
-        
         
         # check to see if tlow0 is too high        
         if sgLen[2] == sgLen[0]:
@@ -1321,7 +1319,7 @@ class brainObj:
             
             # check if final condition satisfied
             if abs(ths[2]-ths[1])< (0.1**decs):
-                print(sgLen, ths)
+#                print(sgLen, ths)
                 contBool = 0
 
 #            print(sgLen, ths)
