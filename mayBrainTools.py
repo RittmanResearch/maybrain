@@ -499,12 +499,12 @@ class brainObj:
         
         for e in self.G.edges():
             try:
-                w = self.G[e[0]][e[1]]['weight']
+                w = self.G.edge[e[0]][e[1]]['weight']
                 adjMat[e[0], e[1]] = w
                 adjMat[e[1], e[0]] = w
             except:
                 #print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )
-                adjMat[e[1], e[1]] = np.nan
+                adjMat[e[0], e[1]] = np.nan
 
         self.adjMat = adjMat
         
@@ -514,12 +514,13 @@ class brainObj:
         ''' update the adjacency matrix for a single edge '''
         
         try:
-            w = self.G[edge[0]][edge[1]]['weight']
+            w = self.G.edge[edge[0]][edge[1]]['weight']
             self.adjMat[edge[0], edge[1]] = w
             self.adjMat[edge[1], edge[0]] = w
         except:
             print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
-            
+            self.adjMat[edge[0], edge[1]] = np.nan
+            self.adjMat[edge[1], edge[0]] = np.nan
         
     
     def findSpatiallyNearest(self, nodeList):
@@ -886,8 +887,8 @@ class brainObj:
                 self.G[dyingEdge[0]][dyingEdge[1]]['weight'] += weightloss
             
             # update the adjacency matrix (essential if robustness is to be calculated)            
-            #if updateAdjmat:
-             #   self.updateAdjMat(dyingEdge)
+            if updateAdjmat:
+                self.updateAdjMat(dyingEdge)
                             
             # add nodes to toxic list if the spread option is selected
             if spread:
@@ -1220,7 +1221,7 @@ class brainObj:
         return conVal+ (2*step)
 
 
-    def checkrobustnessNew(self, decs = 1, t0low = -1., edgePCBool=False):  #, minThr = None, maxThr = None
+    def checkrobustnessNew(self, decs = 1, t0low = 1., edgePCBool=False):  #, minThr = None, maxThr = None
         ''' Robustness is a measure that starts with a fully connected graph,
         then reduces the threshold incrementally until the graph breaks up in
         to more than one connected component. The robustness level is the
@@ -1252,7 +1253,7 @@ class brainObj:
         if not edgePCBool:
             ths = [t0low, np.mean(np.array((self.threshold, t0low))), self.threshold]
         else:
-            ths = [self.edgePC, np.mean(np.array(((self.edgePC), 1.))), 1.]
+            ths = [self.edgePC, np.mean(np.array(((self.edgePC), 0.))), 0.]
         ths.sort()
         
         if edgePCBool:
