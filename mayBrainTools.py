@@ -27,15 +27,15 @@ import string,os,csv,community
 from shutil import move
 import networkx as nx
 import numpy as np
-from networkx.drawing import *
+#from networkx.drawing import *
 from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
 from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort, min, max
-from mayavi import mlab
+#from mayavi import mlab
 from string import split
-import nibabel as nb
-from mayavi.core.ui.api import MlabSceneModel, SceneEditor
+#import nibabel as nb
+#from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 
 class brainObj:
     """
@@ -503,19 +503,20 @@ class brainObj:
                 adjMat[e[0], e[1]] = w
                 adjMat[e[1], e[0]] = w
             except:
-                print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )            
+                #print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )
+                adjMat[e[1], e[1]] = np.nan
 
         self.adjMat = adjMat
         
-        return adjMat        
+        return adjMat
         
     def updateAdjMat(self, edge):
         ''' update the adjacency matrix for a single edge '''
         
         try:
             w = self.G[edge[0]][edge[1]]['weight']
-            adjMat[edge[0], edge[1]] = w
-            adjMat[edge[1], edge[0]] = w
+            self.adjMat[edge[0], edge[1]] = w
+            self.adjMat[edge[1], edge[0]] = w
         except:
             print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
             
@@ -885,8 +886,8 @@ class brainObj:
                 self.G[dyingEdge[0]][dyingEdge[1]]['weight'] += weightloss
             
             # update the adjacency matrix (essential if robustness is to be calculated)            
-            if updateAdjmat:
-                self.updateAdjMat(dyingEdge)
+            #if updateAdjmat:
+             #   self.updateAdjMat(dyingEdge)
                             
             # add nodes to toxic list if the spread option is selected
             if spread:
@@ -907,8 +908,8 @@ class brainObj:
             if reDefineEdges:
                 riskEdges = nx.edges(self.G, nodeList)
         
-        # Update adjacency matrix to reflect changes
-        self.reconstructAdjMat()
+        ## Update adjacency matrix to reflect changes
+        #self.reconstructAdjMat()
         
         print "Number of toxic nodes: "+str(len(nodeList))
         
