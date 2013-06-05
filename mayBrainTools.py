@@ -111,8 +111,8 @@ class brainObj:
 
         # create adjacency matrix as an array
         # would it be more memory efficient to save the adjacency matrix as a memory map?
-        # self.adjMat = np.memmap("adjmat.mat",dtype="float32", size=(len(lines), len(lines)), mode="w+")
-        self.adjMat = array(lines)       # array of data
+        self.adjMat = np.memmap("adjmat.mat",dtype="float32", shape=(len(lines), len(lines)), mode="w+")
+        self.adjMat[:] = array(lines)       # array of data
         
         # check if it's diagonal
         sh = shape(self.adjMat)
@@ -124,7 +124,7 @@ class brainObj:
         self.directed = directed
         if directed:
             self.G = nx.DiGraph()
-
+            
         # create nodes on graph
         self.G.add_nodes_from(range(nodecount))  # creates one node for every line in the adjacency matrix
         
