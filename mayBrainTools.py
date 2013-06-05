@@ -235,10 +235,10 @@ class brainObj:
         nodecount = len(self.G.nodes())
             
         # get the number of edges to link
-        if edgePC:
+        if not edgePC == None:  # needs to be written this way in case edgePC is 0
             # find threshold as a percentage of total possible edges
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
-            edgeNum = int(edgePC * nodecount * (nodecount-1)) # possible /2 in here??
+            edgeNum = int(edgePC * nodecount * (nodecount-1))
             self.edgePC=edgePC
             
         elif totalEdges:
@@ -248,7 +248,7 @@ class brainObj:
             edgeNum = -1
             
         # get threshold
-        if edgeNum>=0:
+        if edgeNum>0:
             # get threshold value
             if rethreshold:
                 weights = [self.G[v[0]][v[1]]['weight'] for v in self.G.edges()]
@@ -266,6 +266,8 @@ class brainObj:
                     return
             if doPrint:
                 print("Threshold set at: "+str(threshold))
+        elif edgeNum==0.:
+            threshold=1.
         else:
             threshold  = tVal      
             
@@ -781,36 +783,36 @@ class brainObj:
             self.clusternames = [0]
             clusters = None
     
-        # set layout position for plotting
-        xy = (0,400)
-        try:
-            angle = 360/len(self.clusternames)
-        except:
-            angle = 180
-        
-        points = {0:xy}
-        for n in range(1,len(self.clusternames)):
-            x = points[n-1][0]
-            y = points[n-1][1]
-            points[n] = (x*np.cos(angle)-y*np.sin(angle),x*np.sin(angle)+y*np.cos(angle))
-        
-        self.pos = {}
-        
-        for clust in self.clusternames:
-            clusternodes = [v for v in self.G.nodes() if self.G.node[v]['cluster']==clust]
-            clusteredges = [v for v in self.G.edges(clusternodes) if v[0] in clusternodes and v[1] in clusternodes]
-            
-            subgraph = nx.Graph()
-            subgraph.add_nodes_from(clusternodes)
-            subgraph.add_edges_from(clusteredges)
-            
-            if drawpos:
-                centre = points[clust]
-                
-                clusterpos = nx_agraph.graphviz_layout(subgraph,prog='neato')
-               
-                for node in clusternodes:
-                    self.pos[node] = (clusterpos[node][0]+centre[0],clusterpos[node][1]+centre[1])
+#        # set layout position for plotting
+#        xy = (0,400)
+#        try:
+#            angle = 360/len(self.clusternames)
+#        except:
+#            angle = 180
+#        
+#        points = {0:xy}
+#        for n in range(1,len(self.clusternames)):
+#            x = points[n-1][0]
+#            y = points[n-1][1]
+#            points[n] = (x*np.cos(angle)-y*np.sin(angle),x*np.sin(angle)+y*np.cos(angle))
+#        
+#        self.pos = {}
+#        
+#        for clust in self.clusternames:
+#            clusternodes = [v for v in self.G.nodes() if self.G.node[v]['cluster']==clust]
+#            clusteredges = [v for v in self.G.edges(clusternodes) if v[0] in clusternodes and v[1] in clusternodes]
+#            
+#            subgraph = nx.Graph()
+#            subgraph.add_nodes_from(clusternodes)
+#            subgraph.add_edges_from(clusteredges)
+#            
+#            if drawpos:
+#                centre = points[clust]
+#                
+#                clusterpos = nx_agraph.graphviz_layout(subgraph,prog='neato')
+#               
+#                for node in clusternodes:
+#                    self.pos[node] = (clusterpos[node][0]+centre[0],clusterpos[node][1]+centre[1])
     
         # calculate modularity
         if clusters:
@@ -853,6 +855,7 @@ class brainObj:
             reDefineEdges=False
             
         # iterate number of steps
+        self.lengthEdgesRemoved = []
         while limit>0:
             print len(nodeList)
             if not riskEdges:
@@ -885,6 +888,11 @@ class brainObj:
             else:
                 loss = weightloss
                 self.G[dyingEdge[0]][dyingEdge[1]]['weight'] += weightloss
+            
+            try:
+                self.lengthEdgesRemoved.append(np.linalg.norm( np.array((self.G.node[dyingEdge[0]]['xyz'])) - np.array((self.G.node[dyingEdge[1]]['xyz']))  ))
+            except:
+                pass
             
             # update the adjacency matrix (essential if robustness is to be calculated)            
             if updateAdjmat:
@@ -1221,7 +1229,7 @@ class brainObj:
         return conVal+ (2*step)
 
 
-    def checkrobustnessNew(self, decs = 1, t0low = 1., edgePCBool=False):  #, minThr = None, maxThr = None
+    def checkrobustnessNew(self, decs = 4, t0low = 1., edgePCBool=False):  #, minThr = None, maxThr = None
         ''' Robustness is a measure that starts with a fully connected graph,
         then reduces the threshold incrementally until the graph breaks up in
         to more than one connected component. The robustness level is the
@@ -1250,10 +1258,13 @@ class brainObj:
 #                
         # new method
         # get starting threshold values
-        if not edgePCBool:
+        if not edgePCBool and self.threshold:
             ths = [t0low, np.mean(np.array((self.threshold, t0low))), self.threshold]
-        else:
+        elif edgePCBool:
             ths = [self.edgePC, np.mean(np.array(((self.edgePC), 0.))), 0.]
+        else:
+            ths= [t0low, 0.5, 0.]
+            
         ths.sort()
         
         if edgePCBool:
@@ -1267,7 +1278,6 @@ class brainObj:
             else:
                 self.adjMatThresholding(edgePC = ths[n], doPrint=False)
             sgLen.append(len(components.connected.connected_component_subgraphs(self.G)))
-        
         # check to see if tlow0 is too high        
         if sgLen[2] == sgLen[0]:
             print('wrong boundaries for robustness checking')
@@ -1316,7 +1326,7 @@ class brainObj:
                 # case where all components are the same (condition satisfied)
 #                print(sgLen, ths)
                 contBool = 0
-            
+                            
             # check if final condition satisfied
             if abs(ths[2]-ths[1])< (0.1**decs):
 #                print(sgLen, ths)

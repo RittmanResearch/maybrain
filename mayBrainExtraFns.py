@@ -8,7 +8,7 @@ Functions that used to be at the end of networkutils_bin_camb
 import os
 import numpy as np
 import networkx as nx
-import csv
+#import csv
 from networkx.algorithms import cluster
 from networkx.algorithms import centrality
 import random
@@ -102,12 +102,11 @@ class extraFns():
         else:
             f= open(outfile,"wb")
             if smallWorldness:
-                line = 'ClusterCoeff\tAvShortPathLength\tSmallWorldness\n'
+                line = 'ClusterCoeff,AvShortPathLength,SmallWorldness\n'
             else:
-                line = 'ClusterCoeff\tAvShortPathLength\n'
+                line = 'ClusterCoeff,AvShortPathLength\n'
             f.writelines(line)
         
-        writer = csv.writer(f,delimiter='\t')       
         cc_pl =  [None,None]
         
         # check biggest connected component is defined
@@ -156,7 +155,7 @@ class extraFns():
             sw = (cc_pl[0]/randcc_pl[0]) / (cc_pl[1]/randcc_pl[1])
             cc_pl.append(sw)
             
-        writer.writerow(cc_pl)
+        f.writelines(','.join([str(v) for v in cc_pl])+'\n')
         f.close()
             
 ## Everything below this line will soon be deprecated. It's currently kept for backwards
@@ -176,19 +175,14 @@ def degreewrite(brain,outfilebase="brain", append=True):
     
     if append and os.path.exists(outfile):
         f = open(outfile,"ab")
-        nodewriter = csv.DictWriter(f,fieldnames = brain.G.nodes())
         
     else:
         f= open(outfile,"wb")
-        nodewriter = csv.DictWriter(f,fieldnames = brain.G.nodes())
-        headers = dict((n,n) for n in brain.G.nodes())
-        nodewriter.writerow(headers)
-        
-    degs = brain.G.degree()
-    degstowrite = dict((n,None) for n in brain.G.nodes())
-    for node in degs.keys():
-        degstowrite[node] = degs[node]
-    nodewriter.writerow(degstowrite)
+        f.writelines(','.join([str(v) for v in brain.G.nodes()])+'\n')
+    
+    degDict = brain.G.degree()
+    f.writelines(','.join([str(degDict[v]) for v in sorted(degDict.iterkeys()) ])+'\n')
+
     f.close()
     
     # hub degrees
@@ -221,22 +215,14 @@ def degreewrite(brain,outfilebase="brain", append=True):
     
     deghubs = [hub for hub in brain.hubs if hub in brain.G] # hubs within largest connected graph component
 
-    # write hub identifies to file    
-    idwriter = csv.DictWriter(f,fieldnames = brain.hubs)
-    hubwriter = csv.DictWriter(g,fieldnames = brain.hubs)
+    # write hub identifies to file   
+    g.writelines(','.join([str(v) for v in brain.hubs])+'\n')
     
-    headers = dict((n,n) for n in brain.hubs)
-    hubwriter.writerow(headers)
-    
-    degstowrite = dict((n,None) for n in brain.hubs) # empty dictionary to populate with degree data
-
     try:
         degs = brain.G.degree(deghubs)
-        for node in degs.keys():
-            degstowrite[node] = degs[node]
+        f.writelines(','.join([ str(degs[v]) for v in sorted(degs.iterkeys()) ])+'\n')
     except:
         print "no hubs in largest connected component"
-    idwriter.writerow(degstowrite)
     f.close()
     g.close()
     
@@ -254,8 +240,7 @@ def degreewrite(brain,outfilebase="brain", append=True):
         
     degreeHist = nx.degree_histogram(brain.G)
     
-    histwriter = csv.writer(f)
-    histwriter.writerow(degreeHist)
+    f.writelines(','.join([str(v) for v in degreeHist])+'\n')
     f.close()
         
 
@@ -276,19 +261,14 @@ def betweennesscentralitywrite(brain,outfilebase = "brain", append=True):
     
     if append and os.path.exists(outfile):
         f= open(outfile,"ab")
-        writer = csv.DictWriter(f,fieldnames = brain.G.nodes())
         
     else:
         f = open(outfile,"wb")
-        writer = csv.DictWriter(f,fieldnames = brain.G.nodes())
-        headers = dict((n,n) for n in brain.G.nodes())
-        writer.writerow(headers)
+        f.writelines(','.join([str(v) for v in brain.G.nodes()])+'\n')
         
-    centralities = centrality.betweenness_centrality(brain.G)  # calculate centralities for largest connected component
-    nodecentralitiestowrite = dict((n,None) for n in brain.G.nodes())   # create a blank dictionary of all nodes in the graph
-    for node in centralities:
-        nodecentralitiestowrite[node] = centralities[node]    # populate the blank dictionary with centrality values
-    writer.writerow(nodecentralitiestowrite)                    # write out centrality values
+        
+    centralities = centrality.closeness_centrality(brain.G)  # calculate centralities for largest connected component
+    f.writelines(','.join([str(centralities[v]) for v in sorted(centralities.iterkeys())]) + '\n')                    # write out centrality values
     f.close()
     
     # hub centrality
@@ -318,19 +298,15 @@ def betweennesscentralitywrite(brain,outfilebase = "brain", append=True):
         
     centhubs = [hub for hub in brain.hubs if hub in brain.G] # hubs within largest connected graph component
 
-    # write hub identifies to file    
-    writer = csv.DictWriter(f,fieldnames = brain.hubs)
-    hubwriter = csv.DictWriter(g,fieldnames = brain.hubs)
-    
-    headers = dict((n,n) for n in brain.hubs)         # dictionary of all hubs in network to write
-    hubwriter.writerow(headers)
+    # write hub identifies to file      
+    g.writelines(','.join([ str(v) for v in brain.hubs]) + '\n')
     
     hubcentralitieistowrite = dict((n,None) for n in brain.hubs) # empty dictionary to populate with centralities data
 
     for hub in centhubs:
-        hubcentralitieistowrite[hub] = nodecentralitiestowrite[hub]
+        hubcentralitieistowrite[hub] = centralities[hub]
         
-    writer.writerow(hubcentralitieistowrite)
+    f.writelines(','.join([ str(v) for v in sorted(hubcentralitieistowrite.iterkeys())]) +'\n')
     f.close()
     g.close()
     
@@ -348,20 +324,14 @@ def closenesscentralitywrite(brain,outfilebase = "brain", append=True):
     
     if append and os.path.exists(outfile):
         f= open(outfile,"ab")
-        writer = csv.DictWriter(f,fieldnames = brain.G.nodes())
         
     else:
         f = open(outfile,"wb")
-        writer = csv.DictWriter(f,fieldnames = brain.G.nodes())
-        headers = dict((n,n) for n in brain.G.nodes())
-        writer.writerow(headers)
+        f.writelines(','.join([str(v) for v in brain.G.nodes()])+'\n')
         
         
     centralities = centrality.closeness_centrality(brain.G)  # calculate centralities for largest connected component
-    nodecentralitiestowrite = dict((n,None) for n in brain.G.nodes())   # create a blank dictionary of all nodes in the graph
-    for node in centralities:
-        nodecentralitiestowrite[node] = centralities[node]    # populate the blank dictionary with centrality values
-    writer.writerow(nodecentralitiestowrite)                    # write out centrality values
+    f.writelines(','.join([str(centralities[v]) for v in sorted(centralities.iterkeys())]) + '\n')                    # write out centrality values
     f.close()
     
     # hub centrality
@@ -391,19 +361,15 @@ def closenesscentralitywrite(brain,outfilebase = "brain", append=True):
         
     centhubs = [hub for hub in brain.hubs if hub in brain.G] # hubs within largest connected graph component
 
-    # write hub identifies to file    
-    writer = csv.DictWriter(f,fieldnames = brain.hubs)
-    hubwriter = csv.DictWriter(g,fieldnames = brain.hubs)
-    
-    headers = dict((n,n) for n in brain.hubs)         # dictionary of all hubs in network to write
-    hubwriter.writerow(headers)
+    # write hub identifies to file       
+    g.writelines(','.join([ str(v) for v in brain.hubs ])+'\n')
     
     hubcentralitieistowrite = dict((n,None) for n in brain.hubs) # empty dictionary to populate with centralities data
 
     for hub in centhubs:
-        hubcentralitieistowrite[hub] = nodecentralitiestowrite[hub]
+        hubcentralitieistowrite[hub] = centralities[hub]
         
-    writer.writerow(hubcentralitieistowrite)
+    f.writelines(','.join([str(hubcentralitieistowrite[v]) for v in sorted(hubcentralitieistowrite.iterkeys())])+'\n')
     f.close()
     g.close()
 
@@ -431,14 +397,11 @@ def efficiencywrite(brain,outfilebase = "brain", append=True):
         
     # global efficiency
     effs["Globalefficiency"] = analysis.globalefficiency(brain.bigconnG)
-    
-    # write results to file
-    writer = csv.DictWriter(f,fieldnames = effs.keys())
-    
+
     # write headers at the top of the file if append not specified
     if not append:
         f.writelines("Localefficiency,Globalefficiency\n")
-    writer.writerow(effs)
+    f.writelines(','.join([str(effs['Globalefficiency']), str(effs["Localefficiency"])])+'\n')
     f.close()
 
 def modularstructure(brain,outfilebase = "brain", redefine_clusters=True, append=True):
@@ -462,8 +425,7 @@ def modularstructure(brain,outfilebase = "brain", redefine_clusters=True, append
     else:
         f= open(outfile,"wb")
 
-    writer = csv.writer(f,delimiter='\t')
-    writer.writerow([brain.modularity])
+    f.writelines("{:0.5f}".format(brain.modularity)+'\n')
     f.close()
 
 def writeEdgeLengths(brain,outfilebase = "brain", append=True):
@@ -478,9 +440,11 @@ def writeEdgeLengths(brain,outfilebase = "brain", append=True):
         
         else:
             f= open(outfile,"wb")
-            
-        writer = csv.writer(f,delimiter='\t')
-        writer.writerow([brain.lengthEdgesRemoved])
+        
+        try:
+            f.writelines(','.join([str(v) for v in brain.lengthEdgesRemoved])+'\n')
+        except TypeError:
+            f.writelines('NA\n')
         f.close()
         
     except AttributeError:
@@ -492,12 +456,14 @@ def writeEdgeLengths(brain,outfilebase = "brain", append=True):
         edgeLengths.append(np.linalg.norm(np.array(brain.G.node[edge[0]]['xyz']) - np.array(brain.G.node[edge[1]]['xyz'])))
         
     meanEdgeLengths = np.mean(np.absolute(edgeLengths))
+    medianEdgeLengths = np.median(np.absolute(edgeLengths))
     
     hubEdgeLengths = []
     for edge in brain.G.edges(brain.hubs):
         hubEdgeLengths.append(np.linalg.norm(np.array(brain.G.node[edge[0]]['xyz']) - np.array(brain.G.node[edge[1]]['xyz'])))
 
     meanHubLengths = np.mean(np.absolute(hubEdgeLengths))
+    medianHubEdgeLengths = np.median(np.absolute(hubEdgeLengths))
     
     outfile = outfilebase+'_meanEdgeLengths'
     
@@ -510,10 +476,9 @@ def writeEdgeLengths(brain,outfilebase = "brain", append=True):
             
     else:
         f= open(outfile,"wb")
-        f.writelines("MeanEdgeLengths\tMeanHubEdgeLengths\n")
+        f.writelines("MeanEdgeLengths,MeanHubEdgeLengths,MedianEdgeLneghts,MedianHubEdgeLengths\n")
         
-    writer = csv.writer(f,delimiter='\t')
-    writer.writerow([meanEdgeLengths, meanHubLengths])
+    f.writelines(','.join([str(v) for v in [meanEdgeLengths, meanHubLengths, medianEdgeLengths, medianHubEdgeLengths]])+'\n')
     f.close()
     
 def writeEdgeNumber(brain, outfilebase = "brain", append=True):
@@ -532,8 +497,7 @@ def writeEdgeNumber(brain, outfilebase = "brain", append=True):
         f.writelines("EdgeNumber\n")
         
     edgeNum = len(brain.G.edges())
-    writer = csv.writer(f,delimiter='\t')
-    writer.writerow([edgeNum])
+    f.writelines(str(edgeNum)+'\n')
     f.close()
     
 def histograms(brain, outfilebase="brain"):
