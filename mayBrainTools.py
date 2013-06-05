@@ -110,6 +110,8 @@ class brainObj:
         f.close()
 
         # create adjacency matrix as an array
+        # would it be more memory efficient to save the adjacency matrix as a memory map?
+        # self.adjMat = np.memmap("adjmat.mat",dtype="float32", size=(len(lines), len(lines)), mode="w+")
         self.adjMat = array(lines)       # array of data
         
         # check if it's diagonal

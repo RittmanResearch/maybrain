@@ -476,7 +476,7 @@ def writeEdgeLengths(brain,outfilebase = "brain", append=True):
             
     else:
         f= open(outfile,"wb")
-        f.writelines("MeanEdgeLengths,MeanHubEdgeLengths,MedianEdgeLneghts,MedianHubEdgeLengths\n")
+        f.writelines("MeanEdgeLengths,MeanHubEdgeLengths,MedianEdgeLengths,MedianHubEdgeLengths\n")
         
     f.writelines(','.join([str(v) for v in [meanEdgeLengths, meanHubLengths, medianEdgeLengths, medianHubEdgeLengths]])+'\n')
     f.close()
