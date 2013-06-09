@@ -40,7 +40,7 @@
      <enum>QTabWidget::Rounded</enum>
     </property>
     <property name="currentIndex">
-     <number>1</number>
+     <number>0</number>
     </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
@@ -58,16 +58,6 @@
       <property name="title">
        <string>Basic info</string>
       </property>
-      <widget class="QLineEdit" name="propsFilename">
-       <property name="geometry">
-        <rect>
-         <x>130</x>
-         <y>130</y>
-         <width>471</width>
-         <height>23</height>
-        </rect>
-       </property>
-      </widget>
       <widget class="QPushButton" name="adjPlot">
        <property name="enabled">
         <bool>true</bool>
@@ -95,32 +85,6 @@
        </property>
        <property name="text">
         <string>Spatial info file</string>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="propsFnameButton">
-       <property name="geometry">
-        <rect>
-         <x>620</x>
-         <y>130</y>
-         <width>21</width>
-         <height>24</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>..</string>
-       </property>
-      </widget>
-      <widget class="QLabel" name="propsLabel">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>130</y>
-         <width>121</width>
-         <height>16</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Properties file</string>
        </property>
       </widget>
       <widget class="QLabel" name="skullLabel">
@@ -197,19 +161,6 @@
         <rect>
          <x>650</x>
          <y>70</y>
-         <width>61</width>
-         <height>24</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Load</string>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="propsLoad">
-       <property name="geometry">
-        <rect>
-         <x>650</x>
-         <y>130</y>
          <width>61</width>
          <height>24</height>
         </rect>
@@ -299,18 +250,34 @@
         <string>Threshold</string>
        </property>
       </widget>
+      <zorder>adjPlot</zorder>
+      <zorder>spatialLabel</zorder>
+      <zorder>skullLabel</zorder>
+      <zorder>skullFilename</zorder>
+      <zorder>skullLoad</zorder>
+      <zorder>spatialFilename</zorder>
+      <zorder>adjFilename</zorder>
+      <zorder>adjFnameButton</zorder>
+      <zorder>brainLoad</zorder>
+      <zorder>adjLabel</zorder>
+      <zorder>spatialFnameButton</zorder>
+      <zorder>skullFnameButton</zorder>
+      <zorder>skullPlot</zorder>
+      <zorder>thresholdValue</zorder>
+      <zorder>thresholdLabel</zorder>
+      <zorder>subPlotBox</zorder>
      </widget>
      <widget class="QGroupBox" name="subPlotBox">
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>200</y>
+        <y>190</y>
         <width>791</width>
-        <height>111</height>
+        <height>171</height>
        </rect>
       </property>
       <property name="title">
-       <string>Add sub-plots</string>
+       <string>Add properties and sub-plots</string>
       </property>
       <widget class="QPushButton" name="subPlotButton">
        <property name="enabled">
@@ -318,7 +285,7 @@
        </property>
        <property name="geometry">
         <rect>
-         <x>500</x>
+         <x>660</x>
          <y>60</y>
          <width>71</width>
          <height>24</height>
@@ -331,7 +298,7 @@
       <widget class="QLineEdit" name="subPlotValue">
        <property name="geometry">
         <rect>
-         <x>180</x>
+         <x>340</x>
          <y>60</y>
          <width>113</width>
          <height>23</height>
@@ -341,7 +308,7 @@
       <widget class="QLabel" name="subPlotPropLabel">
        <property name="geometry">
         <rect>
-         <x>30</x>
+         <x>210</x>
          <y>40</y>
          <width>81</width>
          <height>16</height>
@@ -351,30 +318,10 @@
         <string>Property</string>
        </property>
       </widget>
-      <widget class="QComboBox" name="subPlotProp">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>60</y>
-         <width>111</width>
-         <height>24</height>
-        </rect>
-       </property>
-       <item>
-        <property name="text">
-         <string>Colour</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Weight</string>
-        </property>
-       </item>
-      </widget>
       <widget class="QLabel" name="subPlotValueLabel">
        <property name="geometry">
         <rect>
-         <x>180</x>
+         <x>340</x>
          <y>40</y>
          <width>61</width>
          <height>16</height>
@@ -387,7 +334,7 @@
       <widget class="QLineEdit" name="subPlotName">
        <property name="geometry">
         <rect>
-         <x>310</x>
+         <x>470</x>
          <y>60</y>
          <width>181</width>
          <height>23</height>
@@ -397,7 +344,7 @@
       <widget class="QLabel" name="subPlotNameLabel">
        <property name="geometry">
         <rect>
-         <x>320</x>
+         <x>480</x>
          <y>40</y>
          <width>181</width>
          <height>16</height>
@@ -407,14 +354,106 @@
         <string>Plot name (can be left blank)</string>
        </property>
       </widget>
+      <widget class="QLabel" name="subPlotPropLabel_2">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>40</y>
+         <width>81</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Brain</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="subPlotValue_2">
+       <property name="geometry">
+        <rect>
+         <x>340</x>
+         <y>90</y>
+         <width>113</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="propsFilename">
+       <property name="geometry">
+        <rect>
+         <x>110</x>
+         <y>120</y>
+         <width>501</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLabel" name="propsLabel">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>120</y>
+         <width>121</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Properties file</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="propsFnameButton">
+       <property name="geometry">
+        <rect>
+         <x>620</x>
+         <y>120</y>
+         <width>21</width>
+         <height>24</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>..</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="subPlotBrain">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>60</y>
+         <width>191</width>
+         <height>24</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="propsLoad">
+       <property name="geometry">
+        <rect>
+         <x>650</x>
+         <y>120</y>
+         <width>61</width>
+         <height>24</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Load</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="subPlotProp">
+       <property name="geometry">
+        <rect>
+         <x>210</x>
+         <y>60</y>
+         <width>113</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
      </widget>
      <widget class="QGroupBox" name="groupBox_3">
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>320</y>
+        <y>350</y>
         <width>521</width>
-        <height>111</height>
+        <height>91</height>
        </rect>
       </property>
       <property name="title">
@@ -665,7 +704,7 @@
        <rect>
         <x>230</x>
         <y>110</y>
-        <width>62</width>
+        <width>91</width>
         <height>23</height>
        </rect>
       </property>

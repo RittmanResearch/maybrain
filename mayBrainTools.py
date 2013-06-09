@@ -201,13 +201,53 @@ class brainObj:
         N = nb.Nifti1Image(self.parcelList, self.nbiso.get_affine(), header=self.isoHeader)
         nb.save(N, outname+'.nii')
         
+    def nodePropertiesFromFile(self, filename):
+        ''' add node properties from a file. first lines should contain the property 
+            name and the following lines tabulated node indices and property value e.g.:
+                
+            colour
+            1 red
+            2 white                
+        ''' 
+        
+        f = open(filename)
+        data = f.readlines()
+        
+        # check that there are enough lines to read
+        if len(data)<2:
+            print('no data in properties file')
+            return
+        
+        prop = data[0][:-1]       
+        
+        nodes = []
+        propVals = []
+        for l in data[1:]:
+            try:
+                vals = split(l)
+                nodes.append(int(vals[0]))
+                propVals.append(vals[1])
+            except:
+                pass
+
+        print(nodes)
+        print(propVals)
+        print(prop)
+        
+        self.inputNodeProperties(prop, nodes, propVals)
+            
+        
     def inputNodeProperties(self, propertyName, nodeList, propList):
         ''' add properties to nodes, reading from a list of nodes and a list of corresponding properties '''
         
         for ind in range(len(nodeList)):
             n = nodeList[ind]
             p = propList[ind]
-            self.G.node[n][propertyName] = p
+            print(n, propertyName, p)
+            try:
+                self.G.node[n][propertyName] = p
+            except:
+                print('property assignment failed: ' + propertyName + ' ' + str(n) + ' ' + str(p))
 
     
     ## ===========================================================================
@@ -1504,6 +1544,20 @@ class plotObj():
         # plot edges
         t = mlab.quiver3d(xe, ye, ze, xv, yv, zv, line_width = 1., mode = '2ddash', scale_mode = 'vector', scale_factor = 1., color = col, opacity = opacity)
         self.brainEdgePlots[label] = t
+        
+    def plotManyLines(xe, ye, ze, xv, yv, zv, widths = None, color = None, opacity = None):
+        ''' plot many lines with mayavi '''
+        
+        # make the connections
+        
+        # plot a scatter plot ??
+        
+        # plot the lines
+        
+        return 1
+        
+        
+    
 
     def plotBrainNodes(self, brain, nodes = None, col = (1, 1, 1), opacity = 1., label=None):
         ''' plot the nodes and edges using Mayavi '''
