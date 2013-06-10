@@ -110,7 +110,7 @@ class extraFns():
         writer = csv.writer(f,delimiter='\t')       
         cc_pl =  [None,None]
         
-        # check biggest connected component is define
+        # check biggest connected component is defined
         if not brain.bigconnG:
             brain.largestConnComp()
     
@@ -427,10 +427,10 @@ def efficiencywrite(brain,outfilebase = "brain", append=True):
     effs = {"Globalefficiency":None,"Localefficiency":None}
     
     # local efficiency
-    effs["Localefficiency"] = analysis.localefficiency(brain.G)
+    effs["Localefficiency"] = analysis.localefficiency(brain.bigconnG)
         
     # global efficiency
-    effs["Globalefficiency"] = analysis.globalefficiency(brain.G)
+    effs["Globalefficiency"] = analysis.globalefficiency(brain.bigconnG)
     
     # write results to file
     writer = csv.DictWriter(f,fieldnames = effs.keys())
