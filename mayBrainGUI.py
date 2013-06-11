@@ -102,7 +102,8 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.ui.greenValueBox.valueChanged.connect(self.setColourGreenDial)
         self.ui.blueSlider.valueChanged.connect(self.setColourBlue)
         self.ui.blueValueBox.valueChanged.connect(self.setColourBlueDial)
-        self.ui.subPlotButton.clicked.connect(self.plotSubBrain)
+        self.ui.subPlotButtonNodes.clicked.connect(self.plotSubBrainNodes)
+        self.ui.subPlotButtonEdges.clicked.connect(self.plotSubBrainEdges)
         self.ui.propsLoad.clicked.connect(self.addProperties)
         
         
@@ -237,8 +238,6 @@ class mayBrainGUI(QtGui.QMainWindow):
         # change plot button to replot
         QtCore.QObject.disconnect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
         QtCore.QObject.connect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
-                   
-
     
     def rePlotBrain(self):
         ''' plot brain with altered threhold '''        
@@ -284,25 +283,50 @@ class mayBrainGUI(QtGui.QMainWindow):
     ## =============================================
 
     ## subbrain functions
-    def plotSubBrain(self):
+    def plotSubBrainNodes(self):
+        self.plotSubBrain('nodes')
+        
+    def plotSubBrainEdges(self):
+        label = self.plotSubBrain('edges')
+        
+        # toggle visibility of nodes
+        # THIS DOESN'T WORK FOR SOME REASON...
+        self.selectedPlot = label
+        self.selectedPlotType = 'brainNode'
+        self.setVisibility()
+        
+    
+    def plotSubBrain(self, nodesOrEdges = 'nodes'):
         ''' plot a subBrain with certain properties '''
         
         # get values from ui
         prop = str(self.ui.subPlotProp.text())
         val = str(self.ui.subPlotValue.text())
+        val2 = str(self.ui.subPlotValue_2.text())
         sb = str(self.ui.subPlotBrain.currentText())
         
         # need to add check for self.ui.subPlotValue_2 box, to define a range of values
-
-        # create the subBrain
-        newName = sb+prop+val
-        self.brains[newName] = self.brains[sb].makeSubBrain(prop, val)
+        if val2!='':
+            newName = sb+prop+val+val2
+            val = {'min':float(val), 'max':float(val2)}            
+        else:            
+            # create the subBrain
+            newName = sb+prop+val
+        
+        if nodesOrEdges == 'nodes':
+            self.brains[newName] = self.brains[sb].makeSubBrain(prop, val)
+        else:
+            self.brains[newName] = self.brains[sb].makeSubBrainEdges(prop, val)
         
         # do the plot
         self.plotBrain(labelIn = newName)
         
         # add to list of plots for subBrains
         self.ui.subPlotBrain.addItem(newName)
+        
+        return newName
+        
+        
         
         
     ## =============================================

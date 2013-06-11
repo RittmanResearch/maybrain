@@ -238,7 +238,8 @@ class brainObj:
             
         
     def inputNodeProperties(self, propertyName, nodeList, propList):
-        ''' add properties to nodes, reading from a list of nodes and a list of corresponding properties '''
+        ''' add properties to nodes, reading from a list of nodes and a list of 
+            corresponding properties '''
         
         for ind in range(len(nodeList)):
             n = nodeList[ind]
@@ -357,17 +358,20 @@ class brainObj:
                     v1 = float(value['min'])
                     v2 = float(value['max'])
                 except:
-                    print 'min and max value not found in makeSubBrain'
+                    print('min and max value not found in makeSubBrain')
     
                        
                 for n in self.G.nodes(data = True):
+                    print(n[1])
                     try:
                         v = n[1][propName]
+                        print(v, n, propName)
                         if (v>=v1)&(v<=v2):
         #                if n[1][propName] == value:
                             subBrain.G.add_nodes_from([n])
                             acceptedNodes.append(n[0])
                     except:
+                        print('something went wrong')
                         continue
                     
             else:

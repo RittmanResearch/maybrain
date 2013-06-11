@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'mayBrain.ui'
 #
-# Created: Sun Jun  9 20:25:04 2013
+# Created: Tue Jun 11 01:35:28 2013
 #      by: PyQt4 UI code generator 4.10
 #
 # WARNING! All changes made in this file will be lost!
@@ -89,12 +89,12 @@ class Ui_MainWindow(object):
         self.thresholdLabel.setGeometry(QtCore.QRect(650, 40, 71, 16))
         self.thresholdLabel.setObjectName(_fromUtf8("thresholdLabel"))
         self.subPlotBox = QtGui.QGroupBox(self.tab)
-        self.subPlotBox.setGeometry(QtCore.QRect(10, 190, 791, 171))
+        self.subPlotBox.setGeometry(QtCore.QRect(10, 190, 811, 171))
         self.subPlotBox.setObjectName(_fromUtf8("subPlotBox"))
-        self.subPlotButton = QtGui.QPushButton(self.subPlotBox)
-        self.subPlotButton.setEnabled(True)
-        self.subPlotButton.setGeometry(QtCore.QRect(660, 60, 71, 24))
-        self.subPlotButton.setObjectName(_fromUtf8("subPlotButton"))
+        self.subPlotButtonNodes = QtGui.QPushButton(self.subPlotBox)
+        self.subPlotButtonNodes.setEnabled(True)
+        self.subPlotButtonNodes.setGeometry(QtCore.QRect(660, 60, 141, 24))
+        self.subPlotButtonNodes.setObjectName(_fromUtf8("subPlotButtonNodes"))
         self.subPlotValue = QtGui.QLineEdit(self.subPlotBox)
         self.subPlotValue.setGeometry(QtCore.QRect(340, 60, 113, 23))
         self.subPlotValue.setObjectName(_fromUtf8("subPlotValue"))
@@ -134,6 +134,10 @@ class Ui_MainWindow(object):
         self.subPlotProp = QtGui.QLineEdit(self.subPlotBox)
         self.subPlotProp.setGeometry(QtCore.QRect(210, 60, 113, 23))
         self.subPlotProp.setObjectName(_fromUtf8("subPlotProp"))
+        self.subPlotButtonEdges = QtGui.QPushButton(self.subPlotBox)
+        self.subPlotButtonEdges.setEnabled(True)
+        self.subPlotButtonEdges.setGeometry(QtCore.QRect(660, 90, 141, 24))
+        self.subPlotButtonEdges.setObjectName(_fromUtf8("subPlotButtonEdges"))
         self.groupBox_3 = QtGui.QGroupBox(self.tab)
         self.groupBox_3.setGeometry(QtCore.QRect(10, 350, 521, 91))
         self.groupBox_3.setObjectName(_fromUtf8("groupBox_3"))
@@ -258,7 +262,7 @@ class Ui_MainWindow(object):
         self.thresholdValue.setText(_translate("MainWindow", "0", None))
         self.thresholdLabel.setText(_translate("MainWindow", "Threshold", None))
         self.subPlotBox.setTitle(_translate("MainWindow", "Add properties and sub-plots", None))
-        self.subPlotButton.setText(_translate("MainWindow", "Plot", None))
+        self.subPlotButtonNodes.setText(_translate("MainWindow", "Filter nodes and plot", None))
         self.subPlotPropLabel.setText(_translate("MainWindow", "Property", None))
         self.subPlotValueLabel.setText(_translate("MainWindow", "Value", None))
         self.subPlotNameLabel.setText(_translate("MainWindow", "Plot name (can be left blank)", None))
@@ -266,6 +270,7 @@ class Ui_MainWindow(object):
         self.propsLabel.setText(_translate("MainWindow", "Properties file", None))
         self.propsFnameButton.setText(_translate("MainWindow", "..", None))
         self.propsLoad.setText(_translate("MainWindow", "Load", None))
+        self.subPlotButtonEdges.setText(_translate("MainWindow", "Filter edges and plot", None))
         self.groupBox_3.setTitle(_translate("MainWindow", "Figure options", None))
         self.figureSaveButton.setText(_translate("MainWindow", "Save as...", None))
         self.showFigCheckBox.setText(_translate("MainWindow", "show figure", None))
