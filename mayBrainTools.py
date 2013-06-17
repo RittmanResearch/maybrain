@@ -103,7 +103,7 @@ class brainObj:
         linesStr = reader[startLine:]
         lines = []
         for l in linesStr:
-            lines.append(map(float, [v if v != "NA" else np.nan for v in split(l, sep=delimiter)]))
+            lines.append(map(float, [v if not NAval in v else np.nan for v in split(l, sep=delimiter)]))
         nodecount = len(lines)                
 
         # close file                
@@ -1355,7 +1355,7 @@ class brainObj:
         self.adjMatThresholding(tVal = self.threshold, doPrint = False)
 
         # return the maximum threshold value where they were found to be the same
-        fm = "{:."+str(decs)+"f}"
+        fm = "{0:."+str(decs)+"f}"
         if not edgePCBool:
             return fm.format(ths[2])
         else:

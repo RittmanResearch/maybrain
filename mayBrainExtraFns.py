@@ -46,7 +46,7 @@ class extraFns():
         2001, Physical Review Letters. 
         """
     
-        N = len(G.nodes())      # count nodes
+        N = len(G.nodes()) # count nodes
         ssl = 0            # sum of inverse of the shortest path lengths
         
         ssl = [ extraFns.globalefficiencyhelper(self, v, G) for v in G.nodes() ]
@@ -393,10 +393,10 @@ def efficiencywrite(brain,outfilebase = "brain", append=True):
     effs = {"Globalefficiency":None,"Localefficiency":None}
     
     # local efficiency
-    effs["Localefficiency"] = analysis.localefficiency(brain.bigconnG)
+    effs["Localefficiency"] = analysis.localefficiency(brain.G)
         
     # global efficiency
-    effs["Globalefficiency"] = analysis.globalefficiency(brain.bigconnG)
+    effs["Globalefficiency"] = analysis.globalefficiency(brain.G)
 
     # write headers at the top of the file if append not specified
     if not append:
