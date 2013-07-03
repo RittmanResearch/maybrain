@@ -23,7 +23,7 @@ Change log:
 
 """
 
-import string,os,csv,community
+import os,community
 from shutil import move
 import networkx as nx
 import numpy as np
@@ -859,7 +859,6 @@ class brainObj:
         # iterate number of steps
         self.lengthEdgesRemoved = []
         while limit>0:
-            print len(nodeList)
             if not riskEdges:
                 # find spatially closest nodes if no edges exist
                 # is it necessary to do this for all nodes?? - waste of computing power,
@@ -1420,7 +1419,7 @@ class plotObj():
         self.engine.start()
         
         # create a Mayavi figure
-        self.mfig = mlab.figure(bgcolor = (0, 0, 0), fgcolor = (1., 1., 1.), engine = self.engine, size=(1500, 1500))
+        self.mfig = mlab.figure(bgcolor = (1,1,1), fgcolor = (0,0,0), engine = self.engine, size=(1500, 1500))
         
         # holders for plot objects
         self.brainNodePlots = {}
@@ -1544,7 +1543,7 @@ class plotObj():
         t = mlab.quiver3d(xe, ye, ze, xv, yv, zv, line_width = 1., mode = '2ddash', scale_mode = 'vector', scale_factor = 1., color = col, opacity = opacity)
         self.brainEdgePlots[label] = t
 
-    def plotBrainNodes(self, brain, nodes = None, col = (1, 1, 1), opacity = 1., label=None):
+    def plotBrainNodes(self, brain, nodes = None, col = (0.5, 0.5, 0.5), opacity = 1., label=None, sizeList=None):
         ''' plot the nodes and edges using Mayavi '''
         
         # sort out keywords
@@ -1560,11 +1559,15 @@ class plotObj():
         xn, yn, zn = self.getNodesList(brain, nodeList=nodeList)
         
         # plot nodes
-        s = mlab.points3d(xn, yn, zn, scale_factor = self.nodesf, color = col, opacity = opacity)
+        if sizeList:
+            s = mlab.points3d(xn, yn, zn, sizeList, scale_factor = self.nodesf, color = col, opacity = opacity)
+
+        else:
+            s = mlab.points3d(xn, yn, zn, scale_factor = self.nodesf, color = col, opacity = opacity)
         self.brainNodePlots[label] = s
 
 
-    def plotBrainEdges(self, brain, label = None, edges = None, col = (1, 1, 1), opacity = 1.):
+    def plotBrainEdges(self, brain, label = None, edges = None, col = (0, 0, 0), opacity = 1.):
         ''' plot the nodes and edges using Mayavi '''
         
         # sort out keywords
