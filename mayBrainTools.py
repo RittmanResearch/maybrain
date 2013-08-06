@@ -79,7 +79,7 @@ class brainObj:
 
     ## File inputs        
 
-    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False, delimiter=None, weighted=True, NAval="nan"):
+    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False, delimiter=None, weighted=True, NAval="nan", thresholdtype="global"):
         ''' load adjacency matrix with filename and threshold for edge definition 
         Comment - I don't seem to be able to construct an unweighted directed graph, ie with edge number N(N-1) for an NxN adjacency matrix 
         '''
@@ -129,11 +129,201 @@ class brainObj:
         self.G.add_nodes_from(range(nodecount))  # creates one node for every line in the adjacency matrix
         
         # create edges by thresholding adjacency matrix
-        self.adjMatThresholding(edgePC, totalEdges, threshold)
+        if thresholdtype=="global":
+            self.adjMatThresholding(edgePC, totalEdges, threshold)
+            
+        elif thresholdtype=="local":
+            self.adjMatThresholding(edgePC=None, totalEdges=None)
+            self.localThresholding(totalEdges, edgePC)
         
         if not weighted:
             self.binarise()
-      
+    
+    def NNG(self, k):
+        G = nx.Graph()
+        nodes = range(len(self.adjMat[0]))
+        
+        G.add_nodes_from(nodes)
+        
+        for i in nodes:
+            l = np.ma.masked_array(self.adjMat[i,:], mask=np.isnan(self.adjMat[i]))
+            l.mask[i] = True
+            
+            for j in range(k):
+                node = np.argmax(l)
+                
+                if not np.isnan(self.adjMat[i,node]):
+                    G.add_edge(i,node)
+                    
+                l.mask[node] = True
+        
+        return(G)
+        
+    def minimum_spanning_edges(self, weight='weight', data=True):
+        """Generate edges in a minimum spanning forest of an undirected 
+        weighted graph.
+    
+        A minimum spanning tree is a subgraph of the graph (a tree)
+        with the minimum sum of edge weights.  A spanning forest is a
+        union of the spanning trees for each connected component of the graph.
+    
+        Parameters
+        ----------
+        G : NetworkX Graph
+        
+        weight : string
+           Edge data key to use for weight (default 'weight').
+    
+        data : bool, optional
+           If True yield the edge data along with the edge.
+           
+        Returns
+        -------
+        edges : iterator
+           A generator that produces edges in the minimum spanning tree.
+           The edges are three-tuples (u,v,w) where w is the weight.
+        
+        Examples
+        --------
+        >>> G=nx.cycle_graph(4)
+        >>> G.add_edge(0,3,weight=2) # assign weight 2 to edge 0-3
+        >>> mst=nx.minimum_spanning_edges(G,data=False) # a generator of MST edges
+        >>> edgelist=list(mst) # make a list of the edges
+        >>> print(sorted(edgelist))
+        [(0, 1), (1, 2), (2, 3)]
+    
+        Notes
+        -----
+        Uses Kruskal's algorithm.
+    
+        If the graph edges do not have a weight attribute a default weight of 1
+        will be used.
+    
+        Modified code from David Eppstein, April 2006
+        http://www.ics.uci.edu/~eppstein/PADS/
+        """
+        # Modified code from David Eppstein, April 2006
+        # http://www.ics.uci.edu/~eppstein/PADS/
+        # Kruskal's algorithm: sort edges by weight, and add them one at a time.
+        # We use Kruskal's algorithm, first because it is very simple to
+        # implement once UnionFind exists, and second, because the only slow
+        # part (the sort) is sped up by being built in to Python.
+        from networkx.utils import UnionFind
+        if self.G.is_directed():
+            raise nx.NetworkXError(
+                "Mimimum spanning tree not defined for directed graphs.")
+    
+        subtrees = UnionFind()
+        edges = sorted(self.G.edges(data=True),key=lambda t: t[2][weight], reverse=True)
+    #    print edges[0]    
+    #    edges = [ v for v in edges if not isnan(v[2]) ]
+        
+        for u,v,d in edges:
+            if subtrees[u] != subtrees[v]:
+                if data:
+                    yield (u,v,d)
+                else:
+                    yield (u,v)
+                subtrees.union(u,v)
+                
+    def minimum_spanning_tree(self, weight='weight'):
+        """Return a minimum spanning tree or forest of an undirected 
+        weighted graph.
+    
+        A minimum spanning tree is a subgraph of the graph (a tree) with
+        the minimum sum of edge weights.
+    
+        If the graph is not connected a spanning forest is constructed.  A
+        spanning forest is a union of the spanning trees for each
+        connected component of the graph.
+    
+        Parameters
+        ----------
+        G : NetworkX Graph
+        
+        weight : string
+           Edge data key to use for weight (default 'weight').
+    
+        Returns
+        -------
+        G : NetworkX Graph
+           A minimum spanning tree or forest. 
+        
+        Examples
+        --------
+        >>> G=nx.cycle_graph(4)
+        >>> G.add_edge(0,3,weight=2) # assign weight 2 to edge 0-3
+        >>> T=nx.minimum_spanning_tree(G)
+        >>> print(sorted(T.edges(data=True)))
+        [(0, 1, {}), (1, 2, {}), (2, 3, {})]
+    
+        Notes
+        -----
+        Uses Kruskal's algorithm.
+    
+        If the graph edges do not have a weight attribute a default weight of 1
+        will be used.
+        """
+        T=nx.Graph(self.minimum_spanning_edges(weight="weight", data=True))
+        # Add isolated nodes
+        if len(T)!=len(self.G):
+            T.add_nodes_from([n for n,d in self.G.degree().items() if d==0])
+        # Add node and graph attributes as shallow copy
+        for n in T:
+            T.node[n] = self.G.node[n].copy()
+        T.graph = self.G.graph.copy()
+        return T
+    
+    def localThresholding(self, totalEdges=None, edgePC=None):
+        nodecount = len(self.G.nodes())        
+        # get the number of edges to link
+        if not edgePC == None:  # needs to be written this way in case edgePC is 0
+            # find threshold as a percentage of total possible edges
+            # note this works for undirected graphs because it is applied to the whole adjacency matrix
+            edgeNum = int(edgePC * nodecount * (nodecount-1) / 2) 
+            self.edgePC=edgePC
+            
+        elif totalEdges:
+            # allow a fixed number of edges
+            edgeNum = totalEdges
+        else:
+            edgeNum = -1
+
+        k=1 # number of degrees for NNG
+    
+        # create minimum spanning tree
+        T = self.minimum_spanning_tree(self.G)
+        lenEdges = len(T.edges())
+        if lenEdges > edgeNum:
+            print "The minimum spanning tree already has: "+ lenEdges + " edges, select fewer edges."
+        
+        while lenEdges<edgeNum:
+            print "NNG degree: "+str(k)
+            # create nearest neighbour graph
+            nng = self.NNG(k)
+            
+            # remove edges from the NNG that exist already in the new graph/MST
+            nng.remove_edges_from(T.edges())
+            
+            # add weights to NNG    
+            for e in nng.edges():
+                nng.edge[e[0]][e[1]] = self.G.edge[e[0]][e[1]]
+            nng.edges(data=True)
+            
+            # get a list of edges from the NNG in order of weight
+            edgeList = sorted(nng.edges(data=True), key=lambda t: t[2]['weight'], reverse=True)
+    
+            # add edges to graph in order of connectivity strength
+            for edge in edgeList:
+                T.add_edges_from([edge])
+                lenEdges = len(T.edges())
+                if lenEdges >= edgeNum:
+                    break
+            
+            k+=1
+        
+        self.G = T
+
       
     def readSpatialInfo(self, fname):
         ''' add 3D coordinate information for each node from a given file '''
@@ -184,7 +374,8 @@ class brainObj:
         """
         Plots 3D parcels specified in the nodeList. This function assumes the parcellation template has
         been loaded to the brain using brain.importISO.
-        """        
+        """
+        
         zeroArr = zeros(self.iso.shape)
                 
         for n in nodeList:
@@ -296,8 +487,10 @@ class brainObj:
                 node1 = edgeCos[0][ind]
                 node2 = edgeCos[1][ind]
                 
-                if not(self.G.has_edge(node1, node2)):
-                    self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
+                # check if edge doesn't already exist and weight isn't nan
+                if not(self.G.has_edge(node1, node2)) and not(np.isnan(self.adjMat[node1, node2])):
+                    if not np.isnan(self.adjMat[node1, node2]):
+                        self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
                 
     
     def makeSubBrain(self, propName, value):
@@ -1516,7 +1709,7 @@ class plotObj():
 
 
     
-    def plotBrain(self, brain, label = None, nodes = None, edges = None, col = (1, 1, 1), opacity = 1.):
+    def plotBrain(self, brain, label = None, nodes = None, edges = None, col = (0, 0, 0), opacity = 1.):
         ''' plot the nodes and edges using Mayavi '''
         
         # sort out keywords
