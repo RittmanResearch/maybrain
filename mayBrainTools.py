@@ -79,7 +79,7 @@ class brainObj:
 
     ## File inputs        
 
-    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False, delimiter=None, weighted=True, NAval="nan", thresholdtype="global"):
+    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False, delimiter=None, weighted=True, NAval="nan", thresholdtype="global", excludedNodes=None, delNanNodes=True):
         ''' load adjacency matrix with filename and threshold for edge definition 
         Comment - I don't seem to be able to construct an unweighted directed graph, ie with edge number N(N-1) for an NxN adjacency matrix 
         '''
@@ -114,6 +114,12 @@ class brainObj:
         self.adjMat = np.memmap("adjmat.mat",dtype="float32", shape=(len(lines), len(lines)), mode="w+")
         self.adjMat[:] = array(lines)       # array of data
         
+        # set excluded node connectivity values to nan
+        if excludedNodes:
+            for en in excludedNodes:
+                self.adjMat[:,en] = np.nan
+                self.adjMat[en,:] = np.nan
+        
         # check if it's diagonal
         sh = shape(self.adjMat)
         if sh[0]!=sh[1]:
@@ -138,6 +144,12 @@ class brainObj:
         
         if not weighted:
             self.binarise()
+            
+        if delNanNodes:
+            for node in self.G.nodes():
+                if np.all(np.isnan(self.adjMat[node,:])):
+                    self.G.remove_node(node)
+                
     
     def NNG(self, k):
         G = nx.Graph()
@@ -341,8 +353,11 @@ class brainObj:
         nodeCount=0
         for line in lines:
             l = split(line)
-            self.G.node[nodeCount]['anatlabel'] = l[0]
-            self.G.node[nodeCount]['xyz'] = (float(l[1]),float(l[2]),float(l[3]))
+            try:
+                self.G.node[nodeCount]['anatlabel'] = l[0]
+                self.G.node[nodeCount]['xyz'] = (float(l[1]),float(l[2]),float(l[3]))
+            except:
+                print "Node "+str(nodeCount)+" does not exist in graph"
             nodeCount+=1
         del(lines)
                  
@@ -868,10 +883,11 @@ class brainObj:
     #    get centrality measures
         if weighted:
             self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='weight').values()))
+            
+            ###### this next line doesn't work! Because of negative weights #######
             self.closenessCentrality = np.array((centrality.closeness_centrality(self.G, distance=True).values()))
             self.degrees = np.array((nx.degree(self.G, weight='weight').values()))
-            
-            
+                      
         else:
             self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G).values()))
             self.closenessCentrality = np.array((centrality.closeness_centrality(self.G).values()))
@@ -894,11 +910,11 @@ class brainObj:
 #            
 #            hubScores.append(self.G.node[node]['hubScore'])
 
-        hubScores = map(self.hubHelper, self.G.nodes())
+        hubScores = map(self.hubHelper, range(len(self.G.nodes())))
         
         if assign:
-            for node in self.G.nodes():
-                self.G.node['hubscore'] = hubScores[node]
+            for n,node in enumerate(self.G.nodes()):
+                self.G.node['hubscore'] = hubScores[n]
             
     #   find standard deviation of hub score
         upperLimit = np.mean(np.array(hubScores)) + 2*np.std(np.array(hubScores))

@@ -37,8 +37,8 @@ def efficiencyfunc(node, G):
         invpl = 0.
         
     return(invpl)
-
-
+    
+    
 def globalefficiency(G):
     """
     A set of definitions to calculate global efficiency and local efficiency. Definitions are taken from Latora and Marchiori
@@ -105,7 +105,7 @@ def nodalefficiency(G, nodes=None):
     return(outDict)
     
 
-def smallworldparameters(self, brain,outfilebase = "brain", append=True, smallWorldness=False, SWiters=50):
+def smallworldparameters(brain, outfilebase = "brain", append=True, smallWorldness=False, SWiters=50):
     """A calculation for average cluster coefficient and average shortest path length (as defined in Humphries
     2008 http://www.plosone.org/article/info:doi/10.1371/journal.pone.0002051).
     """
