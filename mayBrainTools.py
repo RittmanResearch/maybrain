@@ -79,7 +79,7 @@ class brainObj:
 
     ## File inputs        
 
-    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False, delimiter=None, weighted=True, NAval="nan", thresholdtype="global", excludedNodes=None, delNanNodes=True):
+    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False, delimiter=None, weighted=True, NAval="nan", thresholdtype="global", MST=True, excludedNodes=None, delNanNodes=True):
         ''' load adjacency matrix with filename and threshold for edge definition 
         Comment - I don't seem to be able to construct an unweighted directed graph, ie with edge number N(N-1) for an NxN adjacency matrix 
         '''
@@ -119,7 +119,12 @@ class brainObj:
             for en in excludedNodes:
                 self.adjMat[:,en] = np.nan
                 self.adjMat[en,:] = np.nan
-        
+        try:
+            fill_diagonal(self.adjMat, np.nan)
+        except: # needed for older version of numpy
+            for x in range(len(self.adjMat[0,:])):
+                self.adjMat[x,x] = np.nan
+                    
         # check if it's diagonal
         sh = shape(self.adjMat)
         if sh[0]!=sh[1]:
@@ -134,21 +139,24 @@ class brainObj:
         # create nodes on graph
         self.G.add_nodes_from(range(nodecount))  # creates one node for every line in the adjacency matrix
         
-        # create edges by thresholding adjacency matrix
-        if thresholdtype=="global":
-            self.adjMatThresholding(edgePC, totalEdges, threshold)
-            
-        elif thresholdtype=="local":
-            self.adjMatThresholding(edgePC=None, totalEdges=None)
-            self.localThresholding(totalEdges, edgePC)
-        
-        if not weighted:
-            self.binarise()
-            
+        # removes nodes with no connectivity (nan values) in the adjacency matrix
         if delNanNodes:
             for node in self.G.nodes():
                 if np.all(np.isnan(self.adjMat[node,:])):
                     self.G.remove_node(node)
+
+        # create edges by thresholding adjacency matrix
+        self.adjMatThresholding(edgePC=None, totalEdges=None, MST=False)
+        if(threshold or edgePC or totalEdges):
+            if thresholdtype=="global":
+                self.adjMatThresholding(edgePC, totalEdges, threshold, MST=MST)
+    
+            elif thresholdtype=="local":
+                self.localThresholding(totalEdges, edgePC)
+        
+        if not weighted:
+            self.binarise()
+            
                 
     
     def NNG(self, k):
@@ -287,7 +295,8 @@ class brainObj:
         return T
     
     def localThresholding(self, totalEdges=None, edgePC=None):
-        nodecount = len(self.G.nodes())        
+        nodecount = len(self.G.nodes())
+        
         # get the number of edges to link
         if not edgePC == None:  # needs to be written this way in case edgePC is 0
             # find threshold as a percentage of total possible edges
@@ -307,12 +316,17 @@ class brainObj:
         T = self.minimum_spanning_tree(self.G)
         lenEdges = len(T.edges())
         if lenEdges > edgeNum:
-            print "The minimum spanning tree already has: "+ lenEdges + " edges, select fewer edges."
+            print "The minimum spanning tree already has: "+ lenEdges + " edges, select more edges."
         
         while lenEdges<edgeNum:
             print "NNG degree: "+str(k)
             # create nearest neighbour graph
             nng = self.NNG(k)
+            
+            # failsafe in case there are no more edges to add
+            if len(nng.edges())==0:
+                print "There are no edges in the nearest neighbour graph - check you have set the delimiter appropriately"
+                break
             
             # remove edges from the NNG that exist already in the new graph/MST
             nng.remove_edges_from(T.edges())
@@ -422,7 +436,7 @@ class brainObj:
     
     ## Functions to alter the brain
 
-    def adjMatThresholding(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, doPrint=True):
+    def adjMatThresholding(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, doPrint=True, MST=True):
         ''' apply thresholding to the adjacency matrix. This can be done in one of
             three ways (in order of decreasing precendence):
                 edgePC - this percentage of nodes will be linked
@@ -436,11 +450,16 @@ class brainObj:
             print("No adjacency matrix. Please load one.")
             return
 
+        if MST:
+            # create minimum spanning tree
+            T = self.minimum_spanning_tree(self.G)
+ 
         if not rethreshold:
             # remove existing edges
             self.G.remove_edges_from(self.G.edges())
 
         nodecount = len(self.G.nodes())
+        print nodecount
             
         # get the number of edges to link
         if not edgePC == None:  # needs to be written this way in case edgePC is 0
@@ -461,8 +480,9 @@ class brainObj:
             if rethreshold:
                 weights = [self.G[v[0]][v[1]]['weight'] for v in self.G.edges()]
             else:
-                weights = [v for v in self.adjMat.flatten() if not str(v)=="nan"]
+                weights = [v for v in self.adjMat.flatten() if not np.isnan(v)]
             weights.sort()
+
             try:
                 threshold = weights[-edgeNum]
             except IndexError:
@@ -487,26 +507,40 @@ class brainObj:
         else:
             # carry out thresholding on adjacency matrix
             boolMat = self.adjMat>threshold
-            try:
-                fill_diagonal(boolMat, 0)
-            except:
-                for x in range(len(boolMat[0,:])):
-                    boolMat[x,x] = 0
+            
             edgeCos = where(boolMat) # lists of where edges should be
             
             # display coordinates (for testing only)
     #        for x in range(len(edgeCos[0])):
     #            print(edgeCos[0][x], edgeCos[1][x])
-                    
+    
+            if MST:
+                # recreate minimum spanning tree
+                self.G = T
+            
+            edgeCount = len(self.G.edges())
+            
+            if edgeNum == -1:
+                edgeNum = len(self.G.nodes()) * (len(self.G.nodes())-1)
+            
+            # correct for undirected graph
+            edgeNum = edgeNum/2
+            
+            print ' '.join([str(edgeNum), str(edgeCount) ])
+            print(len(edgeCos[0]))
             for ind in range(len(edgeCos[0])):
                 node1 = edgeCos[0][ind]
                 node2 = edgeCos[1][ind]
                 
                 # check if edge doesn't already exist and weight isn't nan
                 if not(self.G.has_edge(node1, node2)) and not(np.isnan(self.adjMat[node1, node2])):
-                    if not np.isnan(self.adjMat[node1, node2]):
-                        self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
+                    self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
                 
+                    if MST:
+                        edgeCount = len(self.G.edges())
+                        if edgeCount >= edgeNum:
+                            break
+                    
     
     def makeSubBrain(self, propName, value):
         ''' separate out nodes and edges with a certain property '''
