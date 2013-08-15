@@ -250,36 +250,20 @@
         <string>Threshold</string>
        </property>
       </widget>
-      <zorder>adjPlot</zorder>
-      <zorder>spatialLabel</zorder>
-      <zorder>skullLabel</zorder>
-      <zorder>skullFilename</zorder>
-      <zorder>skullLoad</zorder>
-      <zorder>spatialFilename</zorder>
-      <zorder>adjFilename</zorder>
-      <zorder>adjFnameButton</zorder>
-      <zorder>brainLoad</zorder>
-      <zorder>adjLabel</zorder>
-      <zorder>spatialFnameButton</zorder>
-      <zorder>skullFnameButton</zorder>
-      <zorder>skullPlot</zorder>
-      <zorder>thresholdValue</zorder>
-      <zorder>thresholdLabel</zorder>
-      <zorder>subPlotBox</zorder>
      </widget>
      <widget class="QGroupBox" name="subPlotBox">
       <property name="geometry">
        <rect>
         <x>10</x>
         <y>190</y>
-        <width>791</width>
+        <width>811</width>
         <height>171</height>
        </rect>
       </property>
       <property name="title">
        <string>Add properties and sub-plots</string>
       </property>
-      <widget class="QPushButton" name="subPlotButton">
+      <widget class="QPushButton" name="subPlotButtonNodes">
        <property name="enabled">
         <bool>true</bool>
        </property>
@@ -287,12 +271,12 @@
         <rect>
          <x>660</x>
          <y>60</y>
-         <width>71</width>
+         <width>141</width>
          <height>24</height>
         </rect>
        </property>
        <property name="text">
-        <string>Plot</string>
+        <string>Filter nodes and plot</string>
        </property>
       </widget>
       <widget class="QLineEdit" name="subPlotValue">
@@ -444,6 +428,22 @@
          <width>113</width>
          <height>23</height>
         </rect>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="subPlotButtonEdges">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="geometry">
+        <rect>
+         <x>660</x>
+         <y>90</y>
+         <width>141</width>
+         <height>24</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Filter edges and plot</string>
        </property>
       </widget>
      </widget>

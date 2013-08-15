@@ -4,22 +4,19 @@ Created on Fri Mar 16 18:10:07 2012
 
 @author: -
 
-Change log:
-5/2/2013
-    - critical bug fix: readSpatial info was assigning coordinates to the wrong nodes
+to do:
+    - improve memory retention by instant read of file, rather than reloading data
+    - create subbrain object with reference to columns of adj file
+    - allow for colouring of edges based on strength
+    - switch from quiver in mayavi
+    - write mask for mayavi data??
+    - split plotting into separate file (and rename things)
+    - check mayavi version!
     
-7/2/2013
-    - Changed readAdjFile to deal with non-whitespace delimiters through the 'delimiter' option
-    - Changed readAdjFile to replace string "NA" with 0 from adjacency matrices
-    - Added 'weighted' property to readAdjFile to allow a choice of binary or weighted graphs
-    - Changed binarise to change the weight of each edge to 1 rather than remove all edge properties
-    - Removed contiguousspread and contiguousspreadold functions (superceded by degenerate)
-    - Removed the 'symmetric' argument and replaced with directed, which creates a directed graph if required.
-        Note that if the graph is undirected, it can not have reciprocal connections eg (2,1) and (1,2)
-    - Added clusterslices function to produce 2D images with nodes plotted ***this needs testing***
-    - Removed a lost, lonely and wandering dictionary definition from readSpatialInfo
-    - Added a function to import isosurfaces, enabling the plotting function to be useful
-    - Simplified the spatial positioning function
+    
+Changes for v0.2:
+    - highlight object rather than sub-brain
+    - don't change/create networkx or Mayavi objects until needed
 
 """
 
@@ -51,18 +48,22 @@ class brainObj:
     
     def __init__(self):
         ''' 
-        initialise the brain model. Arguments are:
+        Initialise the brain model.
     
         '''        
         
         # create an empty graph
         self.G = nx.Graph()
+        self._directed = False # is this a directed graph or not?
         self.iter = None # not sure where this is used. It is often defined, but never actually used!
         
         # initialise global variables
         self.adjMat = None # adjacency matrix, containing weighting of edges.
-        self.threshold = 0
+        self.adjInds = [] # list of points used from coord/adj data
+        self.edgeInds = [] # list of active edges (ordered list of pairs)
+        self.threshold = 0 # value of threshold for including edges
         
+        # need to define the following, what do they do???
         self.hubs = []
         self.lengthEdgesRemoved = None
         self.bigconnG = None
@@ -79,13 +80,11 @@ class brainObj:
 
     ## File inputs        
 
-    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False, delimiter=None, weighted=True, NAval="nan"):
-        ''' load adjacency matrix with filename and threshold for edge definition 
-        Comment - I don't seem to be able to construct an unweighted directed graph, ie with edge number N(N-1) for an NxN adjacency matrix 
-        '''
-        
-        print('loading data from ' + fname)
+           
 
+    def getAdjFile(self, fname, delimiter = None):
+        ''' just get the adjacency data from a file and return as an array '''
+        
         # open file
         f = open(fname,"rb")
         reader = f.readlines()        
@@ -103,23 +102,43 @@ class brainObj:
         linesStr = reader[startLine:]
         lines = []
         for l in linesStr:
-            lines.append(map(float, [v if v != "NA" else np.nan for v in split(l, sep=delimiter)]))
-        nodecount = len(lines)                
+            while l[-1] in ('\n', '\t'):
+                l = l[:-1]
+            lines.append(map(float, [v if v != "NA" else np.nan for v in split(l, sep=delimiter)]))                
+
 
         # close file                
         f.close()
 
+        # set adjacency matrix
+        self.adjMat = array(lines)
+        
+        
+    def makeEdges(threshold = None, edgePC = None, totalEdges = None, directed = False, weighted=True):
+        ''' find indices of edges based on a threshold '''
+        a = 1
+        
+
+    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False, weighted=True):
+        ''' 
+        LEGACY FUNCTION - REPLACE WITH GET ADJFILE AND MAKEEDGES        
+        load adjacency matrix with filename and threshold for edge definition 
+        Comment - I don't seem to be able to construct an unweighted directed graph, ie with edge number N(N-1) for an NxN adjacency matrix 
+        '''
+        
+        self.adjMat = array(self.getAdjFile(fname))
+
         # create adjacency matrix as an array
         self.adjMat = array(lines)       # array of data
         
-        # check if it's diagonal
+        # check if it's square
         sh = shape(self.adjMat)
         if sh[0]!=sh[1]:
             print("Note Bene: adjacency matrix not square.")
             print(sh)
 
         # create directed graph if necessary
-        self.directed = directed
+        self._directed = directed
         if directed:
             self.G = nx.DiGraph()
 
@@ -253,10 +272,90 @@ class brainObj:
     
     ## ===========================================================================
     
+    ## newtworkx functions    
+    
+    
+    
     ## Functions to alter the brain
 
+    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, doPrint=True):
+
+        #### Determine threshold value
+        
+        ## case 1: edgePC - percent of edges are shown
+
+        # get the number of edges to link
+        if edgePC:
+            n = shape(self.adjMat)[0]
+            # note this works for undirected graphs because it is applied to the whole adjacency matrix
+            if self._directed:
+                edgeNum = int(round(edgePC/100. * n * (n-1) * 0.5))                
+            else:
+                edgeNum = int(round(edgePC/100. * n * (n-1) ))
+
+            self.edgePC=edgePC # !! why  is this necessary?
+            print(edgeNum)
+            
+        ## case 2: totalEdges - give a fixed number of edges
+        elif totalEdges:
+            # allow a fixed number of edges
+            edgeNum = totalEdges
+            if not(self._directed):
+                edgeNum =  edgeNum * 2
+
+        ## case 3: absolute threshold - show all edges with weighting above threshold
+        else:
+            edgeNum = -1
+        
+        
+        ##### get threshold value
+        if edgeNum>=0:
+            # cases 1 and 2 from above - get threshold value for given number of edges
+#            if rethreshold:
+#                weights = [self.G[v[0]][v[1]]['weight'] for v in self.G.edges()]
+#            else:
+            weights = self.adjMat.flatten()
+            weights.sort()
+            while (str(weights[-1]) == 'nan'):
+                weights = weights[:-1]
+#            weights = [v for v in self.adjMat.flatten() if not str(v)=="nan"]
+#            weights.sort()
+
+            # case where all edges are included
+            if edgeNum > len(weights):
+                self.threshold = weights[0]
+
+            # case where only some edges are included
+            else:
+                self.threshold = weights[-edgeNum]
+#            try:
+#                threshold = weights[-edgeNum]
+#            except IndexError:
+#                threhsold = weights[0]
+        else:
+            self.threshold  = tVal
+        
+        print(edgeNum, self.threshold)
+            
+        ##### carry out thresholding on adjacency matrix
+        boolMat = self.adjMat>=self.threshold
+        print(boolMat)
+        try:
+            fill_diagonal(boolMat, 0)
+        except:
+            for x in range(len(boolMat[0,:])):
+                boolMat[x,x] = 0
+                
+        es = where(boolMat) # lists of where edges should be
+        self.edgeInds = []
+        for ii in range(len(es[0])):
+            self.edgeInds.append( [es[0][ii], es[1][ii]])
+
+
     def adjMatThresholding(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, doPrint=True):
-        ''' apply thresholding to the adjacency matrix. This can be done in one of
+        ''' LEGACY FUNCTION - DO NOT USE
+        
+        apply thresholding to the adjacency matrix. This can be done in one of
             three ways (in order of decreasing precendence):
                 edgePC - this percentage of nodes will be linked
                 totalEdges - this number of nodes will be linked
@@ -275,63 +374,11 @@ class brainObj:
 
         nodecount = len(self.G.nodes())
             
-        # get the number of edges to link
-        if edgePC:
-            # find threshold as a percentage of total possible edges
-            # note this works for undirected graphs because it is applied to the whole adjacency matrix
-            edgeNum = int(edgePC * nodecount * (nodecount-1)) # possible /2 in here??
-            self.edgePC=edgePC
-            
-        elif totalEdges:
-            # allow a fixed number of edges
-            edgeNum = totalEdges
-        else:
-            edgeNum = -1
-            
-        # get threshold
-        if edgeNum>=0:
-            # get threshold value
-            if rethreshold:
-                weights = [self.G[v[0]][v[1]]['weight'] for v in self.G.edges()]
-            else:
-                weights = [v for v in self.adjMat.flatten() if not str(v)=="nan"]
-            weights.sort()
-            try:
-                threshold = weights[-edgeNum]
-            except IndexError:
-                print "Check you are not trying to apply a lower threshold than the current "+str(self.threshold)
-                
-                if not 'self.threshold' in locals():
-                    threshold = -1                
-                else:
-                    return
-            if doPrint:
-                print("Threshold set at: "+str(threshold))
-        else:
-            threshold  = tVal      
-            
-        self.threshold = threshold
-            
         if rethreshold:
             edgesToRemove = [v for v in self.G.edges() if self.G[v[0]][v[1]]['weight'] < threshold]
             self.G.remove_edges_from(edgesToRemove)
         else:
-            # carry out thresholding on adjacency matrix
-            boolMat = self.adjMat>threshold
-            try:
-                fill_diagonal(boolMat, 0)
-            except:
-                for x in range(len(boolMat[0,:])):
-                    boolMat[x,x] = 0
-            edgeCos = where(boolMat) # lists of where edges should be
             
-            # display coordinates (for testing only)
-    #        for x in range(len(edgeCos[0])):
-    #            print(edgeCos[0][x], edgeCos[1][x])
-                    
-            for ind in range(len(edgeCos[0])):
-                node1 = edgeCos[0][ind]
-                node2 = edgeCos[1][ind]
                 
                 if not(self.G.has_edge(node1, node2)):
                     self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
@@ -1426,8 +1473,44 @@ class brainObj:
         
         # return graph to original threshold
         self.adjMatThresholding(tVal=startthresh)
-        
 
+
+class highlight():
+    ''' object to hold information to highlight a subsection of a brainObj '''
+    
+    def __init__(self, points = None, edges = None):
+        ''' Points refer to the indices of points in the brain object to which it
+        is related. Edges is a set of pairs of points of the same brain object '''
+        
+        self.points = points # indices of points used from a brain object
+        self.edges = edges 
+        self._edgeIndices = [] # indices of edges - note that these change with rethresholding of the parent brain
+        
+        if self.points and self.edges:
+            self.mode = 'pe'
+        elif self.points:
+            self.mode = 'p'
+        elif self.mode:
+            self.mode = 'e'
+            
+            
+    def getEdgeInds(self, brain):
+        ''' redefine self._edgeIndices '''
+        self._edgeIndices = []        
+        
+        for e in self.edges:
+            # quietly omits edges that don't exist
+            try:
+                ind = brain.edgeInds.index(e)
+            except ValueError:
+                continue
+            
+            self._edgeIndices.append(ind)
+                
+                
+        
+    
+    
 class plotObj():
     ''' classes that plot various aspects of a brain object '''
     
@@ -1484,6 +1567,7 @@ class plotObj():
         edgesVx = []
         edgesVy = []
         edgesVz = []
+        scalars = []
         
         for e in edgeList:
             c, v = self.getCoords(brain, e)
@@ -1495,9 +1579,11 @@ class plotObj():
             edgesVy.append(v[1])
             edgesVz.append(v[2])
             
+            scalars.append(brain.adjMat[e[0],e[1]])
+            
             
         
-        return nodesX, nodesY, nodesZ, edgesCx, edgesCy, edgesCz, edgesVx, edgesVy, edgesVz
+        return nodesX, nodesY, nodesZ, edgesCx, edgesCy, edgesCz, edgesVx, edgesVy, edgesVz, scalars
         
 
     def getNodesList(self, brain, nodeList=None, edgeList=None):
@@ -1547,33 +1633,62 @@ class plotObj():
 
     
     def plotBrain(self, brain, label = None, nodes = None, edges = None, col = (1, 1, 1), opacity = 1.):
-        ''' plot the nodes and edges using Mayavi '''
+        ''' plot the nodes and edges using Mayavi
+        
+            THIS FUNCTION NEEDS SPLITTING UP SOME
+
+            points and edges are stored as different data sets. Hopefully filters
+            are applied to plot each of them. 
+            
+            col is the colour of the plot. Can be a triplet of values  in the interval [0,1],
+            or 'vector' to colour by vector scalar.
+        
+        '''
         
         # sort out keywords
         if not nodes:
+            # use all the nodes
             nodeList = brain.G.nodes()
         else:
+            # use a subset of nodes
             nodeList = nodes
         if not edges:
+            # use all the edges
             edgeList = brain.G.edges()
         else:
+            # use a subset of edges
             edgeList = edges
             
+        # get output label for the plot
         if not(label):
             label = self.getAutoLabel()
-            
+                        
         # turn nodes into lists for plotting
-        xn, yn, zn, xe, ye, ze, xv, yv, zv = self.nodeToList(brain, nodeList=nodeList, edgeList=edgeList)
+        xn, yn, zn, xe, ye, ze, xv, yv, zv, h = self.nodeToList(brain, nodeList=nodeList, edgeList=edgeList)
+
+        # add point data to mayavi
+        ptdata = mlab.pipeline.scalar_scatter(xn, yn, xn)
+        
+        # add vector data to mayavi
+        edata = mlab.pipeline.vector_scatter(xe, ye, ze, xv, yv, zv, scalars = h, figure = fig1)
+
+        # plot nodes
+        mlab.pipeline.glyph(ptdata, color = col, scale_factor = 0.1, opacity = opacity)
+
+        # plot edges
+        v = mlab.pipeline.vectors(data, colormap='GnBu', line_width=1., opacity=opacity, mode = '2ddash')
+        v.glyph.color_mode = 'color_by_scalar'
+
         
         # plot nodes
-        s = mlab.points3d(xn, yn, zn, scale_factor = self.nodesf, color = col, opacity = opacity)
-        self.brainNodePlots[label] = s
+#        s = mlab.points3d(xn, yn, zn, scale_factor = self.nodesf, color = col, opacity = opacity)
+#        self.brainNodePlots[label] = s
         
         # plot edges
-        t = mlab.quiver3d(xe, ye, ze, xv, yv, zv, line_width = 1., mode = '2ddash', scale_mode = 'vector', scale_factor = 1., color = col, opacity = opacity)
-        self.brainEdgePlots[label] = t
+#        t = mlab.quiver3d(xe, ye, ze, xv, yv, zv, line_width = 1., mode = '2ddash', scale_mode = 'vector', scale_factor = 1., color = col, opacity = opacity)
+#        self.brainEdgePlots[label] = t
         
-    def plotManyLines(xe, ye, ze, xv, yv, zv, widths = None, color = None, opacity = None):
+    def plotSomeLines(xe, ye, ze, xv, yv, zv, widths = None, color = None, opacity = None):
         ''' plot many lines with mayavi '''
         
         # make the connections

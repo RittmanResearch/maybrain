@@ -276,7 +276,12 @@ class mayBrainGUI(QtGui.QMainWindow):
             
         except:
             print('could not plot skull, has file been loaded?')
-            
+         
+    
+    def saveFig(self):
+        ''' save a figure to  file ''' 
+        
+        
         
 
 
