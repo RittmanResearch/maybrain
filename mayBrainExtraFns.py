@@ -8,12 +8,12 @@ Functions that used to be at the end of networkutils_bin_camb
 import os
 import numpy as np
 import networkx as nx
-#import csv
+import csv
 from networkx.algorithms import cluster
 from networkx.algorithms import centrality
 import random
 from networkx.algorithms import components
-#from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 from numpy import linalg as lg
 from numpy import fill_diagonal
 
