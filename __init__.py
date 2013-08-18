@@ -12,4 +12,3 @@ from mayBrainTools import brainObj, plotObj, mlab
 import writeFns
 import mayBrainExtraFns
 write = writeFns.writeFns()
-analysis = mayBrainExtraFns.extraFns()
