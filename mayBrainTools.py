@@ -146,7 +146,9 @@ class brainObj:
                     self.G.remove_node(node)
 
         # create edges by thresholding adjacency matrix
-        self.adjMatThresholding(edgePC=None, totalEdges=None, MST=False)
+        if MST:
+            self.adjMatThresholding(edgePC=None, totalEdges=None, MST=False)
+                
         if(threshold or edgePC or totalEdges):
             if thresholdtype=="global":
                 self.adjMatThresholding(edgePC, totalEdges, threshold, MST=MST)
@@ -459,7 +461,6 @@ class brainObj:
             self.G.remove_edges_from(self.G.edges())
 
         nodecount = len(self.G.nodes())
-        print nodecount
             
         # get the number of edges to link
         if not edgePC == None:  # needs to be written this way in case edgePC is 0
@@ -526,8 +527,6 @@ class brainObj:
             # correct for undirected graph
             edgeNum = edgeNum/2
             
-            print ' '.join([str(edgeNum), str(edgeCount) ])
-            print(len(edgeCos[0]))
             for ind in range(len(edgeCos[0])):
                 node1 = edgeCos[0][ind]
                 node2 = edgeCos[1][ind]
