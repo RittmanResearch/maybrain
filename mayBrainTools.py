@@ -1533,13 +1533,10 @@ class brainObj:
 
         oldThr = self.threshold
 
-
 #        if not(minThr):
 #            minThr = min(self.adjMat)
 #        if not(maxThr):
 #            maxThr = max(self.adjMat)
-#            
-#            
 #        
 #        print('min max of adjmat')
 #        print(min(self.adjMat), max(self.adjMat))
@@ -1562,9 +1559,9 @@ class brainObj:
         sgLen=[]
         for n in range(3):
             if not edgePCBool:
-                self.adjMatThresholding(tVal = ths[n], doPrint=False)
+                self.adjMatThresholding(tVal = ths[n], doPrint=False, rethreshold=True, MST=False)
             else:
-                self.adjMatThresholding(edgePC = ths[n], doPrint=False)
+                self.adjMatThresholding(edgePC = ths[n], doPrint=False, rethreshold=True, MST=False)
             sgLen.append(len(components.connected.connected_component_subgraphs(self.G)))
         # check to see if tlow0 is too high        
         if sgLen[2] == sgLen[0]:
