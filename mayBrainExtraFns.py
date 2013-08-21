@@ -287,7 +287,7 @@ def betweennesscentralitywrite(brain,outfilebase = "brain", append=True):
         
         
     centralities = centrality.closeness_centrality(brain.G)  # calculate centralities for largest connected component
-    f.writelines(','.join([str(centralities[v]) for v in sorted(centralities.iterkeys())]) + '\n')                    # write out centrality values
+    f.writelines(','.join([str(centralities[v]) for v in sorted(centralities.iterkeys())]) + '\n')    # write out centrality values
     f.close()
     
     # hub centrality
@@ -325,7 +325,7 @@ def betweennesscentralitywrite(brain,outfilebase = "brain", append=True):
     for hub in centhubs:
         hubcentralitieistowrite[hub] = centralities[hub]
         
-    f.writelines(','.join([ str(v) for v in sorted(hubcentralitieistowrite.iterkeys())]) +'\n')
+    f.writelines(','.join([ str(hubcentralitieistowrite[v]) for v in sorted(hubcentralitieistowrite.iterkeys())]) +'\n')
     f.close()
     g.close()
     
