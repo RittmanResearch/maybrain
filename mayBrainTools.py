@@ -28,11 +28,11 @@ from networkx.drawing import *
 from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
-from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort, min, max
+from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort, min, max, ones
 from mayavi import mlab
 from string import split
 import nibabel as nb
-from mayavi.core.ui.api import MlabSceneModel, SceneEditor
+#from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 
 class brainObj:
     """
@@ -58,7 +58,8 @@ class brainObj:
         self.iter = None # not sure where this is used. It is often defined, but never actually used!
         
         # initialise global variables
-        self.adjMat = None # adjacency matrix, containing weighting of edges.
+        self.coords = [] # coordinates of points - should be the same length as dims of adj matrix
+        self.adjMat = None # adjacency matrix, containing weighting of edges. Should be square.
         self.adjInds = [] # list of points used from coord/adj data
         self.edgeInds = [] # list of active edges (ordered list of pairs)
         self.threshold = 0 # value of threshold for including edges
@@ -162,16 +163,18 @@ class brainObj:
             print "Couldn't find 3D position information"
             print "Problem with opening file: "+errordetails                
             return
+            
+        self.coords = []
         
         # get data from file
         lines = f.readlines()
         nodeCount=0
         for line in lines:
             l = split(line)
-            self.G.node[nodeCount]['anatlabel'] = l[0]
-            self.G.node[nodeCount]['xyz'] = (float(l[1]),float(l[2]),float(l[3]))
+#            self.G.node[nodeCount]['anatlabel'] = l[0]
+#            self.G.node[nodeCount]['xyz'] = (float(l[1]),float(l[2]),float(l[3]))
+            self.coords.append([float(l[1]),float(l[2]),float(l[3])])
             nodeCount+=1
-        del(lines)
                  
 
     def importSkull(self, fname):
@@ -339,7 +342,6 @@ class brainObj:
             
         ##### carry out thresholding on adjacency matrix
         boolMat = self.adjMat>=self.threshold
-        print(boolMat)
         try:
             fill_diagonal(boolMat, 0)
         except:
@@ -349,6 +351,10 @@ class brainObj:
         es = where(boolMat) # lists of where edges should be
         self.edgeInds = []
         for ii in range(len(es[0])):
+            if not(self._directed):
+                if es[0][ii] <= es[1][ii]:
+                    continue # this is a bodge, better to fill the lower diagonal section 
+                    # of bool Mat with zeros
             self.edgeInds.append( [es[0][ii], es[1][ii]])
 
 
@@ -1475,13 +1481,14 @@ class brainObj:
         self.adjMatThresholding(tVal=startthresh)
 
 
-class highlight():
+class highlightObj():
     ''' object to hold information to highlight a subsection of a brainObj '''
     
     def __init__(self, points = None, edges = None):
-        ''' Points refer to the indices of points in the brain object to which it
-        is related. Edges is a set of pairs of points of the same brain object '''
+        ''' Points refer to the indices of node coordinates in the brain object to which it
+        is related. Edges is a set of pairs of coordinates of the same brain object '''
         
+        self.mode = 'pe'
         self.points = points # indices of points used from a brain object
         self.edges = edges 
         self._edgeIndices = [] # indices of edges - note that these change with rethresholding of the parent brain
@@ -1506,9 +1513,9 @@ class highlight():
                 continue
             
             self._edgeIndices.append(ind)
-                
-                
-        
+            
+        return self._edgeIndices
+            
     
     
 class plotObj():
@@ -1542,6 +1549,52 @@ class plotObj():
 
         # autolabel for plots
         self.labelNo = 0         
+        
+    def coordsToList(self, brain, nodeList='all', edgeList='all'):
+        ''' get coordinates from lists in the brain object, possibly using only
+        the indices given by nodeList and edgeList '''
+        
+        coords = array(brain.coords)
+        if nodeList!='all':
+            coords = coords[nodeList,:]
+                    
+        edges = array(brain.edgeInds)
+        if edgeList!='all':
+            edges = edges[edgeList,:]
+            
+        print(coords)
+
+        ex1 = []
+        ex2 = []
+        ey1 = []
+        ey2 = []
+        ez1 = []
+        ez2 = []
+        s = []
+        
+        print(edges)
+        for e in edges:
+            ex1.append(brain.coords[e[0]][0])
+            ex2.append(brain.coords[e[1]][0])
+            
+            ey1.append(brain.coords[e[0]][1])
+            ey2.append(brain.coords[e[1]][1])
+            
+            ez1.append(brain.coords[e[0]][2])
+            ez2.append(brain.coords[e[1]][2])
+            
+            s.append(brain.adjMat[e[0],e[1]])
+            
+        ex1 = array(ex1)
+        ex2 = array(ex2)
+        ey1 = array(ey1)
+        ey2 = array(ey2)
+        ez1 = array(ez1)
+        ez2 = array(ez2)
+        
+        s = array(s)
+
+        return coords[:, 0], coords[:, 1], coords[:, 2],  ex1, ex2, ey1, ey2, ez1, ez2, s
         
            
     def nodeToList(self, brain, nodeList=None, edgeList=None):
@@ -1580,7 +1633,6 @@ class plotObj():
             edgesVz.append(v[2])
             
             scalars.append(brain.adjMat[e[0],e[1]])
-            
             
         
         return nodesX, nodesY, nodesZ, edgesCx, edgesCy, edgesCz, edgesVx, edgesVy, edgesVz, scalars
@@ -1632,8 +1684,11 @@ class plotObj():
 
 
     
-    def plotBrain(self, brain, label = None, nodes = None, edges = None, col = (1, 1, 1), opacity = 1.):
+    def plotBrain(self, brain, label = None, nodes = None, edges = None, col = (1, 1, 1), opacity = 1., edgeCol = None):
         ''' plot the nodes and edges using Mayavi
+        
+            brain is a brain object
+            label is a label used to store the dictinoary
         
             THIS FUNCTION NEEDS SPLITTING UP SOME
 
@@ -1648,13 +1703,13 @@ class plotObj():
         # sort out keywords
         if not nodes:
             # use all the nodes
-            nodeList = brain.G.nodes()
+            nodeList = range(len(brain.coords))
         else:
             # use a subset of nodes
             nodeList = nodes
         if not edges:
-            # use all the edges
-            edgeList = brain.G.edges()
+            # use all the edges available
+            edgeList = range(len(brain.edgeInds))
         else:
             # use a subset of edges
             edgeList = edges
@@ -1664,20 +1719,26 @@ class plotObj():
             label = self.getAutoLabel()
                         
         # turn nodes into lists for plotting
-        xn, yn, zn, xe, ye, ze, xv, yv, zv, h = self.nodeToList(brain, nodeList=nodeList, edgeList=edgeList)
+#        xn, yn, zn, xe, ye, ze, xv, yv, zv, h = self.nodeToList(brain, nodeList=nodeList, edgeList=edgeList)
+        xn, yn, zn, xe, ye, ze, xv, yv, zv, h = self.coordsToList(brain, nodeList=nodeList, edgeList=edgeList)
+        print xn, yn, zn, xe, ye, ze, xv, yv, zv
+        s = ones(len(xn))
+        
+        print(h)
 
         # add point data to mayavi
-        ptdata = mlab.pipeline.scalar_scatter(xn, yn, xn)
-        
+        ptdata = mlab.pipeline.scalar_scatter(xn, yn, xn, s)
+
         # add vector data to mayavi
-        edata = mlab.pipeline.vector_scatter(xe, ye, ze, xv, yv, zv, scalars = h, figure = fig1)
-
+        edata = mlab.pipeline.vector_scatter(xe, xv, ye, yv, ze, zv, scalars = h, figure = self.mfig)
+#
         # plot nodes
-        mlab.pipeline.glyph(ptdata, color = col, scale_factor = 0.1, opacity = opacity)
-
+        mlab.pipeline.glyph(ptdata, color = col, opacity = opacity)
+#
         # plot edges
-        v = mlab.pipeline.vectors(data, colormap='GnBu', line_width=1., opacity=opacity, mode = '2ddash')
-        v.glyph.color_mode = 'color_by_scalar'
+        v = mlab.pipeline.vectors(edata, colormap='GnBu', line_width=1., opacity=opacity, mode = '2ddash', color = edgeCol)
+        if not(edgeCol):
+            v.glyph.color_mode = 'color_by_scalar'
 
         
         # plot nodes
@@ -1742,18 +1803,14 @@ class plotObj():
         self.brainEdgePlots[label] = t
                        
                        
-    def plotSubset(self, brain, nodeIndices, edgeIndices, col):
+    def plotSubset(self, brain, hl, col):
         ''' plot a subset of nodes and edges. Nodes are plotted with colour 'col', a tuple of 3 numbers between 0 and 1, e.g. (0, 0.4, 0.6) '''
-        
-        nodeSubset = []
-        edgeSubset = []
-        
-        for ind in nodeIndices:
-            nodeSubset.append(brain.G.nodes()[ind])
-        for ind in edgeIndices:
-            edgeSubset.append(brain.G.edges()[ind])
+
+        # get indices of edges
+        edgeInds = hl.getEdgeInds(brain)
             
-        self.plotBrain(nodes = nodeSubset, edges = edgeSubset, col = col)
+        # plot the highlight
+        self.plotBrain(brain, nodes = hl.points, edges = edgeInds, edgeCol = col)
         
             
     def getCoords(self, brain, edge):
