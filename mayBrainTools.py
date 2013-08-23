@@ -76,6 +76,8 @@ class brainObj:
         self.nbiso = None
         self.iso = None
         self.isoHeader = None
+        
+        self.highlights = {} # highlights items consist of a list contating a name, a highlight object and a colour
 
     ## ================================================
 
@@ -356,6 +358,15 @@ class brainObj:
                     continue # this is a bodge, better to fill the lower diagonal section 
                     # of bool Mat with zeros
             self.edgeInds.append( [es[0][ii], es[1][ii]])
+
+    def getEdgeWeights(self):
+        ''' returns a list of the weighting of each edge '''
+
+        l = []        
+        for e in self.edgeInds:
+            e.append(self.adjMat(e[0], e[1]))
+            
+        return l
 
 
     def adjMatThresholding(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, doPrint=True):
@@ -1518,7 +1529,7 @@ class highlightObj():
             
     
     
-class plotObj():
+class plotObjOld():
     ''' classes that plot various aspects of a brain object '''
     
     
@@ -1966,3 +1977,213 @@ class plotObj():
         return label
     
         
+class plotObj():
+    ''' An ingenious way to save memory by altering the colourmap to highlight
+    areas of the brain. 
+    
+    Q. Is it possible to use point scalars (of the edges) to alter opacity?? '''
+    
+    
+
+
+    def __init__(self):
+        
+        # initialise mayavi figure
+        self.startMayavi()  
+        
+        self.nodesf = 0.5 # scale factor for nodes
+        
+        
+    def startMayavi(self):
+        ''' initialise the Mayavi figure for plotting '''        
+        
+        # start the engine
+        from mayavi.api import Engine
+        self.engine = Engine()
+        self.engine.start()
+        
+        # create a Mayavi figure
+        self.mfig = mlab.figure(bgcolor = (0, 0, 0), fgcolor = (1., 1., 1.), engine = self.engine, size=(1500, 1500))
+        
+        # holders for plot objects
+        self.brainNodePlots = {}
+        self.brainEdgePlots = {}
+        self.skullPlots = {}
+        self.isosurfacePlots = {}
+
+        # autolabel for plots
+        self.labelNo = 0   
+    
+    
+    def coordsToList(self, brain, nodeList='all', edgeList='all'):
+        ''' get coordinates from lists in the brain object, possibly using only
+        the indices given by nodeList and edgeList '''
+        
+        coords = array(brain.coords)
+        if nodeList!='all':
+            coords = coords[nodeList,:]
+                    
+        edges = array(brain.edgeInds)
+        if edgeList!='all':
+            edges = edges[edgeList,:]
+            
+        print(coords)
+
+        ex1 = []
+        ex2 = []
+        ey1 = []
+        ey2 = []
+        ez1 = []
+        ez2 = []
+        s = []
+        
+        print(edges)
+        for e in edges:
+            ex1.append(brain.coords[e[0]][0])
+            ex2.append(brain.coords[e[1]][0])
+            
+            ey1.append(brain.coords[e[0]][1])
+            ey2.append(brain.coords[e[1]][1])
+            
+            ez1.append(brain.coords[e[0]][2])
+            ez2.append(brain.coords[e[1]][2])
+            
+            s.append(brain.adjMat[e[0],e[1]])
+            
+        ex1 = array(ex1)
+        ex2 = array(ex2)
+        ey1 = array(ey1)
+        ey2 = array(ey2)
+        ez1 = array(ez1)
+        ez2 = array(ez2)
+        
+        s = array(s)
+
+        return coords[:, 0], coords[:, 1], coords[:, 2],  ex1, ex2, ey1, ey2, ez1, ez2, s    
+    
+    
+    def plotBrain(self, brain, label = None, nodes = None, edges = None, col = (1, 1, 1), opacity = 1., edgeCol = None):
+        ''' plot the nodes and edges using Mayavi
+        
+            brain is a brain object
+            label is a label used to store the dictinoary
+        
+            THIS FUNCTION NEEDS SPLITTING UP SOME
+
+            points and edges are stored as different data sets. Hopefully filters
+            are applied to plot each of them. 
+            
+            col is the colour of the plot. Can be a triplet of values  in the interval [0,1],
+            or 'vector' to colour by vector scalar.
+        
+        '''
+        
+        # sort out keywords
+        if not nodes:
+            # use all the nodes
+            nodeList = range(len(brain.coords))
+        else:
+            # use a subset of nodes
+            nodeList = nodes
+        if not edges:
+            # use all the edges available
+            edgeList = range(len(brain.edgeInds))
+        else:
+            # use a subset of edges
+            edgeList = edges
+            
+        # get output label for the plot
+        if not(label):
+            label = self.getAutoLabel()
+                        
+        # turn nodes into lists for plotting
+#        xn, yn, zn, xe, ye, ze, xv, yv, zv, h = self.nodeToList(brain, nodeList=nodeList, edgeList=edgeList)
+        xn, yn, zn, xe, ye, ze, xv, yv, zv, h = self.coordsToList(brain, nodeList=nodeList, edgeList=edgeList)
+        print xn, yn, zn, xe, ye, ze, xv, yv, zv
+        s = ones(len(xn))
+        
+        print(h)
+
+        # add point data to mayavi
+        ptdata = mlab.pipeline.scalar_scatter(xn, yn, xn, s)
+
+        # add vector data to mayavi
+        edata = mlab.pipeline.vector_scatter(xe, xv, ye, yv, ze, zv, scalars = h, figure = self.mfig)
+#
+        # plot nodes
+        mlab.pipeline.glyph(ptdata, color = col, opacity = opacity)
+#
+        # plot edges
+        v = mlab.pipeline.vectors(edata, colormap='GnBu', line_width=1., opacity=opacity, mode = '2ddash', color = edgeCol)
+        if not(edgeCol):
+            v.glyph.color_mode = 'color_by_scalar'
+
+        
+        # plot nodes
+#        s = mlab.points3d(xn, yn, zn, scale_factor = self.nodesf, color = col, opacity = opacity)
+#        self.brainNodePlots[label] = s
+        
+        # plot edges
+#        t = mlab.quiver3d(xe, ye, ze, xv, yv, zv, line_width = 1., mode = '2ddash', scale_mode = 'vector', scale_factor = 1., color = col, opacity = opacity)
+#        self.brainEdgePlots[label] = t
+    
+    def plotBrainHighlights(self, brain):
+        ''' different edges are highlighted by changing the colour map '''
+        
+        # initliase colours and where they change
+        cols = [(0.,0.,0.)]
+        col_bds = [0., 1.]
+        
+        
+        # map threshold values scalars onto the interval (0,1)
+        # vsm is vector-scalar mapping
+        vsm = brain.getEdgeWeights()
+        vsm = (vsm - min(vsm))/(max(msv) - min(vsm))
+        
+        # continue with additional highlights in steps of 0.1
+        # note that later highlights take priority
+        sval = 0.95
+        
+        for h in brain.highlights:
+            # higlight objects are [name, indices, colour]
+            sval = sval + 0.1
+            col_bds.append(sval + 0.05)
+            cols.append(h[2])
+            
+            for e in h[1]:
+                vsm[e] = sval
+                
+        # define colour map
+        self.makecolourmap(col_bds, cols)
+        
+        
+        # transfer new scalar values to mayavi
+        
+        
+        # update the plot
+            
+        
+    def makecolourmap(self, bds, vals):
+        ''' define a colourmap that has the colours changing at the defined boundaries ''' 
+        
+        fname = 'cmap.txt'
+        
+        a = 1
+        
+        
+    def plotSkull(self, brain, label = None, contourVals = [], opacity = 0.1, cmap='Spectral'):
+        ''' plot the skull using Mayavi '''
+        
+        if not(label):
+            label = self.getAutoLabel()        
+        
+        if contourVals == []:            
+            s = mlab.contour3d(brain.skull, opacity = opacity, colormap=cmap)
+        else:
+            s = mlab.contour3d(brain.skull, opacity = opacity, contours = contourVals, colormap=cmap)
+            
+        # get the object for editing
+        self.skullPlots[label] = s    
+    
+    
+    
