@@ -405,7 +405,8 @@ class brainObj:
     def parcels(self, nodeList):
         """
         Plots 3D parcels specified in the nodeList. This function assumes the parcellation template has
-        been loaded to the brain using brain.importISO.
+        been loaded to the brain using brain.importISO. Note, values passed to this function should
+        corresond with those in the iso image, not necessarily the node values.
         """
         
         zeroArr = zeros(self.iso.shape)
@@ -1842,7 +1843,9 @@ class plotObj():
     
 
     def plotBrainNodes(self, brain, nodes = None, col = (0.5, 0.5, 0.5), opacity = 1., label=None, sizeList=None):
-        ''' plot the nodes and edges using Mayavi '''
+        ''' plot the nodes and edges using Mayavi 
+        The size list is a list of sizes for each node.        
+        '''
         
         # sort out keywords
         if not nodes:
@@ -1858,6 +1861,11 @@ class plotObj():
         
         # plot nodes
         if sizeList:
+            try:
+                float(sizeList)
+                sizeList = np.repeat(sizeList, len(nodeList))
+            except ValueError:
+                pass
             s = mlab.points3d(xn, yn, zn, sizeList, scale_factor = self.nodesf, color = col, opacity = opacity)
 
         else:
