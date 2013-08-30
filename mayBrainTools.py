@@ -315,7 +315,7 @@ class brainObj:
         k=1 # number of degrees for NNG
     
         # create minimum spanning tree
-        T = self.minimum_spanning_tree(self.G)
+        T = self.minimum_spanning_tree(self)
         lenEdges = len(T.edges())
         if lenEdges > edgeNum:
             print "The minimum spanning tree already has: "+ lenEdges + " edges, select more edges."
@@ -333,14 +333,15 @@ class brainObj:
             # remove edges from the NNG that exist already in the new graph/MST
             nng.remove_edges_from(T.edges())
             
-            # add weights to NNG    
+            # add weights to NNG
             for e in nng.edges():
-                nng.edge[e[0]][e[1]] = self.G.edge[e[0]][e[1]]
+                nng.edge[e[0]][e[1]]['weight'] = self.adjMat[e[0],e[1]]
+            
             nng.edges(data=True)
             
             # get a list of edges from the NNG in order of weight
             edgeList = sorted(nng.edges(data=True), key=lambda t: t[2]['weight'], reverse=True)
-    
+            
             # add edges to graph in order of connectivity strength
             for edge in edgeList:
                 T.add_edges_from([edge])
@@ -961,8 +962,9 @@ class brainObj:
         if weighted:
             self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='weight').values()))
             
-            ###### this next line doesn't work! Because of negative weights #######
-            self.closenessCentrality = np.array((centrality.closeness_centrality(self.G, distance=True).values()))
+            for edge in self.G.edges():
+                self.G.edge[edge[0]][edge[1]]["distance"] = self.G.edge[edge[0]][edge[1]]["weight"] + 1.00001 # need to convert weights to be positive for closeness centrality to be calculated
+            self.closenessCentrality = np.array((centrality.closeness_centrality(self.G, distance="distance").values()))
             self.degrees = np.array((nx.degree(self.G, weight='weight').values()))
                       
         else:
@@ -993,7 +995,7 @@ class brainObj:
             for n,node in enumerate(self.G.nodes()):
                 self.G.node['hubscore'] = hubScores[n]
             
-    #   find standard deviation of hub score
+    #   find 2 standard deviations above mean hub score
         upperLimit = np.mean(np.array(hubScores)) + 2*np.std(np.array(hubScores))
     
     #   identify nodes as hubs if 2 standard deviations above hub score
