@@ -1529,7 +1529,7 @@ class highlightObj():
             
     
     
-class plotObjOld():
+class plotObj():
     ''' classes that plot various aspects of a brain object '''
     
     
@@ -1561,138 +1561,81 @@ class plotObjOld():
         # autolabel for plots
         self.labelNo = 0         
         
-    def coordsToList(self, brain, nodeList='all', edgeList='all'):
+    def coordsToList(self, brain, nodeList='all'):
         ''' get coordinates from lists in the brain object, possibly using only
         the indices given by nodeList and edgeList '''
         
         coords = array(brain.coords)
         if nodeList!='all':
             coords = coords[nodeList,:]
-                    
+
+        return coords[:, 0], coords[:, 1], coords[:, 2]
+        
+    def edgesToList(self, brain, edgeList = 'all'):
+        ''' Get a set of edges, possibly using a subset from the brain
+        edgeList is a list of the indices of edges to be included '''
+
         edges = array(brain.edgeInds)
         if edgeList!='all':
             edges = edges[edgeList,:]
+        edges = array(edges, dtype=int)
             
-        print(coords)
+        coords = array(brain.coords)
+        
+        ex1 = coords[edges[:,0], 0]
+        ex2 = coords[edges[:,1], 0]
+        
+        ey1 = coords[edges[:,0], 1]
+        ey2 = coords[edges[:,1], 1]
+        
+        ez1 = coords[edges[:,0], 2]
+        ez2 = coords[edges[:,1], 2]
+        
+        s = brain.adjmat[edges[:,0], edges[:,1]]
+            
+#        ex1 = []
+#        ex2 = []
+#        ey1 = []
+#        ey2 = []
+#        ez1 = []
+#        ez2 = []
+#        s = []
+#        
+#        print(edges)
+#        for e in edges:
+#            ex1.append(brain.coords[e[0]][0])
+#            ex2.append(brain.coords[e[1]][0])
+#            
+#            ey1.append(brain.coords[e[0]][1])
+#            ey2.append(brain.coords[e[1]][1])
+#            
+#            ez1.append(brain.coords[e[0]][2])
+#            ez2.append(brain.coords[e[1]][2])
+#            
+#            s.append(brain.adjMat[e[0],e[1]])
+#            
+#        ex1 = array(ex1)
+#        ex2 = array(ex2)
+#        ey1 = array(ey1)
+#        ey2 = array(ey2)
+#        ez1 = array(ez1)
+#        ez2 = array(ez2)
+#        
+#        s = array(s)
+        
+        return ex1, ex2, ey1, ey2, ez1, ez2, s
+            
 
-        ex1 = []
-        ex2 = []
-        ey1 = []
-        ey2 = []
-        ez1 = []
-        ez2 = []
-        s = []
+    def plotBrain_all(self, brain):
+        ''' plot all the coords, edges and highlights in a brain '''
         
-        print(edges)
-        for e in edges:
-            ex1.append(brain.coords[e[0]][0])
-            ex2.append(brain.coords[e[1]][0])
-            
-            ey1.append(brain.coords[e[0]][1])
-            ey2.append(brain.coords[e[1]][1])
-            
-            ez1.append(brain.coords[e[0]][2])
-            ez2.append(brain.coords[e[1]][2])
-            
-            s.append(brain.adjMat[e[0],e[1]])
-            
-        ex1 = array(ex1)
-        ex2 = array(ex2)
-        ey1 = array(ey1)
-        ey2 = array(ey2)
-        ez1 = array(ez1)
-        ez2 = array(ez2)
+        # plot coords
         
-        s = array(s)
-
-        return coords[:, 0], coords[:, 1], coords[:, 2],  ex1, ex2, ey1, ey2, ez1, ez2, s
         
-           
-    def nodeToList(self, brain, nodeList=None, edgeList=None):
-        ''' convert nodes and edges to list of coordinates '''
-        if not nodeList:
-            nodeList=brain.G.nodes()
-        if not edgeList:
-            edgeList=brain.G.edges()
-        # get node coordinates into lists        
-        nodesX = []
-        nodesY = []
-        nodesZ = []
+        # plot all edges
         
-        for n in nodeList:
-            nodesX.append(brain.G.node[n]["xyz"][0])
-            nodesY.append(brain.G.node[n]["xyz"][1])
-            nodesZ.append(brain.G.node[n]["xyz"][2])
         
-        # get edge coordinates and vectors into lists
-        edgesCx = []
-        edgesCy = []
-        edgesCz = []
-        edgesVx = []
-        edgesVy = []
-        edgesVz = []
-        scalars = []
-        
-        for e in edgeList:
-            c, v = self.getCoords(brain, e)
-            edgesCx.append(c[0])
-            edgesCy.append(c[1])
-            edgesCz.append(c[2])
-            
-            edgesVx.append(v[0])
-            edgesVy.append(v[1])
-            edgesVz.append(v[2])
-            
-            scalars.append(brain.adjMat[e[0],e[1]])
-            
-        
-        return nodesX, nodesY, nodesZ, edgesCx, edgesCy, edgesCz, edgesVx, edgesVy, edgesVz, scalars
-        
-
-    def getNodesList(self, brain, nodeList=None, edgeList=None):
-        ''' convert nodes and edges to list of coordinates '''
-        if not nodeList:
-            nodeList=brain.G.nodes()
-        # get node coordinates into lists        
-        nodesX = []
-        nodesY = []
-        nodesZ = []
-        
-        for n in nodeList:
-            nodesX.append(brain.G.node[n]["xyz"][0])
-            nodesY.append(brain.G.node[n]["xyz"][1])
-            nodesZ.append(brain.G.node[n]["xyz"][2])
-                
-        return nodesX, nodesY, nodesZ
-
-
-    def getEdgesList(self, brain, edgeList=None):
-        ''' and edges to list of coordinates '''
-        if not edgeList:
-            edgeList=brain.G.edges()
-        
-        # get edge coordinates and vectors into lists
-        edgesCx = []
-        edgesCy = []
-        edgesCz = []
-        edgesVx = []
-        edgesVy = []
-        edgesVz = []
-        
-        for e in edgeList:
-            c, v = self.getCoords(brain, e)
-            edgesCx.append(c[0])
-            edgesCy.append(c[1])
-            edgesCz.append(c[2])
-            
-            edgesVx.append(v[0])
-            edgesVy.append(v[1])
-            edgesVz.append(v[2])
-            
-            
-        
-        return edgesCx, edgesCy, edgesCz, edgesVx, edgesVy, edgesVz
-
+        # plot highlights (subsets of edges)
 
     
     def plotBrain(self, brain, label = None, nodes = None, edges = None, col = (1, 1, 1), opacity = 1., edgeCol = None):
@@ -1760,19 +1703,7 @@ class plotObjOld():
 #        t = mlab.quiver3d(xe, ye, ze, xv, yv, zv, line_width = 1., mode = '2ddash', scale_mode = 'vector', scale_factor = 1., color = col, opacity = opacity)
 #        self.brainEdgePlots[label] = t
         
-    def plotSomeLines(xe, ye, ze, xv, yv, zv, widths = None, color = None, opacity = None):
-        ''' plot many lines with mayavi '''
-        
-        # make the connections
-        
-        # plot a scatter plot ??
-        
-        # plot the lines
-        
-        return 1
-        
-        
-    
+
 
     def plotBrainNodes(self, brain, nodes = None, col = (1, 1, 1), opacity = 1., label=None):
         ''' plot the nodes and edges using Mayavi '''
@@ -1885,7 +1816,9 @@ class plotObjOld():
             Allowed plotTypes: skull, brainNode, brainEdge
             Allowed props: opacity, visibility, colour
             
-            This is basically a shortcut to mayavi visualisation functions            
+            This is basically a shortcut to mayavi visualisation functions 
+            
+            THIS IS GOING TO NEED SOME CHANGES
             
         '''
         
@@ -1977,7 +1910,7 @@ class plotObjOld():
         return label
     
         
-class plotObj():
+class plotObjCol():
     ''' An ingenious way to save memory by altering the colourmap to highlight
     areas of the brain. 
     
@@ -2001,6 +1934,12 @@ class plotObj():
         from mayavi.api import Engine
         self.engine = Engine()
         self.engine.start()
+        if len(engine.scenes) == 0:
+            engine.new_scene()
+
+        # how to remove data from a plot
+        scene = engine.scenes[0]
+        scene.children[1:2] = []  
         
         # create a Mayavi figure
         self.mfig = mlab.figure(bgcolor = (0, 0, 0), fgcolor = (1., 1., 1.), engine = self.engine, size=(1500, 1500))
@@ -2184,6 +2123,5 @@ class plotObj():
             
         # get the object for editing
         self.skullPlots[label] = s    
-    
     
     
