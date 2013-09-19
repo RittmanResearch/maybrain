@@ -75,6 +75,7 @@ class brainObj:
         self.iso = None
         self.isoHeader = None
         
+        self.labelNo = 0 # index for autolabeling of highlights
         self.highlights = {} # highlights items consist of a list contating a name, a highlight object and a colour
 
     ## ================================================
@@ -398,6 +399,43 @@ class brainObj:
                 if not(self.G.has_edge(node1, node2)):
                     self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
                 
+    def highlightFromConds(self, prop, rel, val, label):
+        ''' Creates a highlight by asking if the propertly prop is related to val by rel 
+
+            rel can be one of the following strings:
+                geq - greater than or equal to
+                leq - less than or equal to
+                gt - strictly greater than
+                lt - stricctly less than
+                eq - equal to (i.e. exactly)
+                in(), in[), in(], in[] - within an interval, in this case val is a list of two numbers
+                contains - val is a string
+        '''
+        
+        # extract lists from edges
+        
+        
+        # sort and filter
+        
+        for n in 
+        self.G.node[n][propertyName]
+        
+                
+            
+                
+    def makeHighlight(self, edgeInds, col, label = None):
+        ''' create a highlight object from some edge indices '''
+        
+        h = highlightObj()
+        
+        h.edgeIndices = edgeInds
+        h.colour = col
+        
+        if not(label):
+            label = self.getAutoLabel()
+        
+        self.highlights[label] = h
+        
     
     def makeSubBrain(self, propName, value):
         ''' separate out nodes and edges with a certain property '''
@@ -1488,6 +1526,23 @@ class brainObj:
         
         # return graph to original threshold
         self.adjMatThresholding(tVal=startthresh)
+        
+
+    def getAutoLabel(self):
+        ''' generate an automatic label for a highlight object if none given '''
+        
+        # get index of label
+        num = str(self.labelNo)
+        num = '0' * (4-len(num)) + num
+        
+        # make label and print
+        label = 'plot ' + num
+        print('automatically generated label: '+ label)
+        
+        # iterate label index
+        self.labelNo = self.labelNo + 1
+        
+        return label        
 
 
 class highlightObj():
@@ -1497,23 +1552,23 @@ class highlightObj():
         ''' Points refer to the indices of node coordinates in the brain object to which it
         is related. Edges is a set of pairs of coordinates of the same brain object '''
         
-        self.mode = 'pe'
+#        self._mode = 'pe' # p, e or pe for points only, edges only or points and edges
         self.points = points # indices of points used from a brain object
         self.edges = edges 
-        self._edgeIndices = [] # indices of edges - note that these change with rethresholding of the parent brain
+        self.edgeIndices = [] # indices of edges - note that these change with rethresholding of the parent brain
         self.colour = (0.5, 0.5, 0.5)
         
-        if self.points and self.edges:
-            self.mode = 'pe'
-        elif self.points:
-            self.mode = 'p'
-        elif self.mode:
-            self.mode = 'e'
+#        if self.points and self.edges:
+#            self._mode = 'pe'
+#        elif self.points:
+#            self._mode = 'p'
+#        elif self._mode:
+#            self._mode = 'e'
             
             
     def getEdgeInds(self, brain):
         ''' redefine self._edgeIndices '''
-        self._edgeIndices = []        
+        self.edgeIndices = []        
         
         for e in self.edges:
             # quietly omits edges that don't exist
@@ -1522,9 +1577,21 @@ class highlightObj():
             except ValueError:
                 continue
             
-            self._edgeIndices.append(ind)
+            self.edgeIndices.append(ind)
             
-        return self._edgeIndices
+        return self.edgeIndices
+        
+    def getEdgeCoords(self, brain):
+        ''' convert a list of indices to a list of coordinate index pairs'''
+        
+        self.edges = []
+        
+        for e in self.edgeIndices:
+            self.edges.append(brain.edges[e])
+            
+        print self.edges
+        
+        return self.edges
             
     
     
