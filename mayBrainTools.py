@@ -1692,6 +1692,7 @@ class plotObj():
 #        ez2 = array(ez2)
 #        
 #        s = array(s)
+
         
         return ex1, ey1, ez1, vx, vy, vz, s
             
@@ -1748,8 +1749,7 @@ class plotObj():
             print("i'm here")
             v = mlab.pipeline.vectors(edata, line_width=1., opacity=opacity, mode = plotmode, color = col, scale_factor = 1.0)
         
-        
-    
+            
     def plotBrainOld(self, brain, label = None, nodes = None, edges = None, col = (1, 1, 1), opacity = 1., edgeCol = None):
         ''' CAN SOON BE DEPRECATED
         
