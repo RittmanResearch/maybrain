@@ -9,6 +9,7 @@ to do:
     - write mask for mayavi data??
     - split plotting into separate file (and rename things)
     - set coord scalar value in plotting
+    - edge properties from file
     
     
 Changes for v0.2:
@@ -26,7 +27,7 @@ from networkx.drawing import *
 from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
-from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort, min, max, ones
+from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort, min, max, ones, isnan
 from mayavi import mlab
 from string import split
 import nibabel as nb
@@ -153,6 +154,51 @@ class brainObj:
         if not weighted:
             self.binarise()
       
+    def makeNetwork(self, directed = False):
+        ''' create a new networkx graph from input data (coords and edges) '''
+        
+        if directed:
+            self.G = nx.DiGraph()
+            self.directed = True
+        else:
+            self.G = nx.Graph()
+            self.directed = False
+        
+        # make nodes
+        try:
+            self.G.add_nodes_from(len(self.coords))
+        except:
+            print('brain has no coordinates')
+            return
+        
+        # add coordinates to nodes
+        print("adding coords")
+        ind = 0
+        for c in self.coords:
+            self.G.node[ind]['xyz'] = (float(c[0]),float(c[1]),float(c[2]))            
+            
+            ind = ind + 1
+        else:
+            print('problem adding coordinates, length does not match adjacency matrix')
+
+        # add anatomy labels if present
+        try:
+            if len(self.coords)==nodecount:
+                print("adding coords")
+                ind = 0
+                for c in self.coords:
+                    self.G.node[ind]['anatlabel'] = self.anatLabels[ind]
+                    
+                    ind = ind + 1
+        except AttributeError:
+            print('brain has no anatlabels')
+
+        
+        # make edges
+        for e in self.edgeInds:
+            # add edge
+            self.G.add_edge(e[0],e[1])
+      
       
     def readSpatialInfo(self, fname):
         ''' add 3D coordinate information for each node from a given file '''
@@ -166,6 +212,7 @@ class brainObj:
             return
             
         self.coords = []
+        self.anatLabels = []
         
         # get data from file
         lines = f.readlines()
@@ -175,6 +222,7 @@ class brainObj:
 #            self.G.node[nodeCount]['anatlabel'] = l[0]
 #            self.G.node[nodeCount]['xyz'] = (float(l[1]),float(l[2]),float(l[3]))
             self.coords.append([float(l[1]),float(l[2]),float(l[3])])
+            self.anatLabels.append(l[0])
             nodeCount+=1
                  
 
@@ -272,6 +320,18 @@ class brainObj:
                 self.G.node[n][propertyName] = p
             except:
                 print('property assignment failed: ' + propertyName + ' ' + str(n) + ' ' + str(p))
+
+    def inputEdgeProperty(self, propertyName, edgeList, propList):
+        ''' add a property to a selection of edges '''
+        
+        for ind in range(len(edgeList)):
+            e = edgeList[ind]
+            p = propList[ind]
+            try:
+                self.G.edge[e[0],e[1]][propertyName] = p
+            except:
+                print('edge property assignment failed: ' + propertyname + ' ' + str(n) + ' ' + str(e))
+                    
 
     
     ## ===========================================================================
@@ -399,8 +459,11 @@ class brainObj:
                 if not(self.G.has_edge(node1, node2)):
                     self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
                 
-    def highlightFromConds(self, prop, rel, val, label):
+    def highlightFromConds(self, prop, rel, val, label, type = 'edge', colour = (1.,0.,0.)):
         ''' Creates a highlight by asking if the propertly prop is related to val by rel 
+        
+            type can be 'edge' or 'nodes', to filter for edges or nodes (coordinates) 
+            with the given property
 
             rel can be one of the following strings:
                 geq - greater than or equal to
@@ -411,24 +474,94 @@ class brainObj:
                 in(), in[), in(], in[] - within an interval, in this case val is a list of two numbers
                 contains - val is a string
         '''
-        
-        # extract lists from edges
-        
-        
-        # sort and filter
-        
-        for n in 
-        self.G.node[n][propertyName]
-        
-                
+
+        if not(type in ['edge', 'node']):
+            print('filter type not recognised')
+            return
             
+        # make a highlight object
+        h = highlightObj()
+        h.colour = colour
+        
+        # extract lists from edges        
+        if type == 'edge':
+            ind = 0
+            for e in self.edgeInds:
+                try:
+                    d = self.G.edge[e[0], e[1]][prop]
+                except:
+                    continue           
                 
-    def makeHighlight(self, edgeInds, col, label = None):
+                # match properties
+                boolval = self.propCompare(d, rel, val)
+                
+                # save data in highlight
+                if boolval:
+                    h.edges.append(e) 
+                    h.edgeIndices.append(ind)
+                    
+            ind = ind + 1
+            
+        elif type == 'node':
+            for c in range(len(self.G.nodes())):
+                try:
+                    d = self.G.node[c][prop]
+                except:
+                    continue
+                
+                boolval = self.propCompare(d, rel, val)
+                
+                if boolval:
+                    h.points.append(c)
+                    
+        self.highlights[label] = h
+                
+        
+
+    def propCompare(d, rel, val):
+        ''' compare d relative to val, used by highlightFromConds
+        
+        geq - greater than or equal to
+                leq - less than or equal to
+                gt - strictly greater than
+                lt - stricctly less than
+                eq - equal to (i.e. exactly)
+                in(), in[), in(], in[] - with
+                contains '''
+                
+        
+        if rel == 'eq':
+            b = d == val
+        elif rel == 'gt':
+            b = d > val
+        elif rel == 'lt':
+            b = d < val
+        elif rel == 'leq':
+            b = d <= val
+        elif rel == 'geq':
+            b = d >=val
+        elif rel == 'in()':
+            b = (d>val[0]) & (d<val[1])
+        elif rel == 'in[)':
+            b = (d>=val[0]) & (d<val[1])
+        elif rel == 'in(]':
+            b = (d>val[0]) & (d<=val[1])
+        elif rel == 'in[]':
+            b = (d>=val[0]) & (d<=val[1])
+        elif rel == 'contains':
+            b = d in val
+        
+        return b
+            
+                            
+                
+    def makeHighlight(self, edgeInds, coordInds, col, label = None):
         ''' create a highlight object from some edge indices '''
         
         h = highlightObj()
         
         h.edgeIndices = edgeInds
+        h.points = coordsInds
         h.colour = col
         
         if not(label):
@@ -1633,7 +1766,7 @@ class plotObj():
         
         coords = array(brain.coords)
         if nodeList!='all':
-            coords = coords[nodeList,:]
+            coords = coords[nodeList,1:]
 
         return coords[:, 0], coords[:, 1], coords[:, 2]
         
