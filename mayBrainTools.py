@@ -86,7 +86,7 @@ class brainObj:
            
 
     def getAdjFile(self, fname, delimiter = None):
-        ''' just get the adjacency data from a file and return as an array '''
+        ''' get the adjacency data from a file and return as an array '''
         
         # open file
         f = open(fname,"rb")
@@ -166,8 +166,8 @@ class brainObj:
         
         # make nodes
         try:
-            self.G.add_nodes_from(len(self.coords))
-        except:
+            self.G.add_nodes_from(range(len(self.coords)))
+        except AttributeError:
             print('brain has no coordinates')
             return
         
@@ -178,26 +178,21 @@ class brainObj:
             self.G.node[ind]['xyz'] = (float(c[0]),float(c[1]),float(c[2]))            
             
             ind = ind + 1
-        else:
-            print('problem adding coordinates, length does not match adjacency matrix')
 
         # add anatomy labels if present
         try:
-            if len(self.coords)==nodecount:
-                print("adding coords")
-                ind = 0
-                for c in self.coords:
-                    self.G.node[ind]['anatlabel'] = self.anatLabels[ind]
-                    
-                    ind = ind + 1
+            print("adding coords")
+            ind = 0
+            for c in self.coords:
+                self.G.node[ind]['anatlabel'] = self.anatLabels[ind]
+            ind = ind + 1
         except AttributeError:
             print('brain has no anatlabels')
-
         
         # make edges
         for e in self.edgeInds:
             # add edge
-            self.G.add_edge(e[0],e[1])
+            self.G.add_edge(e[0],e[1], weight = self.adjMat[e[0],e[1]])
       
       
     def readSpatialInfo(self, fname):
@@ -459,7 +454,7 @@ class brainObj:
                 if not(self.G.has_edge(node1, node2)):
                     self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
                 
-    def highlightFromConds(self, prop, rel, val, label, type = 'edge', colour = (1.,0.,0.)):
+    def highlightFromConds(self, prop, rel, val, label = None, mode = 'edge', colour = (1.,0.,0.)):
         ''' Creates a highlight by asking if the propertly prop is related to val by rel 
         
             type can be 'edge' or 'nodes', to filter for edges or nodes (coordinates) 
@@ -475,20 +470,26 @@ class brainObj:
                 contains - val is a string
         '''
 
-        if not(type in ['edge', 'node']):
-            print('filter type not recognised')
+        # check filter mode
+        if not(mode in ['edge', 'node']):
+            print('filter mode not recognised')
             return
+        # check if label given
+        if not label:
+            label = self.getAutoLabel()
             
         # make a highlight object
         h = highlightObj()
         h.colour = colour
         
         # extract lists from edges        
-        if type == 'edge':
+        if mode == 'edge':
             ind = 0
             for e in self.edgeInds:
                 try:
+                    print(self.G.edges[e[0], e[1]])
                     d = self.G.edge[e[0], e[1]][prop]
+                    print('bingo')
                 except:
                     continue           
                 
@@ -502,23 +503,28 @@ class brainObj:
                     
             ind = ind + 1
             
-        elif type == 'node':
+        elif mode == 'node':
+            h.points = []
             for c in range(len(self.G.nodes())):
+                # get property
                 try:
                     d = self.G.node[c][prop]
                 except:
                     continue
                 
+                # test property against criteria
                 boolval = self.propCompare(d, rel, val)
                 
+                # add to highlight if good
                 if boolval:
                     h.points.append(c)
                     
+        # add highlight to dictionary
         self.highlights[label] = h
                 
         
 
-    def propCompare(d, rel, val):
+    def propCompare(self, d, rel, val):
         ''' compare d relative to val, used by highlightFromConds
         
         geq - greater than or equal to
@@ -1703,7 +1709,7 @@ class highlightObj():
         ''' redefine self._edgeIndices '''
         self.edgeIndices = []        
         
-        for e in self.edges:
+        for e in brain.edges:
             # quietly omits edges that don't exist
             try:
                 ind = brain.edgeInds.index(e)
@@ -1766,7 +1772,7 @@ class plotObj():
         
         coords = array(brain.coords)
         if nodeList!='all':
-            coords = coords[nodeList,1:]
+            coords = coords[nodeList,:]
 
         return coords[:, 0], coords[:, 1], coords[:, 2]
         
@@ -1846,9 +1852,21 @@ class plotObj():
         
         # plot highlights (subsets of edges)
         for h in brain.highlights:
-            inds = h.getEdgeInds(brain)
-            ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain, edgeList = inds)
-            self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = None)
+            he = brain.highlights[h].edgeIndices
+            if not(len(he)==0):
+                ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain, edgeList = he)
+                self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = brain.highlights[h].colour)
+            
+            hp = brain.highlights[h].points
+            try:
+                if not(len(hp)==0):
+                    xyz = self.coordsToList(brain, nodeList = hp)
+                    self.plotCoords(xyz, col = brain.highlights[h].colour)
+            except TypeError:
+                pass
+                
+                
+            
 
 
     def plotCoords(self, coords, col = (1,1,1), opacity = 1., ):
@@ -1953,7 +1971,7 @@ class plotObj():
 
 
     def plotBrainNodes(self, brain, nodes = None, col = (1, 1, 1), opacity = 1., label=None):
-        ''' plot the nodes and edges using Mayavi '''
+        ''' plot the nodes using Mayavi '''
         
         # sort out keywords
         if not nodes:
