@@ -1792,13 +1792,13 @@ class plotObj():
         print(edges)
         
         ex1 = coords[edges[:,0], 0]
-        vx = coords[edges[:,1], 0] - ex1
+        vx = coords[edges[:,1], 0]# - ex1
         
         ey1 = coords[edges[:,0], 1]
-        vy = coords[edges[:,1], 1] - ey1
+        vy = coords[edges[:,1], 1]# - ey1
         
         ez1 = coords[edges[:,0], 2]
-        vz = coords[edges[:,1], 2] - ez1
+        vz = coords[edges[:,1], 2]# - ez1
         
         s = list(brain.adjMat[edges[:,0], edges[:,1]])
             
@@ -1892,13 +1892,13 @@ class plotObj():
         edata = mlab.pipeline.vector_scatter(ex1, ey1, ez1, ux, uy, yz, scalars = s, figure = self.mfig)
         
         # plot
-#        v = mlab.pipeline.vectors(edata, colormap='GnBu', line_width=1., opacity=opacity, mode = plotmode, color = col)
+        v = mlab.pipeline.vectors(edata, colormap='GnBu', line_width=1., opacity=opacity, mode = plotmode, color = col)
         if not(col):
             v = mlab.pipeline.vectors(edata, colormap='GnBu', line_width=1., opacity=opacity, mode = plotmode)
             v.glyph.color_mode = 'color_by_scalar'
         else:
             print("i'm here")
-            v = mlab.pipeline.vectors(edata, line_width=1., opacity=opacity, mode = plotmode, color = col, scale_factor = 1.0)
+            v = mlab.pipeline.vectors(edata, line_width=1., opacity=opacity, mode = plotmode, color = col, scale_mode = None) #, scale_factor = 1.0)
         
             
     def plotBrainOld(self, brain, label = None, nodes = None, edges = None, col = (1, 1, 1), opacity = 1., edgeCol = None):
