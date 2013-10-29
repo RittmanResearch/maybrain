@@ -957,14 +957,12 @@ class brainObj:
             - added possibility of weighted measures
         """
         
-        self.hubs = []
-        
     #    get centrality measures
         if weighted:
             self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='weight').values()))
             
             for edge in self.G.edges():
-                self.G.edge[edge[0]][edge[1]]["distance"] = self.G.edge[edge[0]][edge[1]]["weight"] + 1.00001 # need to convert weights to be positive for closeness centrality to be calculated
+                self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # need to convert weights to a positive distance
             self.closenessCentrality = np.array((centrality.closeness_centrality(self.G, distance="distance").values()))
             self.degrees = np.array((nx.degree(self.G, weight='weight').values()))
                       
@@ -972,10 +970,15 @@ class brainObj:
             self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G).values()))
             self.closenessCentrality = np.array((centrality.closeness_centrality(self.G).values()))
             self.degrees = np.array((nx.degree(self.G).values()))
-            
-        self.betweenessCentrality /= np.sum(self.betweenessCentrality)
-        self.closenessCentrality /=  np.sum(self.closenessCentrality)        
-        self.degrees /= np.sum(self.degrees)
+        
+        # normalise
+        self.betweenessCentrality /= np.std(self.betweenessCentrality)
+        self.closenessCentrality /=  np.std(self.closenessCentrality)        
+        self.degrees /= np.std(self.degrees)
+        
+        self.betweenessCentrality /- np.mean(self.betweenessCentrality)
+        self.closenessCentrality /-  np.mean(self.closenessCentrality)        
+        self.degrees /- np.mean(self.degrees)
         
         
         # deprecated code follows:
@@ -994,14 +997,14 @@ class brainObj:
         
         if assign:
             for n,node in enumerate(self.G.nodes()):
-                self.G.node['hubscore'] = hubScores[n]
+                self.G.node[node]['hubscore'] = hubScores[n]
             
     #   find 2 standard deviations above mean hub score
         upperLimit = np.mean(np.array(hubScores)) + 2*np.std(np.array(hubScores))
     
     #   identify nodes as hubs if 2 standard deviations above hub score
         
-        self.hubs = [n for n,v in enumerate(hubScores) if v > upperLimit]
+        self.hubs = [n for n in self.G.nodes() if self.G.node[n]['hubscore'] > upperLimit ]
                 
     def psuedohubIdentifier(self):
         """ 
