@@ -945,7 +945,7 @@ class brainObj:
                 self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
 
 
-    def hubIdentifier(self, weighted=False, assign=False):
+    def hubIdentifier(self, weighted=False):
         """ 
         define hubs by generating a hub score, based on the sum of normalised scores for:
             betweenness centrality
@@ -1000,9 +1000,8 @@ class brainObj:
 
         hubScores = map(self.hubHelper, range(len(self.G.nodes())))
         
-        if assign:
-            for n,node in enumerate(self.G.nodes()):
-                self.G.node[node]['hubscore'] = hubScores[n]
+        for n,node in enumerate(self.G.nodes()):
+            self.G.node[node]['hubscore'] = hubScores[n]
             
     #   find 2 standard deviations above mean hub score
         upperLimit = np.mean(np.array(hubScores)) + 2*np.std(np.array(hubScores))
