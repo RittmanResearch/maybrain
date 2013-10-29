@@ -939,6 +939,11 @@ class brainObj:
     def hubHelper(self, node):
         hubscore = self.betweenessCentrality[node] + self.closenessCentrality[node] + self.degrees[node]
         return(hubscore)
+        
+    def weightToDistance(self):
+        for edge in self.G.edges():
+                self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
+
 
     def hubIdentifier(self, weighted=False, assign=False):
         """ 
@@ -961,8 +966,7 @@ class brainObj:
         if weighted:
             self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='weight').values()))
             
-            for edge in self.G.edges():
-                self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # need to convert weights to a positive distance
+            self.weightToDistance()
             self.closenessCentrality = np.array((centrality.closeness_centrality(self.G, distance="distance").values()))
             self.degrees = np.array((nx.degree(self.G, weight='weight').values()))
                       
@@ -971,14 +975,15 @@ class brainObj:
             self.closenessCentrality = np.array((centrality.closeness_centrality(self.G).values()))
             self.degrees = np.array((nx.degree(self.G).values()))
         
-        # normalise
+        # normalise values to mean 0, sd 1
+        self.betweenessCentrality /- np.mean(self.betweenessCentrality)
+        self.closenessCentrality /-  np.mean(self.closenessCentrality)        
+        self.degrees /- np.mean(self.degrees)
+        
         self.betweenessCentrality /= np.std(self.betweenessCentrality)
         self.closenessCentrality /=  np.std(self.closenessCentrality)        
         self.degrees /= np.std(self.degrees)
         
-        self.betweenessCentrality /- np.mean(self.betweenessCentrality)
-        self.closenessCentrality /-  np.mean(self.closenessCentrality)        
-        self.degrees /- np.mean(self.degrees)
         
         
         # deprecated code follows:
