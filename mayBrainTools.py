@@ -354,7 +354,7 @@ class brainObj:
         self.G = T
 
       
-    def readSpatialInfo(self, fname):
+    def readSpatialInfo(self, fname, delimiter=" "):
         ''' add 3D coordinate information for each node from a given file '''
         
         try:
@@ -369,7 +369,7 @@ class brainObj:
         lines = f.readlines()
         nodeCount=0
         for line in lines:
-            l = split(line)
+            l = split(line,sep=delimiter)
             try:
                 self.G.node[nodeCount]['anatlabel'] = l[0]
                 self.G.node[nodeCount]['xyz'] = (float(l[1]),float(l[2]),float(l[3]))
