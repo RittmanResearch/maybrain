@@ -354,7 +354,8 @@ class brainObj:
         self.G = T
 
       
-    def readSpatialInfo(self, fname, delimiter=" "):
+
+    def readSpatialInfo(self, fname, delimiter=" ", convertMNI=False):
         ''' add 3D coordinate information for each node from a given file '''
         
         try:
@@ -372,7 +373,12 @@ class brainObj:
             l = split(line,sep=delimiter)
             try:
                 self.G.node[nodeCount]['anatlabel'] = l[0]
+                if convertMNI:
+                    l[1] = 45 - (float(l[1])/2)
+                    l[2] = 63 + (float(l[2])/2)
+                    l[3] = 36 + (float(l[3])/2)
                 self.G.node[nodeCount]['xyz'] = (float(l[1]),float(l[2]),float(l[3]))
+                    
             except:
                 print "Node "+str(nodeCount)+" does not exist in graph"
             nodeCount+=1
@@ -976,9 +982,9 @@ class brainObj:
             self.degrees = np.array((nx.degree(self.G).values()))
         
         # normalise values to mean 0, sd 1
-        self.betweenessCentrality /- np.mean(self.betweenessCentrality)
-        self.closenessCentrality /-  np.mean(self.closenessCentrality)        
-        self.degrees /- np.mean(self.degrees)
+        self.betweenessCentrality -= np.mean(self.betweenessCentrality)
+        self.closenessCentrality -=  np.mean(self.closenessCentrality)        
+        self.degrees -= np.mean(self.degrees)
         
         self.betweenessCentrality /= np.std(self.betweenessCentrality)
         self.closenessCentrality /=  np.std(self.closenessCentrality)        
@@ -1871,7 +1877,7 @@ class plotObj():
             try:
                 float(sizeList)
                 sizeList = np.repeat(sizeList, len(nodeList))
-            except ValueError:
+            except:
                 pass
             s = mlab.points3d(xn, yn, zn, sizeList, scale_factor = self.nodesf, color = col, opacity = opacity)
 
