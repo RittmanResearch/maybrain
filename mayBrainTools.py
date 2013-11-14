@@ -1511,13 +1511,20 @@ class brainObj:
         
         return sn
         
-    def checkrobustness(self, conVal, step):
-        ''' Robustness is a measure that starts with a fully connected graph, \
+    def checkrobustness(self, conVal, step, incomplete):
+        '''        
+        THIS CODE IS OBSOLETE AND KEPT FOR REFERENCE ONLY 13/11/2013
+        
+        Robustness is a measure that starts with a fully connected graph, \
         then reduces the threshold incrementally until the graph breaks up in \
         to more than one connected component. The robustness level is the \
         threshold at which this occurs. '''
 
-        self.adjMatThresholding(tVal = conVal, doPrint=False, MST=False)
+        # record starting threhold
+        X = self.G.copy()
+
+        self.adjMatThresholding(tVal = conVal, doPrint=False, MST=False, rethreshold=incomplete)
+                
         
         sgLenStart = len(components.connected.connected_component_subgraphs(self.G))
         print "Starting sgLen: "+str(sgLenStart)
@@ -1526,18 +1533,18 @@ class brainObj:
         while(sgLen == sgLenStart and conVal < 1.):
             conVal += step
             
-            self.adjMatThresholding(tVal = conVal, doPrint=False, MST=False)
+            self.adjMatThresholding(tVal = conVal, doPrint=False, MST=False, rethreshold=incomplete)
             sgLen = len(components.connected.connected_component_subgraphs(self.G))  # count number of components
             
             print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
+        
+        self.G = X
         return conVal-step
-
+        
 
     def checkrobustnessNew(self, decs = 4, t0low = 1., edgePCBool=False):  #, minThr = None, maxThr = None
         ''' 
         THIS CODE IS OBSOLETE AND KEPT FOR REFERENCE ONLY 13/11/2013
-
-        USE EITHER ROBUSTNESSCOMPLETE OR ROBUSTNESSINCOMPLETE
 
         Robustness is a measure that starts with a fully connected graph,
         then reduces the threshold incrementally until the graph breaks up in
@@ -1562,13 +1569,7 @@ class brainObj:
 #        print(min(self.adjMat), max(self.adjMat))
 #                
 
-        G = nx.Graph() 
-        G.add_nodes_from(self.G.nodes())
-        for node in G.nodes():
-            G.node[node] = self.G.node[node]
-        G.add_edges_from(self.G.edges())
-        for edge in G.edges():
-            G.edge[edge[0]][edge[1]] = self.G.edge[edge[0]][edge[1]]
+        G = self.G.copy()
         
         # new method
         # get starting threshold values
@@ -1671,9 +1672,12 @@ class brainObj:
         else:
             return([fm.format(v) for v in [ths[2],outThs]])
     
-    def robustnessComplete(self, outfilebase="brain", conVal=-1, decPoints=3, append=True):
+    def robustness(self, outfilebase="brain", conVal=-1, decPoints=3, append=True, incomplete=True):
         """
         Function to calculate robustness.
+        
+        The metric is calculated on either the complete graph (complete=True) or threhsolded graph (complete=False)
+        
         """
         # record starting threhold
         G = nx.Graph() 
@@ -1696,13 +1700,13 @@ class brainObj:
         for decP in range(1,decPoints+1):
             step = float(1)/(10**decP)
             print "Step is: " + str(step)
-            conVal = self.checkrobustness(conVal, step)
+            conVal = self.checkrobustness(conVal, step, incomplete=incomplete)
         
         conVal = conVal-step
         
+        
         # get percentage connectivity
-        self.adjMatThresholding(tVal = conVal, MST=False, doPrint=False)
-        edgePC = len(self.G.edges()) / (len(self.G.nodes) * (len(self.G.nodes)-1))
+        edgePC = len(self.G.edges()) / (len(self.G.nodes()) * (len(self.G.nodes())-1))
         
         if not os.path.exists(outfilebase+'_Robustness.txt'):
             
