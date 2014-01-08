@@ -60,8 +60,9 @@ class brainObj:
         self.coords = [] # coordinates of points - should be the same length as dims of adj matrix
         self.adjMat = None # adjacency matrix, containing weighting of edges. Should be square.
         self.adjInds = [] # list of points used from coord/adj data
-        self.edgeInds = [] # list of active edges (ordered list of pairs)
+        self.edgeInds = [] # list of active edges (ordered list of pairs) - only updated if networkx not used
         self.threshold = 0 # value of threshold for including edges
+        self.networkxUsed = False # changed to true when self.makeNetwork is run
         
         # need to define the following, what do they do???
         self.hubs = []
@@ -85,7 +86,7 @@ class brainObj:
 
            
 
-    def getAdjFile(self, fname, delimiter = None):
+    def importAdjFile(self, fname, delimiter = None):
         ''' get the adjacency data from a file and return as an array '''
         
         # open file
@@ -115,87 +116,9 @@ class brainObj:
 
         # set adjacency matrix
         self.adjMat = array(lines)
-        
-        
-    def makeEdges(threshold = None, edgePC = None, totalEdges = None, directed = False, weighted=True):
-        ''' find indices of edges based on a threshold '''
-        a = 1
-        
-
-    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False, weighted=True):
-        ''' 
-        LEGACY FUNCTION - REPLACE WITH GET ADJFILE AND MAKEEDGES        
-        load adjacency matrix with filename and threshold for edge definition 
-        Comment - I don't seem to be able to construct an unweighted directed graph, ie with edge number N(N-1) for an NxN adjacency matrix 
-        '''
-        
-        self.adjMat = array(self.getAdjFile(fname))
-
-        # create adjacency matrix as an array
-        self.adjMat = array(lines)       # array of data
-        
-        # check if it's square
-        sh = shape(self.adjMat)
-        if sh[0]!=sh[1]:
-            print("Note Bene: adjacency matrix not square.")
-            print(sh)
-
-        # create directed graph if necessary
-        self._directed = directed
-        if directed:
-            self.G = nx.DiGraph()
-
-        # create nodes on graph
-        self.G.add_nodes_from(range(nodecount))  # creates one node for every line in the adjacency matrix
-        
-        # create edges by thresholding adjacency matrix
-        self.adjMatThresholding(edgePC, totalEdges, threshold)
-        
-        if not weighted:
-            self.binarise()
-      
-    def makeNetwork(self, directed = False):
-        ''' create a new networkx graph from input data (coords and edges) '''
-        
-        if directed:
-            self.G = nx.DiGraph()
-            self.directed = True
-        else:
-            self.G = nx.Graph()
-            self.directed = False
-        
-        # make nodes
-        try:
-            self.G.add_nodes_from(range(len(self.coords)))
-        except AttributeError:
-            print('brain has no coordinates')
-            return
-        
-        # add coordinates to nodes
-        print("adding coords")
-        ind = 0
-        for c in self.coords:
-            self.G.node[ind]['xyz'] = (float(c[0]),float(c[1]),float(c[2]))            
-            
-            ind = ind + 1
-
-        # add anatomy labels if present
-        try:
-            print("adding coords")
-            ind = 0
-            for c in self.coords:
-                self.G.node[ind]['anatlabel'] = self.anatLabels[ind]
-            ind = ind + 1
-        except AttributeError:
-            print('brain has no anatlabels')
-        
-        # make edges
-        for e in self.edgeInds:
-            # add edge
-            self.G.add_edge(e[0],e[1], weight = self.adjMat[e[0],e[1]])
       
       
-    def readSpatialInfo(self, fname):
+    def importSpatialInfo(self, fname):
         ''' add 3D coordinate information for each node from a given file '''
         
         try:
@@ -267,7 +190,7 @@ class brainObj:
         N = nb.Nifti1Image(self.parcelList, self.nbiso.get_affine(), header=self.isoHeader)
         nb.save(N, outname+'.nii')
         
-    def nodePropertiesFromFile(self, filename):
+    def importNodeProperties(self, filename):
         ''' add node properties from a file. first lines should contain the property 
             name and the following lines tabulated node indices and property value e.g.:
                 
@@ -300,32 +223,31 @@ class brainObj:
         print(propVals)
         print(prop)
         
-        self.inputNodeProperties(prop, nodes, propVals)
+        self.addNodeProperties(prop, nodes, propVals)
             
         
-    def inputNodeProperties(self, propertyName, nodeList, propList):
+    def addNodeProperties(self, propertyName, nodeList, propList):
         ''' add properties to nodes, reading from a list of nodes and a list of 
             corresponding properties '''
         
         for ind in range(len(nodeList)):
             n = nodeList[ind]
             p = propList[ind]
-            print(n, propertyName, p)
             try:
                 self.G.node[n][propertyName] = p
             except:
                 print('property assignment failed: ' + propertyName + ' ' + str(n) + ' ' + str(p))
 
-    def inputEdgeProperty(self, propertyName, edgeList, propList):
+    def addEdgeProperty(self, propertyName, edgeList, propList):
         ''' add a property to a selection of edges '''
         
         for ind in range(len(edgeList)):
             e = edgeList[ind]
             p = propList[ind]
             try:
-                self.G.edge[e[0],e[1]][propertyName] = p
+                self.G.edge[e[0]][e[1]][propertyName] = p
             except:
-                print('edge property assignment failed: ' + propertyname + ' ' + str(n) + ' ' + str(e))
+                print('edge property assignment failed: ' + propertyName + ' ' + str(e) + ' ' + str(p))
                     
 
     
@@ -333,11 +255,55 @@ class brainObj:
     
     ## newtworkx functions    
     
+    def createNetworkX(self):
+        ''' create a new networkx graph from input data (coords and edges) '''
+        
+        if self._directed:
+            self.G = nx.DiGraph()
+        else:
+            self.G = nx.Graph()
+        
+        # make nodes
+        try:
+            self.G.add_nodes_from(range(len(self.coords)))
+        except AttributeError:
+            print('brain has no coordinates')
+            return
+        
+        # add coordinates to nodes
+        print("adding coords")
+        ind = 0
+        for c in self.coords:
+            self.G.node[ind]['xyz'] = (float(c[0]),float(c[1]),float(c[2]))            
+            
+            ind = ind + 1
+
+        # add anatomy labels if present
+        try:
+            print("adding coords")
+            ind = 0
+            for c in self.coords:
+                self.G.node[ind]['anatlabel'] = self.anatLabels[ind]
+            ind = ind + 1
+        except AttributeError:
+            print('brain has no anatlabels')
+        
+        # make edges
+        for e in self.edgeInds:
+            # add edge
+            self.G.add_edge(e[0],e[1], weight = self.adjMat[e[0],e[1]])
+            
+        # change networkx bool
+        self.networkxUsed = True
+        self.edgeInds = None
+    
+
+    ## ===========================================================================    
     
     
     ## Functions to alter the brain
 
-    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, doPrint=True):
+    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False):
 
         #### Determine threshold value
         
@@ -394,7 +360,6 @@ class brainObj:
         else:
             self.threshold  = tVal
         
-        print(edgeNum, self.threshold)
             
         ##### carry out thresholding on adjacency matrix
         boolMat = self.adjMat>=self.threshold
@@ -405,13 +370,35 @@ class brainObj:
                 boolMat[x,x] = 0
                 
         es = where(boolMat) # lists of where edges should be
-        self.edgeInds = []
-        for ii in range(len(es[0])):
-            if not(self._directed):
-                if es[0][ii] <= es[1][ii]:
-                    continue # this is a bodge, better to fill the lower diagonal section 
-                    # of bool Mat with zeros
-            self.edgeInds.append( [es[0][ii], es[1][ii]])
+
+        # exclude duplicates if not directed 
+        if not(self._directed):
+            newes1 = []
+            newes2 = []
+            for ii in range(len(es[1])):
+                if es[0][ii]<=es[1][ii]:
+                    newes1.append(es[0][ii])
+                    newes2.append(es[1][ii])
+                    
+            es = (newes1, newes2)                   
+        
+        # add edges to networkx or self.edgeInds
+        if self.networkxUsed:
+            # could improve the next few lines by spotting when you're only adding edges            
+            
+            # remove previous edges
+            self.G.remove_edges_from(self.G.edges())
+            # add new edges
+            for ii in range(len(es[0])):
+                self.G.add_edge(es[0][ii],es[1][ii], weight = self.adjMat[es[0][ii],es[1][ii]])
+            
+        else:
+            self.edgeInds = []            
+            for ii in range(len(es[0])):
+                eadd = [es[0][ii], es[1][ii]]
+                self.edgeInds.append(eadd)
+            
+            self.edgeInds.sort()
 
     def getEdgeWeights(self):
         ''' returns a list of the weighting of each edge '''
@@ -423,36 +410,36 @@ class brainObj:
         return l
 
 
-    def adjMatThresholding(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, doPrint=True):
-        ''' LEGACY FUNCTION - DO NOT USE
-        
-        apply thresholding to the adjacency matrix. This can be done in one of
-            three ways (in order of decreasing precendence):
-                edgePC - this percentage of nodes will be linked
-                totalEdges - this number of nodes will be linked
-                tVal - give an absolute threshold value. Pairs of nodes with a corresponding adj matrix
-                       value greater than this will be linked. Defaults to -1.1 to produce a fully connected graph.
-        '''
-
-        # check if adjacency matrix is there
-        if self.adjMat == None:
-            print("No adjacency matrix. Please load one.")
-            return
-
-        if not rethreshold:
-            # remove existing edges
-            self.G.remove_edges_from(self.G.edges())
-
-        nodecount = len(self.G.nodes())
-            
-        if rethreshold:
-            edgesToRemove = [v for v in self.G.edges() if self.G[v[0]][v[1]]['weight'] < threshold]
-            self.G.remove_edges_from(edgesToRemove)
-        else:
-            
-                
-                if not(self.G.has_edge(node1, node2)):
-                    self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
+#    def adjMatThresholding(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, doPrint=True):
+#        ''' LEGACY FUNCTION - DO NOT USE
+#        
+#        apply thresholding to the adjacency matrix. This can be done in one of
+#            three ways (in order of decreasing precendence):
+#                edgePC - this percentage of nodes will be linked
+#                totalEdges - this number of nodes will be linked
+#                tVal - give an absolute threshold value. Pairs of nodes with a corresponding adj matrix
+#                       value greater than this will be linked. Defaults to -1.1 to produce a fully connected graph.
+#        '''
+#
+#        # check if adjacency matrix is there
+#        if self.adjMat == None:
+#            print("No adjacency matrix. Please load one.")
+#            return
+#
+#        if not rethreshold:
+#            # remove existing edges
+#            self.G.remove_edges_from(self.G.edges())
+#
+#        nodecount = len(self.G.nodes())
+#            
+#        if rethreshold:
+#            edgesToRemove = [v for v in self.G.edges() if self.G[v[0]][v[1]]['weight'] < threshold]
+#            self.G.remove_edges_from(edgesToRemove)
+#        else:
+#            
+#                
+#                if not(self.G.has_edge(node1, node2)):
+#                    self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
                 
     def highlightFromConds(self, prop, rel, val, label = None, mode = 'edge', colour = (1.,0.,0.)):
         ''' Creates a highlight by asking if the propertly prop is related to val by rel 
@@ -484,12 +471,12 @@ class brainObj:
         
         # extract lists from edges        
         if mode == 'edge':
-            ind = 0
-            for e in self.edgeInds:
+            h.edges = []
+            ind = -1
+            for e in self.G.edges(data = True):
+                ind = ind +1
                 try:
-                    print(self.G.edges[e[0], e[1]])
-                    d = self.G.edge[e[0], e[1]][prop]
-                    print('bingo')
+                    d = self.G.edge[e[0]][e[1]][prop]
                 except:
                     continue           
                 
@@ -498,19 +485,28 @@ class brainObj:
                 
                 # save data in highlight
                 if boolval:
-                    h.edges.append(e) 
-                    h.edgeIndices.append(ind)
+                    h.edges.append((e[0],e[1])) 
                     
-            ind = ind + 1
-            
+        
+        # extract lists from nodes
         elif mode == 'node':
             h.points = []
             for c in range(len(self.G.nodes())):
                 # get property
-                try:
-                    d = self.G.node[c][prop]
-                except:
-                    continue
+
+                # special treatment for 'x', 'y' and 'z'
+                if prop=='x':
+                    d = self.G.node[c]['xyz'][0]
+                elif prop=='y':
+                    d = self.G.node[c]['xyz'][1]
+                elif prop=='z':
+                    d = self.G.node[c]['xyz'][2]
+                else:
+                    # any other property
+                    try:
+                        d = self.G.node[c][prop]
+                    except:
+                        continue
                 
                 # test property against criteria
                 boolval = self.propCompare(d, rel, val)
@@ -574,203 +570,8 @@ class brainObj:
             label = self.getAutoLabel()
         
         self.highlights[label] = h
-        
-    
-    def makeSubBrain(self, propName, value):
-        ''' separate out nodes and edges with a certain property '''
-
-        # initialise new brain
-        subBrain = brainObj()
-        
-        # option for making a direct copy
-        if value == "any":
-            subBrain.G = self.G
-        # use some subvalues
-        else:
-        
-            # get nodes from the current list
-            acceptedNodes = []
-    
-            # sort cases for different values
-            if type(value) == dict:
-                try:
-                    v1 = float(value['min'])
-                    v2 = float(value['max'])
-                except:
-                    print('min and max value not found in makeSubBrain')
-    
-                       
-                for n in self.G.nodes(data = True):
-                    print(n[1])
-                    try:
-                        v = n[1][propName]
-                        print(v, n, propName)
-                        if (v>=v1)&(v<=v2):
-        #                if n[1][propName] == value:
-                            subBrain.G.add_nodes_from([n])
-                            acceptedNodes.append(n[0])
-                    except:
-                        print('something went wrong')
-                        continue
-                    
-            else:
-                # make into a list if need be
-                if not(type(value))==list:
-                    value = [value]
-    
-                # check nodes to see if property is true
-                for n in self.G.nodes(data = True):
-                    try:
-    #                    if self.G.node[n][propName] in value:
-                        if n[1][propName] in value:
-                            subBrain.G.add_nodes_from([n])
-                            acceptedNodes.append(n[0])
-                    except:
-                        continue
-                
-            # add edges from the current brain if both nodes are in the current brain
-            for e in self.G.edges():
-                if (e[0] in acceptedNodes) & (e[1] in acceptedNodes):
-                    subBrain.G.add_edges_from([e])
-        
-        # construct adjacency matrix in new brain
-        subBrain.reconstructAdjMat()
-        
-        # transfer skull and isosurface
-        if self.skull != None:
-            subBrain.nbskull = self.nbskull
-            subBrain.skull = self.skull
-            subBrain.skullHeader = self.skullHeader
-        if self.iso != None:
-            subBrain.nbiso = self.nbiso
-            subBrain.iso = self.iso
-            subBrain.isoHeader = self.isoHeader
-        
-        return subBrain
-        
-        
-    def makeSubBrainEdges(self, propName, value):
-        ''' separate out edges with a certain property
-
-            value can be a a single value, or a defined range. The latter is 
-            given as a dictionary e.g. {'min': 0, 'max':1}
-        
-        '''
-
-        # initialise new brain
-        subBrain = brainObj()
-        subBrain.G.add_nodes_from(self.G.nodes(data=True))
-        
-        # get nodes from the current list
-        acceptedEdges = []
-
-        # sort cases for different values
-        if type(value) == dict:
-            try:
-                v1 = float(value['min'])
-                v2 = float(value['max'])
-            except:
-                print 'min and max value not found in makeSubBrainEdges'
-
-            # check to see if property holds
-            for n in self.G.edges(data = True):
-                try:
-                    v = n[2][propName]
-                    if (v>=v1)&(v<=v2):
-    #                if n[1][propName] == value:
-                        subBrain.G.add_edges_from([n])
-                        acceptedEdges.append(n[0])
-                except:
-                    continue
-                
-        else:
-            # make into a list if need be
-            if not(type(value))==list:
-                value = [value]
-
-            # check edges to see if property is true
-            for n in self.G.edges(data = True):
-                try:
-#                    if self.G.node[n][propName] in value:
-                    if n[2][propName] in value:
-                        subBrain.G.add_nodes_from([n])
-                        acceptedEdges.append(n[0])
-                except:
-                    continue
-
-        # construct adjacency matrix in new brain
-        subBrain.reconstructAdjMat()
-        
-        # transfer skull and isosurface
-        if self.skull != None:
-            subBrain.nbskull = self.nbskull
-            subBrain.skull = self.skull
-            subBrain.skullHeader = self.skullHeader
-        if self.iso != None:
-            subBrain.nbiso = self.nbiso
-            subBrain.iso = self.iso
-            subBrain.isoHeader = self.isoHeader            
-                            
-        return subBrain    
-        
-    def makeSubBrainIndList(self, indices):
-        ''' Create a subbrain using the given list of nodes. Also taks edges those nodes are in '''
-
-        subbrain = brainObj()        
-        for ind in indices:
-            n = self.G.nodes(data=True)[ind]
-            subbrain.G.add_nodes_from([n])
-
-        # add edges from the current brain if both nodes are in the current brain
-        for e in self.G.edges():
-            if (e[0] in indices) & (e[1] in indices):
-                subbrain.G.add_edges_from([e])                      
-            
-        # construct adjacency matrix in new brain
-        subbrain.reconstructAdjMat()
-        
-        # transfer skull and isosurface
-        if self.skull != None:
-            subBrain.nbskull = self.nbskull
-            subBrain.skull = self.skull
-            subBrain.skullHeader = self.skullHeader
-        if self.iso != None:
-            subBrain.nbiso = self.nbiso
-            subBrain.iso = self.iso
-            subBrain.isoHeader = self.isoHeader            
-            
-        # should also transfer the adjacency matrix here
-        return subbrain
-        
-    def copy(self):
-        ''' make an exact copy of this brain '''
-        
-        newbrain = self.makeSubBrain(None, 'any')
-        newbrain.hubs = self.hubs
-        newbrain.lengthEdgesRemoved = self.lengthEdgesRemoved
-        newbrain.bigconnG = self.bigconnG
-
-        return newbrain
-
-    def randomiseGraph(self, largestconnectedcomp = False):
-        self.G = nx.gnm_random_graph(len(self.G.nodes()), len(self.G.edges()))
-        if largestconnectedcomp:
-            self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
-            
-    def randomremove(self,edgeloss):
-        if not self.iter:
-            self.iter=0
-        try:
-            edges_to_remove = random.sample(self.G.edges(), edgeloss)
-            self.G.remove_edges_from(edges_to_remove)
-            
-        except ValueError:
-            print "No further edges left"
-            
-        self.iter += 1
-        
-
-
+   
+   
     ## =============================================================
     
     ## Analysis functions
@@ -967,7 +768,7 @@ class brainObj:
         
         
         # deprecated code follows:
-#    #    combine normalised measures for each node to generate a hub score
+#    #    come normalised measures for each node to generate a hub score
 #        hubScores = []
 #        for node in self.G.nodes():
 #            if weighted:
@@ -1487,7 +1288,7 @@ class brainObj:
         to more than one connected component. The robustness level is the \
         threshold at which this occurs. '''
 
-        self.adjMatThresholding(edgePC = conVal, doPrint=False)
+        self.adjMatThresholding(edgePC = conVal)
         conVal -= step
         
         sgLenStart = len(components.connected.connected_component_subgraphs(self.G))
@@ -1495,7 +1296,7 @@ class brainObj:
         sgLen = sgLenStart
 
         while(sgLen == sgLenStart and conVal > 0.):
-            self.adjMatThresholding(edgePC = conVal, doPrint=False)
+            self.adjMatThresholding(edgePC = conVal)
             sgLen = len(components.connected.connected_component_subgraphs(self.G))  # identify largest connected component
             conVal -= step
             # print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
@@ -1545,9 +1346,9 @@ class brainObj:
         sgLen=[]
         for n in range(3):
             if not edgePCBool:
-                self.adjMatThresholding(tVal = ths[n], doPrint=False)
+                self.adjMatThresholding(tVal = ths[n])
             else:
-                self.adjMatThresholding(edgePC = ths[n], doPrint=False)
+                self.adjMatThresholding(edgePC = ths[n])
             sgLen.append(len(components.connected.connected_component_subgraphs(self.G)))
         
         # check to see if tlow0 is too high        
@@ -1571,9 +1372,9 @@ class brainObj:
                 
                 # get corresponding connectedness
                 if not edgePCBool:
-                    self.adjMatThresholding(tVal = ths[1], doPrint=False)
+                    self.adjMatThresholding(tVal = ths[1])
                 else:
-                    self.adjMatThresholding(edgePC = ths[1], doPrint=False)
+                    self.adjMatThresholding(edgePC = ths[1])
                 sgLenNew = len(components.connected.connected_component_subgraphs(self.G))
                 sgLen = [sgLen[0], sgLenNew, sgLen[1]]
                                 
@@ -1585,9 +1386,9 @@ class brainObj:
                 
                 # get corresponding connectedness
                 if not edgePCBool:
-                    self.adjMatThresholding(tVal = ths[1], doPrint=False)
+                    self.adjMatThresholding(tVal = ths[1])
                 else:
-                    self.adjMatThresholding(edgePC = ths[1], doPrint=False)
+                    self.adjMatThresholding(edgePC = ths[1])
                 sgLenNew = len(components.connected.connected_component_subgraphs(self.G))
                 
                 sgLen = [sgLen[1], sgLenNew, sgLen[2]]                
@@ -1620,7 +1421,7 @@ class brainObj:
         if edgePCBool:
             outThs = self.threshold
         self.threshold = oldThr
-        self.adjMatThresholding(tVal = self.threshold, doPrint = False)
+        self.adjMatThresholding(tVal = self.threshold)
 
         # return the maximum threshold value where they were found to be the same
         fm = "{:."+str(decs)+"f}"
@@ -1687,52 +1488,68 @@ class brainObj:
 class highlightObj():
     ''' object to hold information to highlight a subsection of a brainObj '''
     
-    def __init__(self, points = None, edges = None):
+    def __init__(self, points = [], edges = []):
         ''' Points refer to the indices of node coordinates in the brain object to which it
         is related. Edges is a set of pairs of coordinates of the same brain object '''
         
 #        self._mode = 'pe' # p, e or pe for points only, edges only or points and edges
         self.points = points # indices of points used from a brain object
-        self.edges = edges 
-        self.edgeIndices = [] # indices of edges - note that these change with rethresholding of the parent brain
+        self.edges = edges # list of ordered pairs of edges
         self.colour = (0.5, 0.5, 0.5)
+        self.opacity = 1.0
+        self.edgeOpacity = None
         
-#        if self.points and self.edges:
-#            self._mode = 'pe'
-#        elif self.points:
-#            self._mode = 'p'
-#        elif self._mode:
-#            self._mode = 'e'
-            
-            
-    def getEdgeInds(self, brain):
-        ''' redefine self._edgeIndices '''
-        self.edgeIndices = []        
         
-        for e in brain.edges:
-            # quietly omits edges that don't exist
-            try:
-                ind = brain.edgeInds.index(e)
-            except ValueError:
-                continue
-            
-            self.edgeIndices.append(ind)
-            
-        return self.edgeIndices
+    def getEdgeCoordsToPlot(self, brain):
+        ''' turn list of edges into lists of coordinates - note that the second set of coordinates are the 
+        vector from the first to the second points of the edge '''
         
-    def getEdgeCoords(self, brain):
-        ''' convert a list of indices to a list of coordinate index pairs'''
+        # initialise outputs
+        x1 = []
+        x2 = []
+        y1 = []
+        y2 = []
+        z1 = []
+        z2 = []
+        s = []
         
-        self.edges = []
-        
-        for e in self.edgeIndices:
-            self.edges.append(brain.edges[e])
+        print('\n' + 'get edges coords to plot')
+        for e in self.edges:
+            # get coordinates of edge indices
+            p1 = brain.coords[e[0]]
+            p2 = brain.coords[e[1]]
+            print(p1, p2)
             
-        print self.edges
-        
-        return self.edges
+            x1.append(p1[0])
+            x2.append(p2[0]-p1[0]) 
             
+            y1.append(p1[1])
+            y2.append(p2[1]-p1[1])
+            
+            z1.append(p1[2])
+            z2.append(p2[2]-p1[2])
+            
+            s.append(brain.G.edge[e[0]][e[1]]['weight'])
+            print(brain.G.edge[e[0]][e[1]]['weight'])
+            
+        return x1, y1, z1, x2, y2, z2, s
+        
     
+    def getCoords(self, brain):
+        ''' turn indices of points into coordinates '''
+
+        x = []
+        y = []
+        z = []        
+        
+        for p in self.points:
+            pc = brain.coords[p]
+            x.append(pc[0])
+            y.append(pc[1])
+            z.append(pc[2])
+            
+        return x, y, z
+        
     
 class plotObj():
     ''' classes that plot various aspects of a brain object '''
@@ -1776,98 +1593,113 @@ class plotObj():
 
         return coords[:, 0], coords[:, 1], coords[:, 2]
         
-    def edgesToList(self, brain, edgeList = 'all'):
-        ''' Get a set of edges, possibly using a subset from the brain
-        edgeList is a list of the indices of edges to be included '''
-
-        edges = array(brain.edgeInds)
-        if edgeList!='all':
-            edges = edges[edgeList,:]
-        edges = array(edges, dtype=int)
+    def edgesToList(self, brain):
+        ''' Turn the edges of a brain into coordinates '''
+                
+        # intialise output
+        x1 = []
+        x2 = []
+        
+        y1 = []
+        y2 = []
+        
+        z1 = []
+        z2 = []
+        
+        s = []
+        
+        for e in brain.G.edges(data = True):
+            # get coord and vector from each edge
+            p1 = brain.coords[e[0]]
+            p2 = brain.coords[e[1]]
             
-        coords = array(brain.coords)
-        
-        print(brain.coords)
-        print(edgeList)
-        print(edges)
-        
-        ex1 = coords[edges[:,0], 0]
-        vx = coords[edges[:,1], 0]# - ex1
-        
-        ey1 = coords[edges[:,0], 1]
-        vy = coords[edges[:,1], 1]# - ey1
-        
-        ez1 = coords[edges[:,0], 2]
-        vz = coords[edges[:,1], 2]# - ez1
-        
-        s = list(brain.adjMat[edges[:,0], edges[:,1]])
+            x1.append(p1[0])
+            x2.append(p2[0]-p1[0]) 
             
-#        ex1 = []
-#        ex2 = []
-#        ey1 = []
-#        ey2 = []
-#        ez1 = []
-#        ez2 = []
-#        s = []
-#        
-#        print(edges)
-#        for e in edges:
-#            ex1.append(brain.coords[e[0]][0])
-#            ex2.append(brain.coords[e[1]][0])
-#            
-#            ey1.append(brain.coords[e[0]][1])
-#            ey2.append(brain.coords[e[1]][1])
-#            
-#            ez1.append(brain.coords[e[0]][2])
-#            ez2.append(brain.coords[e[1]][2])
-#            
-#            s.append(brain.adjMat[e[0],e[1]])
-#            
-#        ex1 = array(ex1)
-#        ex2 = array(ex2)
-#        ey1 = array(ey1)
-#        ey2 = array(ey2)
-#        ez1 = array(ez1)
-#        ez2 = array(ez2)
-#        
-#        s = array(s)
-
+            y1.append(p1[1])
+            y2.append(p2[1]-p1[1])
+            
+            z1.append(p1[2])
+            z2.append(p2[2]-p1[2])
+            
+            # set scalar value as edge weight
+            s.append(e[2]['weight'])
         
-        return ex1, ey1, ez1, vx, vy, vz, s
+        return x1, y1, z1, x2, y2, z2, s
+        
+        
+#                    # get coordinates of edge indices
+#            p1 = brain.coords[e[0]]
+#            p2 = brain.coords[e[1]]
+#            print(p1, p2)
+#            
+#            x1.append(p1[0])
+#            x2.append(p2[0]-p1[0]) 
+#            
+#            y1.append(p1[1])
+#            y2.append(p2[1]-p1[1])
+#            
+#            z1.append(p1[2])
+#            z2.append(p2[2]-p1[2])
+#            
+#            s.append(brain.G.edge[e[0]][e[1]]['weight'])
+#            print(brain.G.edge[e[0]][e[1]]['weight'])
             
 
-    def plotBrain(self, brain):
-        ''' plot all the coords, edges and highlights in a brain '''
+    def plotBrain(self, brain, opacity = 1.0, edgeOpacity = None):
+        ''' plot all the coords, edges and highlights in a brain '''     
+               
+        print('brainbase')
+        self.plotBrainBase(brain, opacity=opacity, edgeOpacity=edgeOpacity)
         
+        print('brainhighlights')
+        self.plotBrainHighlights(brain, opacity=edgeOpacity)
+        
+
+                
+    def plotBrainBase(self, brain, opacity = 1.0, edgeOpacity = None):
+        ''' plot all coordinates and edges in a brain '''
+
+        if not(edgeOpacity):
+            edgeOpacity = opacity
+
         # plot coords
         coords = self.coordsToList(brain)
-        self.plotCoords(coords)
+        self.plotCoords(coords, opacity = opacity)
         
         
         # plot all edges
         ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)
-        print("edges")
-        print(ex1, ey1, ez1, ux, uy, yz, s)
-        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = None) #(1., 1., 1.))       
-        
-        # plot highlights (subsets of edges)
-        for h in brain.highlights:
-            he = brain.highlights[h].edgeIndices
-            if not(len(he)==0):
-                ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain, edgeList = he)
-                self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = brain.highlights[h].colour)
-            
-            hp = brain.highlights[h].points
-            try:
-                if not(len(hp)==0):
-                    xyz = self.coordsToList(brain, nodeList = hp)
-                    self.plotCoords(xyz, col = brain.highlights[h].colour)
-            except TypeError:
-                pass
-                
-                
-            
 
+        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (1., 1., 1.), opacity = opacity)  
+
+
+    def plotBrainHighlights(self, brain, highlights = [], opacity = 1.0):    
+        ''' plot all or some of the highlights in a brain '''
+
+        if highlights == []:
+            highlights = brain.highlights
+        
+        # plot highlights (subsets of edges or points)
+        for h in highlights:
+            try:
+                ho = brain.highlights[h]
+            except:
+                print('highlight not found: ' + h)
+                continue
+                
+            ex1, ey1, ez1, ux, uy, yz, s = ho.getEdgeCoordsToPlot(brain)
+            # plot the edges
+            if not(len(ex1)==0):
+                self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = ho.colour, opacity = ho.edgeOpacity)
+            
+            
+            hp = ho.points
+            if not(len(hp))==0:
+                x, y, z = ho.getCoords(brain)
+                self.plotCoords((x,y,z), col = ho.colour, opacity = ho.opacity)        
+        
+        
 
     def plotCoords(self, coords, col = (1,1,1), opacity = 1., ):
         ''' plot the coordinates of a brain object '''
@@ -1877,7 +1709,7 @@ class plotObj():
         mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor = 0.1)
         
         
-    def plotEdges(self, ex1, ey1, ez1, ux, uy, yz, s, col = None, opacity = 1.):
+    def plotEdges(self, ex1, ey1, ez1, ux, uy, uz, s, col = None, opacity = 1.):
         ''' plot some edges
         
             ec has the order [x0, x1, y0, y1, z0, z1]
@@ -1887,19 +1719,16 @@ class plotObj():
         '''
         
         plotmode = '2ddash' # could be modified later
+        cm = 'GnBu' # colormap for plotting
         
         # add data to mayavi
-        edata = mlab.pipeline.vector_scatter(ex1, ey1, ez1, ux, uy, yz, scalars = s, figure = self.mfig)
+#        edata = mlab.pipeline.vector_scatter(ex1, ey1, ez1, ux, uy, yz, scalars = s, figure = self.mfig)
         
         # plot
-        v = mlab.pipeline.vectors(edata, colormap='GnBu', line_width=1., opacity=opacity, mode = plotmode, color = col)
+        v = mlab.quiver3d(ex1, ey1, ez1, ux, uy, uz, scalars = s, line_width=1., opacity=opacity, mode = plotmode, color = col, scale_factor = 1., scale_mode = 'vector', colormap = cm)
         if not(col):
-            v = mlab.pipeline.vectors(edata, colormap='GnBu', line_width=1., opacity=opacity, mode = plotmode)
             v.glyph.color_mode = 'color_by_scalar'
-        else:
-            print("i'm here")
-            v = mlab.pipeline.vectors(edata, line_width=1., opacity=opacity, mode = plotmode, color = col, scale_mode = None) #, scale_factor = 1.0)
-        
+
             
     def plotBrainOld(self, brain, label = None, nodes = None, edges = None, col = (1, 1, 1), opacity = 1., edgeCol = None):
         ''' CAN SOON BE DEPRECATED
@@ -1940,10 +1769,8 @@ class plotObj():
         # turn nodes into lists for plotting
 #        xn, yn, zn, xe, ye, ze, xv, yv, zv, h = self.nodeToList(brain, nodeList=nodeList, edgeList=edgeList)
         xn, yn, zn, xe, ye, ze, xv, yv, zv, h = self.coordsToList(brain, nodeList=nodeList, edgeList=edgeList)
-        print xn, yn, zn, xe, ye, ze, xv, yv, zv
         s = ones(len(xn))
         
-        print(h)
 
         # add point data to mayavi
         ptdata = mlab.pipeline.scalar_scatter(xn, yn, xn, s)
@@ -2175,218 +2002,3 @@ class plotObj():
         return label
     
         
-class plotObjCol():
-    ''' An ingenious way to save memory by altering the colourmap to highlight
-    areas of the brain. 
-    
-    Q. Is it possible to use point scalars (of the edges) to alter opacity?? '''
-    
-    
-
-
-    def __init__(self):
-        
-        # initialise mayavi figure
-        self.startMayavi()  
-        
-        self.nodesf = 0.5 # scale factor for nodes
-        
-        
-    def startMayavi(self):
-        ''' initialise the Mayavi figure for plotting '''        
-        
-        # start the engine
-        from mayavi.api import Engine
-        self.engine = Engine()
-        self.engine.start()
-        if len(engine.scenes) == 0:
-            engine.new_scene()
-
-        # how to remove data from a plot
-        scene = engine.scenes[0]
-        scene.children[1:2] = []  
-        
-        # create a Mayavi figure
-        self.mfig = mlab.figure(bgcolor = (0, 0, 0), fgcolor = (1., 1., 1.), engine = self.engine, size=(1500, 1500))
-        
-        # holders for plot objects
-        self.brainNodePlots = {}
-        self.brainEdgePlots = {}
-        self.skullPlots = {}
-        self.isosurfacePlots = {}
-
-        # autolabel for plots
-        self.labelNo = 0   
-    
-    
-    def coordsToList(self, brain, nodeList='all', edgeList='all'):
-        ''' get coordinates from lists in the brain object, possibly using only
-        the indices given by nodeList and edgeList '''
-        
-        coords = array(brain.coords)
-        if nodeList!='all':
-            coords = coords[nodeList,:]
-                    
-        edges = array(brain.edgeInds)
-        if edgeList!='all':
-            edges = edges[edgeList,:]
-            
-        print(coords)
-
-        ex1 = []
-        ex2 = []
-        ey1 = []
-        ey2 = []
-        ez1 = []
-        ez2 = []
-        s = []
-        
-        print(edges)
-        for e in edges:
-            ex1.append(brain.coords[e[0]][0])
-            ex2.append(brain.coords[e[1]][0])
-            
-            ey1.append(brain.coords[e[0]][1])
-            ey2.append(brain.coords[e[1]][1])
-            
-            ez1.append(brain.coords[e[0]][2])
-            ez2.append(brain.coords[e[1]][2])
-            
-            s.append(brain.adjMat[e[0],e[1]])
-            
-        ex1 = array(ex1)
-        ex2 = array(ex2)
-        ey1 = array(ey1)
-        ey2 = array(ey2)
-        ez1 = array(ez1)
-        ez2 = array(ez2)
-        
-        s = array(s)
-
-        return coords[:, 0], coords[:, 1], coords[:, 2],  ex1, ex2, ey1, ey2, ez1, ez2, s    
-    
-    
-    def plotBrain(self, brain, label = None, nodes = None, edges = None, col = (1, 1, 1), opacity = 1., edgeCol = None):
-        ''' plot the nodes and edges using Mayavi
-        
-            brain is a brain object
-            label is a label used to store the dictinoary
-        
-            THIS FUNCTION NEEDS SPLITTING UP SOME
-
-            points and edges are stored as different data sets. Hopefully filters
-            are applied to plot each of them. 
-            
-            col is the colour of the plot. Can be a triplet of values  in the interval [0,1],
-            or 'vector' to colour by vector scalar.
-        
-        '''
-        
-        # sort out keywords
-        if not nodes:
-            # use all the nodes
-            nodeList = range(len(brain.coords))
-        else:
-            # use a subset of nodes
-            nodeList = nodes
-        if not edges:
-            # use all the edges available
-            edgeList = range(len(brain.edgeInds))
-        else:
-            # use a subset of edges
-            edgeList = edges
-            
-        # get output label for the plot
-        if not(label):
-            label = self.getAutoLabel()
-                        
-        # turn nodes into lists for plotting
-#        xn, yn, zn, xe, ye, ze, xv, yv, zv, h = self.nodeToList(brain, nodeList=nodeList, edgeList=edgeList)
-        xn, yn, zn, xe, ye, ze, xv, yv, zv, h = self.coordsToList(brain, nodeList=nodeList, edgeList=edgeList)
-        print xn, yn, zn, xe, ye, ze, xv, yv, zv
-        s = ones(len(xn))
-        
-        print(h)
-
-        # add point data to mayavi
-        ptdata = mlab.pipeline.scalar_scatter(xn, yn, xn, s)
-
-        # add vector data to mayavi
-        edata = mlab.pipeline.vector_scatter(xe, xv, ye, yv, ze, zv, scalars = h, figure = self.mfig)
-#
-        # plot nodes
-        mlab.pipeline.glyph(ptdata, color = col, opacity = opacity)
-#
-        # plot edges
-        v = mlab.pipeline.vectors(edata, colormap='GnBu', line_width=1., opacity=opacity, mode = '2ddash', color = edgeCol)
-        if not(edgeCol):
-            v.glyph.color_mode = 'color_by_scalar'
-
-        
-        # plot nodes
-#        s = mlab.points3d(xn, yn, zn, scale_factor = self.nodesf, color = col, opacity = opacity)
-#        self.brainNodePlots[label] = s
-        
-        # plot edges
-#        t = mlab.quiver3d(xe, ye, ze, xv, yv, zv, line_width = 1., mode = '2ddash', scale_mode = 'vector', scale_factor = 1., color = col, opacity = opacity)
-#        self.brainEdgePlots[label] = t
-    
-    def plotBrainHighlights(self, brain):
-        ''' different edges are highlighted by changing the colour map '''
-        
-        # initliase colours and where they change
-        cols = [(0.,0.,0.)]
-        col_bds = [0., 1.]
-        
-        
-        # map threshold values scalars onto the interval (0,1)
-        # vsm is vector-scalar mapping
-        vsm = brain.getEdgeWeights()
-        vsm = (vsm - min(vsm))/(max(msv) - min(vsm))
-        
-        # continue with additional highlights in steps of 0.1
-        # note that later highlights take priority
-        sval = 0.95
-        
-        for h in brain.highlights:
-            # higlight objects are [name, indices, colour]
-            sval = sval + 0.1
-            col_bds.append(sval + 0.05)
-            cols.append(h[2])
-            
-            for e in h[1]:
-                vsm[e] = sval
-                
-        # define colour map
-        self.makecolourmap(col_bds, cols)
-        
-        
-        # transfer new scalar values to mayavi
-        
-        
-        # update the plot
-            
-        
-    def makecolourmap(self, bds, vals):
-        ''' define a colourmap that has the colours changing at the defined boundaries ''' 
-        
-        fname = 'cmap.txt'
-        
-        a = 1
-        
-        
-    def plotSkull(self, brain, label = None, contourVals = [], opacity = 0.1, cmap='Spectral'):
-        ''' plot the skull using Mayavi '''
-        
-        if not(label):
-            label = self.getAutoLabel()        
-        
-        if contourVals == []:            
-            s = mlab.contour3d(brain.skull, opacity = opacity, colormap=cmap)
-        else:
-            s = mlab.contour3d(brain.skull, opacity = opacity, contours = contourVals, colormap=cmap)
-            
-        # get the object for editing
-        self.skullPlots[label] = s    
-    
-    
