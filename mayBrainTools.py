@@ -583,26 +583,28 @@ class brainObj:
         
         for e in self.G.edges():
             try:
-                w = self.G[e[0]][e[1]]['weight']
+                w = self.G.edge[e[0]][e[1]]['weight']
                 adjMat[e[0], e[1]] = w
                 adjMat[e[1], e[0]] = w
             except:
-                print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )            
+                #print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )
+                adjMat[e[0], e[1]] = np.nan
 
         self.adjMat = adjMat
         
-        return adjMat        
+        return adjMat
         
     def updateAdjMat(self, edge):
         ''' update the adjacency matrix for a single edge '''
         
         try:
-            w = self.G[edge[0]][edge[1]]['weight']
-            adjMat[edge[0], edge[1]] = w
-            adjMat[edge[1], edge[0]] = w
+            w = self.G.edge[edge[0]][edge[1]]['weight']
+            self.adjMat[edge[0], edge[1]] = w
+            self.adjMat[edge[1], edge[0]] = w
         except:
             print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
-            
+            self.adjMat[edge[0], edge[1]] = np.nan
+            self.adjMat[edge[1], edge[0]] = np.nan
         
     
     def findSpatiallyNearest(self, nodeList):
@@ -753,6 +755,8 @@ class brainObj:
     #    get centrality measures
         if weighted:
             self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='weight').values()))
+            
+            ###### this next line doesn't work! Because of negative weights #######
             self.closenessCentrality = np.array((centrality.closeness_centrality(self.G, distance=True).values()))
             self.degrees = np.array((nx.degree(self.G, weight='weight').values()))
             
@@ -779,11 +783,11 @@ class brainObj:
 #            
 #            hubScores.append(self.G.node[node]['hubScore'])
 
-        hubScores = map(self.hubHelper, self.G.nodes())
+        hubScores = map(self.hubHelper, range(len(self.G.nodes())))
         
         if assign:
-            for node in self.G.nodes():
-                self.G.node['hubscore'] = hubScores[node]
+            for n,node in enumerate(self.G.nodes()):
+                self.G.node['hubscore'] = hubScores[n]
             
     #   find standard deviation of hub score
         upperLimit = np.mean(np.array(hubScores)) + 2*np.std(np.array(hubScores))
@@ -863,36 +867,36 @@ class brainObj:
             self.clusternames = [0]
             clusters = None
     
-        # set layout position for plotting
-        xy = (0,400)
-        try:
-            angle = 360/len(self.clusternames)
-        except:
-            angle = 180
-        
-        points = {0:xy}
-        for n in range(1,len(self.clusternames)):
-            x = points[n-1][0]
-            y = points[n-1][1]
-            points[n] = (x*np.cos(angle)-y*np.sin(angle),x*np.sin(angle)+y*np.cos(angle))
-        
-        self.pos = {}
-        
-        for clust in self.clusternames:
-            clusternodes = [v for v in self.G.nodes() if self.G.node[v]['cluster']==clust]
-            clusteredges = [v for v in self.G.edges(clusternodes) if v[0] in clusternodes and v[1] in clusternodes]
-            
-            subgraph = nx.Graph()
-            subgraph.add_nodes_from(clusternodes)
-            subgraph.add_edges_from(clusteredges)
-            
-            if drawpos:
-                centre = points[clust]
-                
-                clusterpos = nx_agraph.graphviz_layout(subgraph,prog='neato')
-               
-                for node in clusternodes:
-                    self.pos[node] = (clusterpos[node][0]+centre[0],clusterpos[node][1]+centre[1])
+#        # set layout position for plotting
+#        xy = (0,400)
+#        try:
+#            angle = 360/len(self.clusternames)
+#        except:
+#            angle = 180
+#        
+#        points = {0:xy}
+#        for n in range(1,len(self.clusternames)):
+#            x = points[n-1][0]
+#            y = points[n-1][1]
+#            points[n] = (x*np.cos(angle)-y*np.sin(angle),x*np.sin(angle)+y*np.cos(angle))
+#        
+#        self.pos = {}
+#        
+#        for clust in self.clusternames:
+#            clusternodes = [v for v in self.G.nodes() if self.G.node[v]['cluster']==clust]
+#            clusteredges = [v for v in self.G.edges(clusternodes) if v[0] in clusternodes and v[1] in clusternodes]
+#            
+#            subgraph = nx.Graph()
+#            subgraph.add_nodes_from(clusternodes)
+#            subgraph.add_edges_from(clusteredges)
+#            
+#            if drawpos:
+#                centre = points[clust]
+#                
+#                clusterpos = nx_agraph.graphviz_layout(subgraph,prog='neato')
+#               
+#                for node in clusternodes:
+#                    self.pos[node] = (clusterpos[node][0]+centre[0],clusterpos[node][1]+centre[1])
     
         # calculate modularity
         if clusters:
@@ -935,8 +939,8 @@ class brainObj:
             reDefineEdges=False
             
         # iterate number of steps
+        self.lengthEdgesRemoved = []
         while limit>0:
-            print len(nodeList)
             if not riskEdges:
                 # find spatially closest nodes if no edges exist
                 # is it necessary to do this for all nodes?? - waste of computing power,
@@ -967,6 +971,11 @@ class brainObj:
             else:
                 loss = weightloss
                 self.G[dyingEdge[0]][dyingEdge[1]]['weight'] += weightloss
+                
+            try:
+                self.lengthEdgesRemoved.append(np.linalg.norm( np.array((self.G.node[dyingEdge[0]]['xyz'])) - np.array((self.G.node[dyingEdge[1]]['xyz']))  ))
+            except:
+                pass                
             
             # update the adjacency matrix (essential if robustness is to be calculated)            
             if updateAdjmat:
@@ -991,8 +1000,8 @@ class brainObj:
             if reDefineEdges:
                 riskEdges = nx.edges(self.G, nodeList)
         
-        # Update adjacency matrix to reflect changes
-        self.reconstructAdjMat()
+#        # Update adjacency matrix to reflect changes
+#        self.reconstructAdjMat()
         
         print "Number of toxic nodes: "+str(len(nodeList))
         
@@ -1337,6 +1346,7 @@ class brainObj:
             ths = [t0low, np.mean(np.array((self.threshold, t0low))), self.threshold]
         else:
             ths = [self.edgePC, np.mean(np.array(((self.edgePC), 1.))), 1.]
+            
         ths.sort()
         
         if edgePCBool:
