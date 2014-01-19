@@ -36,7 +36,7 @@ to do:
 
 #import os
 #os.environ['ETS_TOOLKIT'] = 'qt4'
-import mayBrainTools as mb
+import maybrain as mb
 
 # To be able to use PySide or PyQt4 and not run in conflicts with traits,
 # we need to import QtGui and QtCore from pyface.qt
@@ -47,7 +47,6 @@ from pyface.qt import QtGui, QtCore
 from numpy import log10
 
 import sys
-#from PyQt4 import QtCore, QtGui
 import mayBrainUI as ui
 from os import path
 
@@ -63,8 +62,9 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.ui.skullPlot.setEnabled(0)
 
         # set up function
-        self.brains = {}
-        self.plot = mb.plotObj()
+        self.brains = {} # dictionary to hold brain objects
+        self.plot = mb.plotObj() # start plot object
+        self.highlights = {} # dictionary of highlights, each entry contains [brainName, highlightName]
         
         # link up buttons and functions
         self.connectSlots()
@@ -74,7 +74,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         
         # local variables
         self.lastFolder = None # last folder viewed by user
-        self.brainName = ['brain', 0]
+        self.brainName = ['brain', 0] # used to auto-create labels for brains if no user input given (currently only supports 1 brain)
         
         
         
@@ -92,7 +92,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.brainLoad, QtCore.SIGNAL('clicked()'), self.loadBrain)
         QtCore.QObject.connect(self.ui.skullLoad, QtCore.SIGNAL('clicked()'), self.loadSkull)
         QtCore.QObject.connect(self.ui.skullPlot, QtCore.SIGNAL('clicked()'), self.plotSkull)
-        QtCore.QObject.connect(self.ui.plotTree, QtCore.SIGNAL('itemClicked(QTreeWidgetItem*,int)'), self.setPlotValues)
+#        QtCore.QObject.connect(self.ui.plotTree, QtCore.SIGNAL('itemClicked(QTreeWidgetItem*,int)'), self.setPlotValues)
         self.ui.opacitySlider.valueChanged.connect(self.setOpacity)
         self.ui.opacityBox.valueChanged.connect(self.setOpacityBox)
         self.ui.visibleCheckBox.clicked.connect(self.setVisibility)
@@ -102,9 +102,9 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.ui.greenValueBox.valueChanged.connect(self.setColourGreenDial)
         self.ui.blueSlider.valueChanged.connect(self.setColourBlue)
         self.ui.blueValueBox.valueChanged.connect(self.setColourBlueDial)
-        self.ui.subPlotButtonNodes.clicked.connect(self.plotSubBrainNodes)
-        self.ui.subPlotButtonEdges.clicked.connect(self.plotSubBrainEdges)
-        self.ui.propsLoad.clicked.connect(self.addProperties)
+#        self.ui.subPlotButtonNodes.clicked.connect(self.plotSubBrainNodes)
+#        self.ui.subPlotButtonEdges.clicked.connect(self.plotSubBrainEdges)
+#        self.ui.propsLoad.clicked.connect(self.addProperties)
         
         
 #        QtCore.QObject.connect(self.ui.opacitySlider, QtCore.SIGNAL('mouseReleaseEvent()'), self.setOpacity)
@@ -138,38 +138,51 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.ui.propsFilename.setText(f)
         self.lastFolder = path.dirname(f)
         
+    def findBrainName(self, brainName = None):
+        ''' construct a new brain name if necessary '''
+        if brainName:
+            boolOut = brainName in self.brains
+        else:
+            brainName = self.brainName[0] + str(self.brainName[1])
+            boolOut = 0
+            
+        # returns the name and whether the name has already been used to label a brain
+        return brainName, boolOut
+        
     def loadBrain(self):
         ''' load a brain using given filenames '''
         self.ui.adjPlot.setEnabled(False)        
         
         # get adjacency filename
-        f = str(self.ui.adjFilename.text())
-        
+        adj = str(self.ui.adjFilename.text())
         # get threshold
-        try:
-            thold = float(self.ui.thresholdValue.text())
-        except:
-            print('threshold value not recovered, is it a float?', self.ui.thresholdValue.text())
-        
+        thold = float(self.ui.thresholdValue.text())
         # get spatial info file
-        g = str(self.ui.spatialFilename.text())
+        coords = str(self.ui.spatialFilename.text())
+        
+        # **** can add an option here for user-defined name ****
 
-        # create brain and load adjacency file
-#        try:
-            # create brain object if it doesn't exist
-        self.brainName[1] = self.brainName[1] + 1
-        brainName = self.brainName[0] + str(self.brainName[1])
-        if not(brainName in self.brains):
-            br = mb.brainObj()
-            self.brains[brainName] = br
-            # add to box for subplotting
-            self.ui.subPlotBrain.addItem(brainName)
+        # make name for brain
+        brName, brainUsedBool = self.findBrainName()
+        
+        # create and add to list of brains
+        if brainUsedBool:
+            # case where brain name exists already
+            # get brain object
+            br = self.brains[brName]
+            
+            # update properties
+            br.inputAdjFile(adj)
+            br.inputSpatialInfo(coords)
+            br.applythreshold(tVal=thold)
+        
         else:
-            br = self.brains[brainName]
-        # read in files
-        br.readAdjFile(f, threshold = thold) # need to allow different methods here
-        br.readSpatialInfo(g)
-                
+            # make and save brain
+            br = mb.loadAndThreshold(adj, coords, thold)
+            self.brains[brName] = br
+        # add to box for subplotting
+#        self.ui.subPlotBrain.addItem(brName)
+            
         # enable plot button
         try:
             QtCore.QObject.disconnect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
@@ -177,58 +190,45 @@ class mayBrainGUI(QtGui.QMainWindow):
             pass
         QtCore.QObject.connect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
         self.ui.adjPlot.setEnabled(True)
-        
      
-        
-#        except:
-#            print('could not create brain object and load in files')
-            
-            
         
     def loadSkull(self):
         ''' load a skull file '''
         # get filename
         f = str(self.ui.skullFilename.text())
         # get brain name
-        brainName = self.brainName[0] + str(self.brainName[1])
-
-        try:        
-            # create brain object if it doesn't exist
-            if not(brainName in self.brains):
-                br = mb.brainObj()
-                self.brains[brainName] = br
-            else:
-                br = self.brains[brainName]
-            # read in file
-            br.importSkull(f)
-            
-            self.ui.skullPlot.setEnabled(True)
-            
-        except:
-            print('problem loading skull file')           
+        brainName, brUsedBool = self.findBrainName()
+    
+        # create brain object if it doesn't exist
+        if not(brUsedBool):
+            br = mb.brainObj()
+            self.brains[brainName] = br
+        else:
+            br = self.brains[brainName]
+        # read in file
+        br.importSkull(f)
+        
+        # enable plot button
+        self.ui.skullPlot.setEnabled(True)
         
 
     ## =============================================
     
     ## plotting functions
     
-    def plotBrain(self, labelIn = None):
-        ''' plot the brain object '''
+    def plotBrain(self):
+        ''' plot the entire brain object '''
         
         # sort label for brain object
-        if not(labelIn):
-            label = self.brainName[0] + str(self.brainName[1])
-        else:
-            label = labelIn
-        # check if brain object exists
-        if not(label in self.brains):
-            return
+        label, labelUsedBool = self.findBrainName()
 
         # plot the brain
         try:            
-            self.plot.plotBrain(self.brains[label], label = label)
+            # plot the brain (excluding highlights)
+            self.plot.plotBrainBase(self.brains[label], opacity = 0.2, edgeOpacity = None, label=label)
 
-            # add to tree view        
+            # add to tree view
+            # *** REMOVE SOON WHEN RE-READ FUNCTION ADDED ??? ***  
             QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainNode', label])
             QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainEdge', label])
 
@@ -239,23 +239,33 @@ class mayBrainGUI(QtGui.QMainWindow):
         QtCore.QObject.disconnect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
         QtCore.QObject.connect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
     
+    
     def rePlotBrain(self):
         ''' plot brain with altered threhold '''        
         
-        if not('mainBrain' in self.brains):
+        # get brain ***NEEDS CHANGING FOR MULTIPLE BRAINS***
+        brName, nameUsedBool = self.findBrainName()
+        
+        if not(brName in self.brains):
+            print(brName + ' not found in rePlot')
             return
 
         # remove old plots
-        self.plot.brainEdgePlots['mainBrain'].remove()
-        self.plot.brainNodePlots['mainBrain'].remove()
+        print('\n')
+        for p in self.plot.brainEdgePlots:
+            print(p)
+        self.plot.brainEdgePlots[brName].remove()
+        self.plot.brainNodePlots[brName].remove()
             
 #        try:
         # get new threshold
         threshold = float(self.ui.thresholdValue.text())
         # replot
-        br = self.brains['mainBrain']
-        br.adjMatThresholding(tVal = threshold)
-        self.plot.plotBrain(br, label = 'mainBrain')       
+        br = self.brains[brName]
+        br.applyThreshold(tVal = threshold)
+        
+        # *** need to get existing opacity value ***
+        self.plot.plotBrainBase(br, label = brName)       
 #        except:
 #            print('problem plotting brain, is threshold correct?')
             
@@ -280,12 +290,37 @@ class mayBrainGUI(QtGui.QMainWindow):
     
     def saveFig(self):
         ''' save a figure to  file ''' 
+        a = 1
         
         
+    def readAvailablePlots(self):
+        ''' read in the available plots from the plotting object '''
         
+        # clear current values
+        self.ui.plotTree.clear()
+        
+        # add new values
+        for p in self.plot.brainEdgePlots:
+            QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainEdge', p])
+        for p in self.plot.brainNodePlots:            
+            QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainNode', p])        
 
 
     ## =============================================
+    
+    ## Highlight functions
+    
+    def plotHighlight(self):
+        ''' plot the selected highlight '''
+        # Get highlight name
+#        brainName, hlName = 
+        
+        # Do the plot
+        self.plot.plotHighlights(self.br[brainName], highlights=[hlName])
+        
+        QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainNode', label])
+        QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainEdge', label])
+        
 
     ## subbrain functions
     def plotSubBrainNodes(self):

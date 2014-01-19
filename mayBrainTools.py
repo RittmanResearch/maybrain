@@ -1656,18 +1656,18 @@ class plotObj():
 #            print(brain.G.edge[e[0]][e[1]]['weight'])
             
 
-    def plotBrain(self, brain, opacity = 1.0, edgeOpacity = None):
+    def plotBrain(self, brain, opacity = 1.0, edgeOpacity = None, label = 'plot'):
         ''' plot all the coords, edges and highlights in a brain '''     
                
         print('brainbase')
-        self.plotBrainBase(brain, opacity=opacity, edgeOpacity=edgeOpacity)
+        self.plotBrainBase(brain, opacity=opacity, edgeOpacity=edgeOpacity, label=label)
         
         print('brainhighlights')
         self.plotBrainHighlights(brain, opacity=edgeOpacity)
         
 
                 
-    def plotBrainBase(self, brain, opacity = 1.0, edgeOpacity = None):
+    def plotBrainBase(self, brain, opacity = 1.0, edgeOpacity = None, label='plot'):
         ''' plot all coordinates and edges in a brain '''
 
         if not(edgeOpacity):
@@ -1675,16 +1675,16 @@ class plotObj():
 
         # plot coords
         coords = self.coordsToList(brain)
-        self.plotCoords(coords, opacity = opacity)
+        self.plotCoords(coords, opacity = opacity, label=label)
         
         
         # plot all edges
         ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)
 
-        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (1., 1., 1.), opacity = opacity)  
+        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (1., 1., 1.), opacity = opacity, label=label)  
 
 
-    def plotBrainHighlights(self, brain, highlights = [], opacity = 1.0):    
+    def plotBrainHighlights(self, brain, highlights = [], opacity = 1.0, labelPre = ''):    
         ''' plot all or some of the highlights in a brain '''
 
         if highlights == []:
@@ -1692,6 +1692,7 @@ class plotObj():
         
         # plot highlights (subsets of edges or points)
         for h in highlights:
+            label = labelPre + h
             try:
                 ho = brain.highlights[h]
             except:
@@ -1701,25 +1702,27 @@ class plotObj():
             ex1, ey1, ez1, ux, uy, yz, s = ho.getEdgeCoordsToPlot(brain)
             # plot the edges
             if not(len(ex1)==0):
-                self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = ho.colour, opacity = ho.edgeOpacity)
+                self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = ho.colour, opacity = ho.edgeOpacity, label=label)
             
-            
+            # plot the nodes
             hp = ho.points
             if not(len(hp))==0:
                 x, y, z = ho.getCoords(brain)
-                self.plotCoords((x,y,z), col = ho.colour, opacity = ho.opacity)        
+                self.plotCoords((x,y,z), col = ho.colour, opacity = ho.opacity, label=label)        
         
         
 
-    def plotCoords(self, coords, col = (1,1,1), opacity = 1., ):
+    def plotCoords(self, coords, col = (1,1,1), opacity = 1., label='plot'):
         ''' plot the coordinates of a brain object '''
         
         # note that scalar value is currently set to x
         ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2], figure = self.mfig)
-        mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor = 0.1)
+        p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor = 0.1)
+        
+        self.brainNodePlots[label] = p
         
         
-    def plotEdges(self, ex1, ey1, ez1, ux, uy, uz, s, col = None, opacity = 1.):
+    def plotEdges(self, ex1, ey1, ez1, ux, uy, uz, s, col = None, opacity = 1., label='plot'):
         ''' plot some edges
         
             ec has the order [x0, x1, y0, y1, z0, z1]
@@ -1738,6 +1741,8 @@ class plotObj():
         v = mlab.quiver3d(ex1, ey1, ez1, ux, uy, uz, scalars = s, line_width=1., opacity=opacity, mode = plotmode, color = col, scale_factor = 1., scale_mode = 'vector', colormap = cm)
         if not(col):
             v.glyph.color_mode = 'color_by_scalar'
+            
+        self.brainEdgePlots[label] = v
 
             
     def plotBrainOld(self, brain, label = None, nodes = None, edges = None, col = (1, 1, 1), opacity = 1., edgeCol = None):
@@ -1808,7 +1813,7 @@ class plotObj():
 
 
     def plotBrainNodes(self, brain, nodes = None, col = (1, 1, 1), opacity = 1., label=None):
-        ''' plot the nodes using Mayavi '''
+        ''' plot the nodes using Mayavi TO BE DEPRECATED'''
         
         # sort out keywords
         if not nodes:
@@ -1827,8 +1832,8 @@ class plotObj():
         self.brainNodePlots[label] = s
 
 
-    def plotBrainEdges(self, brain, label = None, edges = None, col = (1, 1, 1), opacity = 1.):
-        ''' plot the nodes and edges using Mayavi '''
+    def plotBrainEdges(self, brain, edges = None, col = (1, 1, 1), opacity = 1., label = 'plot'):
+        ''' plot the nodes and edges using Mayavi TO BE DEPRECATED'''
         
         # sort out keywords
         if not edges:
@@ -1848,7 +1853,9 @@ class plotObj():
                        
                        
     def plotSubset(self, brain, hl, col):
-        ''' plot a subset of nodes and edges. Nodes are plotted with colour 'col', a tuple of 3 numbers between 0 and 1, e.g. (0, 0.4, 0.6) '''
+        ''' plot a subset of nodes and edges. Nodes are plotted with colour 'col', a tuple of 3 numbers between 0 and 1, e.g. (0, 0.4, 0.6) 
+            TO BE DEPRECATED '''
+        
 
         # get indices of edges
         edgeInds = hl.getEdgeInds(brain)
