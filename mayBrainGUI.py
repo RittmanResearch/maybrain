@@ -102,6 +102,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.ui.greenValueBox.valueChanged.connect(self.setColourGreenDial)
         self.ui.blueSlider.valueChanged.connect(self.setColourBlue)
         self.ui.blueValueBox.valueChanged.connect(self.setColourBlueDial)
+        self.ui.hlApplyButton.clicked.connect(self.makeHighlight)
 #        self.ui.subPlotButtonNodes.clicked.connect(self.plotSubBrainNodes)
 #        self.ui.subPlotButtonEdges.clicked.connect(self.plotSubBrainEdges)
 #        self.ui.propsLoad.clicked.connect(self.addProperties)
@@ -309,6 +310,79 @@ class mayBrainGUI(QtGui.QMainWindow):
     ## =============================================
     
     ## Highlight functions
+    
+    def makeHighlight(self):
+        ''' make a highlight using settings from ui '''
+        
+        # get current brain object
+        # *** needs changing to make flexible ***
+        brName, nameUsedBool = self.findBrainName()
+        br = self.brains[brName]        
+        
+        # get settings from ui
+        propName = str(self.ui.hlProp.text())
+        relation = self.getRelation()
+        try:
+            val1 = float(self.ui.hlValue1.text())
+        except:
+            val1 = str(self.ui.hlValue1.text())
+        try:
+            val2 = float(self.ui.hlValue2.text())
+        except:
+            val2 = str(self.ui.hlValue2.text())
+        # *** should change the name to hlName ***
+        label = str(self.ui.subPlotName.text())
+        mode = str(self.ui.hlNodesOrEdgesBox.currentText())
+        # remove 's' from edge of mode
+        mode = mode[:-1]
+        red = float(self.ui.hlRedSpin.value())        
+        green = float(self.ui.hlGreenSpin.value())
+        blue = float(self.ui.hlBlueSpin.value())
+        # *** maybe change to a box??
+        opacity = float(self.ui.hlOpacitySpin.value())
+        
+        # get value correct
+        if relation in ['in()', 'in[)', 'in(]', 'in[]']:
+            val = [val1, val2]
+        else:
+            val = val1
+        
+        # create the highlight object
+        br.highlightFromConds(propName, relation, val, label=label, mode=mode, colour = (red, green, blue), opacity=opacity)
+        
+        # plot        
+        self.plot.plotBrainHighlights(br, highlights=[label])                
+        
+        # add to list of plots
+        if mode=='node':
+            QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainNode', label])
+        elif mode=='edge':
+            QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainEdge', label])        
+        
+        
+    def getRelation(self):
+        ''' retrieve information from the relation-box and translate into maybraintools language '''
+        # get current value
+        val = str(self.ui.hlRelationBox.currentText())
+        
+        # translate        
+        if val=='=':
+            outval = 'eq'
+        elif val=='<':
+            outval = 'lt'
+        elif val=='>':
+            outval = 'gt'
+        elif val=='<=':
+            outval = 'leq'
+        elif val=='>==':
+            outval = 'geq'
+        elif val=='contains text':
+            outval = 'contains'
+        else:
+            # covers cases in + 2 brackets
+            outval = val
+        
+        return outval
     
     def plotHighlight(self):
         ''' plot the selected highlight '''

@@ -441,7 +441,7 @@ class brainObj:
 #                if not(self.G.has_edge(node1, node2)):
 #                    self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
                 
-    def highlightFromConds(self, prop, rel, val, label = None, mode = 'edge', colour = (1.,0.,0.)):
+    def highlightFromConds(self, prop, rel, val, label = None, mode = 'edge', colour = (1.,0.,0.), opacity = 1.0):
         ''' Creates a highlight by asking if the propertly prop is related to val by rel 
         
             type can be 'edge' or 'nodes', to filter for edges or nodes (coordinates) 
@@ -468,6 +468,7 @@ class brainObj:
         # make a highlight object
         h = highlightObj()
         h.colour = colour
+        h.opacity = opacity
         
         # extract lists from edges        
         if mode == 'edge':
@@ -514,7 +515,8 @@ class brainObj:
                 # add to highlight if good
                 if boolval:
                     h.points.append(c)
-                    
+
+        
         # add highlight to dictionary
         self.highlights[label] = h
                 
@@ -552,6 +554,8 @@ class brainObj:
             b = (d>=val[0]) & (d<=val[1])
         elif rel == 'contains':
             b = d in val
+        else:
+            print('relation not recognised: ' + rel )
         
         return b
             
@@ -1684,8 +1688,9 @@ class plotObj():
         self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (1., 1., 1.), opacity = opacity, label=label)  
 
 
-    def plotBrainHighlights(self, brain, highlights = [], opacity = 1.0, labelPre = ''):    
-        ''' plot all or some of the highlights in a brain '''
+    def plotBrainHighlights(self, brain, highlights = [], labelPre = ''):    
+        ''' plot all or some of the highlights in a brain
+            hlPre allow for a standard prefix (this is used by the GUI) '''
 
         if highlights == []:
             highlights = brain.highlights
