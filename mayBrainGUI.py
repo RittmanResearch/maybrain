@@ -92,7 +92,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.brainLoad, QtCore.SIGNAL('clicked()'), self.loadBrain)
         QtCore.QObject.connect(self.ui.skullLoad, QtCore.SIGNAL('clicked()'), self.loadSkull)
         QtCore.QObject.connect(self.ui.skullPlot, QtCore.SIGNAL('clicked()'), self.plotSkull)
-#        QtCore.QObject.connect(self.ui.plotTree, QtCore.SIGNAL('itemClicked(QTreeWidgetItem*,int)'), self.setPlotValues)
+        QtCore.QObject.connect(self.ui.plotTree, QtCore.SIGNAL('itemClicked(QTreeWidgetItem*,int)'), self.setPlotValues)
         self.ui.opacitySlider.valueChanged.connect(self.setOpacity)
         self.ui.opacityBox.valueChanged.connect(self.setOpacityBox)
         self.ui.visibleCheckBox.clicked.connect(self.setVisibility)
@@ -228,13 +228,11 @@ class mayBrainGUI(QtGui.QMainWindow):
             # plot the brain (excluding highlights)
             self.plot.plotBrainBase(self.brains[label], opacity = 0.2, edgeOpacity = None, label=label)
 
-            # add to tree view
-            # *** REMOVE SOON WHEN RE-READ FUNCTION ADDED ??? ***  
-            QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainNode', label])
-            QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainEdge', label])
-
         except:
             print('problem plotting brain, have files been loaded?')
+
+        # add to tree view
+        self.readAvailablePlots() 
             
         # change plot button to replot
         QtCore.QObject.disconnect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
@@ -269,6 +267,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.plot.plotBrainBase(br, label = brName)       
 #        except:
 #            print('problem plotting brain, is threshold correct?')
+        self.readAvailablePlots()
             
             
     def plotSkull(self):
@@ -283,7 +282,8 @@ class mayBrainGUI(QtGui.QMainWindow):
             self.plot.plotSkull(self.brains['mainBrain'], label = 'skull')
             
             # add to treeview
-            QtGui.QTreeWidgetItem(self.ui.plotTree, ['skull', 'skull'])     
+            self.readAvailablePlots()
+            # QtGui.QTreeWidgetItem(self.ui.plotTree, ['skull', 'skull'])     
             
         except:
             print('could not plot skull, has file been loaded?')
@@ -301,10 +301,23 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.ui.plotTree.clear()
         
         # add new values
-        for p in self.plot.brainEdgePlots:
-            QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainEdge', p])
-        for p in self.plot.brainNodePlots:            
-            QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainNode', p])        
+        lists = [self.plot.brainEdgePlots, self.plot.brainNodePlots, self.plot.skullPlots, self.plot.isosurfacePlots]
+        labels = ['nodes', 'edges', 'skull', 'isosurf']
+        
+        for ls in range(len(lists)):
+            names = lists[ls].keys()
+            names.sort()
+            for p in names:
+                QtGui.QTreeWidgetItem(self.ui.plotTree, [labels[ls], p])
+        
+#        for p in self.plot.brainEdgePlots:
+#            QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainEdge', p])
+#        for p in self.plot.brainNodePlots:            
+#            QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainNode', p]) 
+#        for s in self.plot.skullPlots:
+#            QtGui.QTreeWidgetItem(self.ui.plotTree, ['skull', s])
+#        for s in self.plot.isosurfacePlots:
+#            QtGui.QTreeWidgetItem(self.ui.plotTree, ['isosurf', s])
 
 
     ## =============================================
@@ -354,10 +367,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.plot.plotBrainHighlights(br, highlights=[label])                
         
         # add to list of plots
-        if mode=='node':
-            QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainNode', label])
-        elif mode=='edge':
-            QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainEdge', label])        
+        self.readAvailablePlots()      
         
         
     def getRelation(self):
@@ -374,7 +384,7 @@ class mayBrainGUI(QtGui.QMainWindow):
             outval = 'gt'
         elif val=='<=':
             outval = 'leq'
-        elif val=='>==':
+        elif val=='>=':
             outval = 'geq'
         elif val=='contains text':
             outval = 'contains'
@@ -488,6 +498,7 @@ class mayBrainGUI(QtGui.QMainWindow):
                 self.ui.greenValueBox.setValue(v[1])
                 self.ui.blueSlider.setValue(v[2]*100)
                 self.ui.blueValueBox.setValue(v[2])
+                
                 
     def setOpacity(self):
         ''' set the opacity for the currently selected plot from the slider '''
