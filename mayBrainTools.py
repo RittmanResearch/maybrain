@@ -64,7 +64,8 @@ class brainObj:
         self.threshold = 0
         
         self.hubs = []
-        self.lengthEdgesRemoved = None
+        self.dyingEdges = {}
+        self.nodesRemoved = None
         self.bigconnG = None
         
         self.nbskull = None
@@ -416,8 +417,9 @@ class brainObj:
         """
         
         zeroArr = zeros(self.iso.shape)
-                
+        
         for n in nodeList:
+            n = float(n)
             nArr = np.ma.masked_where(self.iso !=n, self.iso)
             nArr.fill_value=0.0
             zeroArr = zeroArr + nArr
@@ -1124,7 +1126,7 @@ class brainObj:
         else:
             self.modularity = 0
             
-    def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, weightLossLimit=None, toxicNodes=None, riskEdges=None, spread=False, updateAdjmat=True):
+    def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, threshLimit=None, pcLimit=None, weightLossLimit=None, toxicNodes=None, riskEdges=None, spread=False, updateAdjmat=True):
         ''' remove random edges from connections of the toxicNodes set, or from the riskEdges set. This occurs either until edgesRemovedLimit
         number of edges have been removed (use this for a thresholded weighted graph), or until the weight loss
         limit has been reached (for a weighted graph). For a binary graph, weight loss should be set
@@ -1133,6 +1135,9 @@ class brainObj:
         The spread option recruits connected nodes of degenerating edges to the toxic nodes list.
         
         By default this function will enact a random attack model, with a weight loss of 0.1 each iteration.
+        
+        Weights are taken as absolute values, so the weight in any affected edge tends to 0.        
+        
         '''
         
         if toxicNodes:
@@ -1141,7 +1146,28 @@ class brainObj:
             nodeList = []
             
         # set limit
-        if weightLossLimit:
+        if weightLossLimit and pcLimit:
+            print "You have asked for both a weight and percentage connectivity limit, using the percentage connectivity limit"
+        
+        if threshLimit:
+            pcLimit = self.thresholdToPercentage(threshLimit)
+        
+        if pcLimit:
+            lenNodes = len(self.G.nodes())
+            lenEdges = len(self.G.edges())
+            
+            maxEdges = float(lenNodes * (lenNodes-1))
+            if not self.G.is_directed():
+                maxEdges = maxEdges / 2
+                
+            newEdgeNum = int(round(pcLimit * maxEdges))
+            if newEdgeNum > lenEdges:
+                print "The percentage threshold set is lower than the current graph, please choose a larger value"
+            
+            limit = lenEdges - newEdgeNum
+            weightLossLimit = False
+            
+        elif weightLossLimit:
             limit = weightLossLimit
         
         else:
@@ -1157,6 +1183,9 @@ class brainObj:
             riskEdges = nx.edges(self.G, nodeList)
         else:
             reDefineEdges=False
+            
+        if spread:
+            nodeList = []
             
         # iterate number of steps
         self.lengthEdgesRemoved = []
@@ -1174,7 +1203,7 @@ class brainObj:
                     print "No further edges to degenerate"
                     break
             # choose at risk edge to degenerate from           
-            dyingEdge = random.choice(riskEdges)
+            dyingEdge = random.choice(riskEdges)            
                         
             # remove specified weight from edge
             w = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
@@ -1187,13 +1216,14 @@ class brainObj:
                 loss = weightloss
                 self.G[dyingEdge[0]][dyingEdge[1]]['weight'] -= weightloss
                 
-                
             else:
                 loss = weightloss
                 self.G[dyingEdge[0]][dyingEdge[1]]['weight'] += weightloss
             
+            # record the edges length of edges lost
+            self.dyingEdges[dyingEdge] = self.G[dyingEdge[0]][dyingEdge[1]]
             try:
-                self.lengthEdgesRemoved.append(np.linalg.norm( np.array((self.G.node[dyingEdge[0]]['xyz'])) - np.array((self.G.node[dyingEdge[1]]['xyz']))  ))
+                self.dyingEdges[dyingEdge]['distance'] =  np.linalg.norm( np.array((self.G.node[dyingEdge[0]]['xyz'])) - np.array((self.G.node[dyingEdge[1]]['xyz']))  )
             except:
                 pass
             
@@ -1206,6 +1236,7 @@ class brainObj:
                 for node in dyingEdge:
                     if not node in nodeList:
                         nodeList.append(node)
+                        
             # remove edge if below the graph threshold
             if self.G[dyingEdge[0]][dyingEdge[1]]['weight'] < self.threshold and self.threshold != -1:      # checks that the graph isn't fully connected and weighted, ie threshold = -1
                 self.G.remove_edge(dyingEdge[0], dyingEdge[1])
@@ -1217,8 +1248,10 @@ class brainObj:
                 limit -= loss
                 
             # redefine at risk edges
-            if reDefineEdges:
+            if reDefineEdges or spread:
                 riskEdges = nx.edges(self.G, nodeList)
+
+        
         
         ## Update adjacency matrix to reflect changes
         #self.reconstructAdjMat()
@@ -1228,7 +1261,9 @@ class brainObj:
         return nodeList
         
     def degenerateNew(self, weightloss=0.1, edgesRemovedLimit=1, weightLossLimit=None, riskNodes=None, riskEdges=None, spread=False):
-        ''' remove random edges from connections of the riskNodes set, or from the riskEdges set. This occurs either until edgesRemovedLimit
+        '''
+        LEGACY CODE - FOR REMOVAL        
+        remove random edges from connections of the riskNodes set, or from the riskEdges set. This occurs either until edgesRemovedLimit
         number of edges have been removed (use this for a thresholded weighted graph), or until the weight loss
         limit has been reached (for a weighted graph). For a binary graph, weight loss should be set
         to 1.
@@ -1427,6 +1462,7 @@ class brainObj:
             
     def neuronsusceptibility(self, edgeloss=1, largestconnectedcomp=False):
         """
+        LEGACY CODE - FOR REMOVAL
         Models loss of edges according to a neuronal suceptibility model with the most highly connected nodes losing
         edges. Inputs are the number of edges to be lost each iteration and the number of iterations.
         """
@@ -1491,6 +1527,21 @@ class brainObj:
         self.percentConnections = float(len(self.G.edges()))/float(totalConnections)
         
         return self.percentConnections
+        
+    def thresholdToPercentage(self, threshold):
+        '''
+        Functional to convert a threshold to a percentage connectivity.
+        
+        As this is returns a ratio between nodes and edges, it doesn't matter
+        whether the graph is directed (ie an asymmetric association matrix)
+        '''
+        lenNodes = float(len(self.G.nodes()))
+        maxEdges = float(lenNodes) * (lenNodes-1)
+        
+        lenEdges = len(self.adjMat.flatten()[self.adjMat.flatten()>threshold])
+
+        pc = lenEdges / maxEdges
+        return(pc)
     
     def binarise(self):
         '''
@@ -1512,18 +1563,16 @@ class brainObj:
         return sn
         
     def checkrobustness(self, conVal, step, incomplete):
-        '''        
-        THIS CODE IS OBSOLETE AND KEPT FOR REFERENCE ONLY 13/11/2013
-        
+        '''      
         Robustness is a measure that starts with a fully connected graph, \
         then reduces the threshold incrementally until the graph breaks up in \
         to more than one connected component. The robustness level is the \
         threshold at which this occurs. '''
 
         # record starting threhold
-        X = self.G.copy()
+#        X = self.G.copy()
 
-        self.adjMatThresholding(tVal = conVal, doPrint=False, MST=False, rethreshold=incomplete)
+        self.adjMatThresholding(tVal = conVal, doPrint=False, MST=False)
                 
         
         sgLenStart = len(components.connected.connected_component_subgraphs(self.G))
@@ -1533,12 +1582,12 @@ class brainObj:
         while(sgLen == sgLenStart and conVal < 1.):
             conVal += step
             
-            self.adjMatThresholding(tVal = conVal, doPrint=False, MST=False, rethreshold=incomplete)
+            self.adjMatThresholding(tVal = conVal, doPrint=False, MST=False)
             sgLen = len(components.connected.connected_component_subgraphs(self.G))  # count number of components
             
             print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
         
-        self.G = X
+#        self.G = X.copy()
         return conVal-step
         
 
@@ -1663,7 +1712,7 @@ class brainObj:
 
 
         # reset threshold to old value
-        self.G = G
+        self.G = G.copy()
 
         # return the maximum threshold value where they were found to be the same
         fm = "{0:."+str(decs)+"f}"
@@ -1676,18 +1725,12 @@ class brainObj:
         """
         Function to calculate robustness.
         
-        The metric is calculated on either the complete graph (complete=True) or threhsolded graph (complete=False)
+        The metric is calculated on either the complete graph (incomplete=False) or threhsolded graph (incomplete=True)
         
         """
         # record starting threhold
-        G = nx.Graph() 
-        G.add_nodes_from(self.G.nodes())
-        for node in G.nodes():
-            G.node[node] = self.G.node[node]
-        G.add_edges_from(self.G.edges())
-        for edge in G.edges():
-            G.edge[edge[0]][edge[1]] = self.G.edge[edge[0]][edge[1]]
-            
+        G = self.G.copy()
+                    
         if append:
             writeMode="a"
         else:
@@ -1702,11 +1745,9 @@ class brainObj:
             print "Step is: " + str(step)
             conVal = self.checkrobustness(conVal, step, incomplete=incomplete)
         
-        conVal = conVal-step
-        
-        
         # get percentage connectivity
         edgePC = len(self.G.edges()) / (len(self.G.nodes()) * (len(self.G.nodes())-1))
+        print edgePC
         
         if not os.path.exists(outfilebase+'_Robustness.txt'):
             
@@ -1744,7 +1785,7 @@ class brainObj:
             else:
                 carryOn = True
                 for n,edge in enumerate(maxEdges):
-                    if self.adjMat[e[0], e[1]] < self.adjMat[edge[0]][edge[1]] or not carryOn:
+                    if self.adjMat[e[0], e[1]] < self.adjMat[edge[0],edge[1]] or not carryOn:
                         pass
                     else:
                         maxEdges.insert(n,e)
