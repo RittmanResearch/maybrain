@@ -810,14 +810,14 @@ class brainObj:
         
         return adjMat
         
-    def updateAdjMat(self, edge):
+    def updateAdjMat(self, edge, force=False):
         ''' update the adjacency matrix for a single edge '''
         
         try:
             w = self.G.edge[edge[0]][edge[1]]['weight']
             self.adjMat[edge[0], edge[1]] = w
             self.adjMat[edge[1], edge[0]] = w
-        except:
+        except:                
             print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
             self.adjMat[edge[0], edge[1]] = np.nan
             self.adjMat[edge[1], edge[0]] = np.nan
@@ -1068,8 +1068,152 @@ class brainObj:
         for node in hubScores.keys():
             self.hubs.append(node)
     
+    def replaceDiags(self, W, d):
+        ''' for use in the modularity function'''
+
+        mask = np.array((False))
+        
+        count = 0
+        while not np.any(mask):
+            mask = W.mask[count,:]              # get mask from masked array input
+            count+=1
+    
+        n = len(W)                      # length of nodes (masked and unmasked)
+        W[0,0] = d                     # ensure first row on the diagonal is d
+        
+        # change diagonals to d only in non-masked rows/columns
+        for i in np.array(range(n))[np.invert(mask)]:
+            W[i,i] = d
+        return(W)
+    
+    def modularity(self, hierarchy=False, diagVal=0.):
+        '''
+        Modularity function borrowed (after asking nicely!) from
+        https://sites.google.com/site/bctnet/measures/list and converted from 
+        matlab to python code.
+        
+        The main modification is to allow NA values in the association matrix.
+        The code is being integrated in to maybrain: http://code.google.com/p/maybrain/
+        
+        The function only returns a hierarchical dictionary of matrices and
+        modularities if hierarchy is True. Otherwise, labels are added to
+        individual nodes and the modularity is assigned as 'Q', eg brain.Q
+        '''
+
+        
+        W = self.adjMat.copy()
+        n0 = len(W)                                # number of nodes
+        
+        W = np.ma.array(W, mask=np.isnan(W))    # convert to masked array
+        W = self.replaceDiags(W, diagVal)            # replace diagonal values
+    
+        h=0                                     # hierarchy index
+        Ci = { h:np.ma.array(np.zeros(n0), mask=W.mask[0,:], dtype=int) } # create dictionary of hierarchy assignments and blank arrays
+        
+        count = 0
+        for i in range(n0):
+            if np.ma.is_masked(Ci[h][i]):
+                pass
+            else:
+                Ci[h][i] = int(count)
+                count+=1
+        Q = { h:-1 }
+        
+        # get rid of nan's
+        W = W[np.invert(W.mask)]
+        W.shape = np.repeat(np.sqrt(len(W)),2)
+        n = len(W)
+        s = np.sum(W)                           # weight of edges
+    
+        while 1:
+            K = np.sum(W, axis=1)                   # node degree
+            Km = K.copy()                            # module degree
+            Knm = W.copy()                          # node-to-module degree
+            
+            M = np.array([v for v in range(n)])     # initial module assignments
+            
+            Nm = np.ones(n)                         # number of nodes in modules
+    
+            flag=True                               # flag for within network hierarchy search
+            
+            while flag:
+                flag=False            
+                nList = [v for v in range(n)]
+                random.shuffle(nList)
+                while nList:
+                    i = nList.pop()
+                    dQ = (Knm[i,:] - Knm[i,M[i]] + W[i,i]) - K[i] * (Km-Km[M[i]]+K[i]) /s  # algorithm condition
+    #            dQ=(Knm(i,:)-Knm(i,M(i))+W(i,i)) - K(i).*(Km-Km(M(i))+K(i))/s;
+    
+                    dQ[M[i]]=0
+                    
+                    max_dQ = np.max(dQ)                # find maximal increase in modularity
+                    
+                    if max_dQ>0:                        # if maximal increase is positive
+                        j = np.argmax(dQ)
+                                            
+                        Knm[:,j] = Knm[:,j]+W[:,i]      # change node-to-module degrees
+                        Knm[:,M[i]] = Knm[:,M[i]]-W[:,i]
+                        
+                        Km[j] = Km[j]+K[i]
+                        Km[M[i]] = Km[M[i]] - K[i]       # change module degrees
+                        
+                        Nm[j] += 1                      # change number of nodes in modules
+                        Nm[M[i]] -= 1
+                        
+                        M[i]=j                          # reassign module
+                        
+                        flag=True
+    
+    
+            x, M1 = np.unique(M, return_inverse=True)
+            
+            h+=1
+            Ci[h] = np.ma.array(np.zeros(n0), dtype=int)
+            
+            for i in range(n):
+                Ci[h][Ci[h-1]==i] = int(M1[i])
+            Ci[h].mask=Ci[0].mask.copy()
+            
+            n = len(x)                                 # new number of modules
+            
+            W1 = np.zeros((n,n))                            # new weighted matrix
+    
+            for i in range(n):
+                for j in range(i,n):                          # pool weights of nodes in same module w=sum(sum(W(M1==i,M1==j)));
+                    A = np.zeros(W.shape)
+                    indRow = np.array([z for z,v in enumerate(M1) if v==i])
+                    indCol = np.array([z for z,v in enumerate(M1) if v==j])
+                    
+                    for x in indRow:
+                        for y in indCol:
+                            A[x,y] = W[x,y]
+    
+                    w = np.sum(A)
+    #                print w
+    
+                    W1[i,j] = w
+                    W1[j,i] = w
+                    
+            W = W1.copy()
+            del(W1)      
+            
+            Q[h] = np.sum(np.diagonal(W))/s - np.sum(np.sum(W/s, axis=0)**2)     # compute modularity
+            if Q[h] <= Q[h-1]:                     # if modularity does not increase
+                break
+            
+        for node in self.G.nodes():
+            self.G.node[node]['module'] = Ci[h-1][node]
+        
+        self.Q = Q[h-1]
+        
+        # return hierarchy only if desired
+        if hierarchy:
+            return(Ci, Q)
+                
     def clusters(self, drawpos=False):
         """
+        LEGACY CODE - THIS FUNCTION HAS NEVER WORKED WELL AND WILL BE REMOVED SHORTLY
         Defines clusters using community detection algorithm and adjust layout for pretty presentations
         
         """

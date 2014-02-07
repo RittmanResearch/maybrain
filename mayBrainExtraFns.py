@@ -459,31 +459,6 @@ def NodalEfficiencywrite(brain,outfilebase = "brain", append=True, nodes=None):
     f.close()
   
   
-
-def modularstructure(brain,outfilebase = "brain", redefine_clusters=True, append=True):
-    """
-    Writes to a file the output of cluster membership and modularity.
-    """
-    # redefine graph clusters
-    if redefine_clusters == True:
-        brain.clusters()
-    
-    # write out modularity
-    outfile = outfilebase+'_modularity'
-    
-    if not append and os.path.exists(outfile):
-        print "Moving existing file to "+outfile+'.old'
-        os.rename(outfile,outfile+'.old')
-    
-    if append and os.path.exists(outfile):
-        f = open(outfile,"ab")
-    
-    else:
-        f= open(outfile,"wb")
-
-    f.writelines("{:0.5f}".format(brain.modularity)+'\n')
-    f.close()
-
 def writeEdgeLengths(brain,outfilebase = "brain", append=True):
     outfile = outfilebase+'_edgeLengths'
     try:
