@@ -36,6 +36,7 @@ from mayavi import mlab
 from string import split
 import nibabel as nb
 from mayavi.core.ui.api import MlabSceneModel, SceneEditor
+from copy import deepcopy
 
 class brainObj:
     """
@@ -1553,7 +1554,7 @@ class brainObj:
     def largestConnComp(self):
         self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
         
-    def strnum(num, length=5):
+    def strnum(self, num, length=5):
         ''' convert a number into a string of a given length'''
         
         sn = str(num)
@@ -1561,253 +1562,50 @@ class brainObj:
         sn = lenzeros*'0' + sn
         
         return sn
-        
-    def checkrobustness(self, conVal, step, incomplete):
-        '''      
-        Robustness is a measure that starts with a fully connected graph, \
-        then reduces the threshold incrementally until the graph breaks up in \
-        to more than one connected component. The robustness level is the \
-        threshold at which this occurs. '''
 
-        # record starting threhold
-#        X = self.G.copy()
-
-        self.adjMatThresholding(tVal = conVal, doPrint=False, MST=False)
-                
+    def robustness(self, iterLen=500, N=50):
+        ''' a function to calculate robustness based on "Error and attack
+        tolerance of complex networks" Albert et al Nature 2000 406:378-382
         
-        sgLenStart = len(components.connected.connected_component_subgraphs(self.G))
-        print "Starting sgLen: "+str(sgLenStart)
-        sgLen = sgLenStart
-
-        while(sgLen == sgLenStart and conVal < 1.):
-            conVal += step
-            
-            self.adjMatThresholding(tVal = conVal, doPrint=False, MST=False)
-            sgLen = len(components.connected.connected_component_subgraphs(self.G))  # count number of components
-            
-            print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
+        The function calculates the rate of change in the size of the largest
+        connected component (S) as nodes are randomly removed. The process runs
+        iteratively and takes a mean. The gradient of S is smoothed to provide
+        a more accurate measure by a sliding window.
         
-#        self.G = X.copy()
-        return conVal-step
+        N = size of the sliding window for smoothing the gradient
+        iterLen = number of iterations
         
-
-    def checkrobustnessNew(self, decs = 4, t0low = 1., edgePCBool=False):  #, minThr = None, maxThr = None
-        ''' 
-        THIS CODE IS OBSOLETE AND KEPT FOR REFERENCE ONLY 13/11/2013
-
-        Robustness is a measure that starts with a fully connected graph,
-        then reduces the threshold incrementally until the graph breaks up in
-        to more than one connected component. The robustness level is the
-        threshold at which this occurs. 
-        
-        t0low is the value of the lowest starting threshold
-        step is the resolution of the threshold to find
-        
-        uses a simple 3 point interpolation algorithm 
-        
-        decs gives the number of decimal places for the output
+        Note, this function is relatively slow compared to other metrics
         
         '''
-
-#        if not(minThr):
-#            minThr = min(self.adjMat)
-#        if not(maxThr):
-#            maxThr = max(self.adjMat)
-#        
-#        print('min max of adjmat')
-#        print(min(self.adjMat), max(self.adjMat))
-#                
-
-        G = self.G.copy()
+        fList = np.zeros(iterLen)
+        for i in range(iterLen):
+            mat = np.zeros((len(self.G.nodes())))
         
-        # new method
-        # get starting threshold values
-        if not edgePCBool and self.threshold:
-            ths = [t0low, np.mean(np.array((self.threshold, t0low))), self.threshold]
-        elif edgePCBool:
-            ths = [self.edgePC, np.mean(np.array(((self.edgePC), 0.))), 0.]
-        else:
-            ths= [t0low, 0.5, 0.]
+            a = deepcopy(self.G)
+            nList = [v for v in a.nodes()]
+            random.shuffle(nList)
+            nList = nList[:-1]
             
-        ths.sort()
-        
-        if edgePCBool:
-            ths.reverse()
-
-        # get the connectedness for each threshold value
-        sgLen=[]
-        for th in ths:
-            if not edgePCBool:
-                self.adjMatThresholding(tVal = th, doPrint=False, rethreshold=True, MST=False)
-            else:
-                self.adjMatThresholding(edgePC = th, doPrint=False, rethreshold=True, MST=False)
-            sgLen.append(len(components.connected.connected_component_subgraphs(self.G)))
+            count = 0
+            while nList:
+                n = nList.pop()
+                a.remove_node(n)
+                bigConnG = nx.components.connected.connected_component_subgraphs(a)[0]
+                S = len(bigConnG.nodes())
+                del(bigConnG)
+                
+                mat[count] = S
+                count+=1
+                
+            g = np.gradient(mat)
+            runMean = np.convolve(g, np.ones((N,))/N)[(N-1):]
+            diffs = np.diff(runMean)
+            nr = np.argmin(diffs)
             
-        # check to see if tlow0 is too high        
-        if sgLen[2] == sgLen[0]:
-            print('wrong boundaries for robustness checking')
-            print(sgLen, ths)
-            return
-        
-        contBool = True
-        count = 0
-        maxCounts = 1000
-        
-        while contBool:            
-            # compare connectedness of the three values, take the interval in which
-            # a difference is found
-            print ths
-
-            if sgLen[0]!=sgLen[1]:
-                # case where there's a difference between 0th and 1st components
-                
-                # set thresholds
-                ths = [ths[0], np.mean(np.array((ths[0], ths[1]))), ths[1]]
-                
-                # get corresponding connectedness
-                if not edgePCBool:
-                    self.adjMatThresholding(tVal = ths[1], doPrint=False)
-                else:
-                    self.adjMatThresholding(edgePC = ths[1], doPrint=False)
-                sgLenNew = len(components.connected.connected_component_subgraphs(self.G))
-                sgLen = [sgLen[0], sgLenNew, sgLen[1]]
-                                
-            elif sgLen[1]!=sgLen[2]:
-                # case where there's a difference between 1st and 2nd components
-                
-                # get thresholds
-                ths = [ths[1], np.mean(np.array((ths[1], ths[2]))), ths[2]]
-                
-                # get corresponding connectedness
-                if not edgePCBool:
-                    self.adjMatThresholding(tVal = ths[1], doPrint=False)
-                else:
-                    self.adjMatThresholding(edgePC = ths[1], doPrint=False)
-                sgLenNew = len(components.connected.connected_component_subgraphs(self.G))
-                
-                sgLen = [sgLen[1], sgLenNew, sgLen[2]]                
-
-            else:
-                # case where all components are the same (condition satisfied)
-                print(sgLen, ths)
-                contBool = False
-                            
-            # check if final condition satisfied
-            if abs(ths[2]-ths[1])< (0.1**decs):
-                print(sgLen, ths)
-                contBool = False
-
-#            print(sgLen, ths)
-                
-            # stop if too slow
-            count = count+1
-            if count == maxCounts:
-                print('maximum iteration steps exceeded in robustness check')
-                print( 'resolution reached: ', str( abs(ths[1]-ths[1]) ) )
-                contBool = False
-                
-        # check that something happened in the above loop
-        if count == 1:
-            print("starting threshold error in robustness check, is thrMin value correct?"+ str(t0low0))
-
-
-        # reset threshold to old value
-        self.G = G.copy()
-
-        # return the maximum threshold value where they were found to be the same
-        fm = "{0:."+str(decs)+"f}"
-        if not edgePCBool:
-            return fm.format(ths[2])
-        else:
-            return([fm.format(v) for v in [ths[2],outThs]])
-    
-    def robustness(self, outfilebase="brain", conVal=-1, decPoints=3, append=True, incomplete=True):
-        """
-        Function to calculate robustness.
-        
-        The metric is calculated on either the complete graph (incomplete=False) or threhsolded graph (incomplete=True)
-        
-        """
-        # record starting threhold
-        G = self.G.copy()
-                    
-        if append:
-            writeMode="a"
-        else:
-            if os.path.exists(outfilebase+'_Robustness.txt'):
-                move(outfilebase+'_Robustness.txt', outfilebase+'_Robustness.txt.old')
-                print ' '.join(["Moving", outfilebase+'_Robustness.txt', "to", outfilebase+'_Robustness.txt.old' ]) 
-            writeMode="w"
-        
-        # iterate through decimal points of connectivity 
-        for decP in range(1,decPoints+1):
-            step = float(1)/(10**decP)
-            print "Step is: " + str(step)
-            conVal = self.checkrobustness(conVal, step, incomplete=incomplete)
-        
-        # get percentage connectivity
-        edgePC = len(self.G.edges()) / (len(self.G.nodes()) * (len(self.G.nodes())-1))
-        print edgePC
-        
-        if not os.path.exists(outfilebase+'_Robustness.txt'):
-            
-            log = open(outfilebase+'_Robustness.txt', writeMode)
-            log.writelines('\t'.join(["RobustnessConnectivity","RobustnessThresh"])+'\n')
-        else:
-            log = open(outfilebase+'_Robustness.txt', "a")
-        
-        log.writelines('\t'.join([str(edgePC), str(conVal)])+ '\n')
-        log.close()
-        
-        # return original graph
-        self.G = G
-        
-    def robustnessIncomplete(self, outfilebase="brain", conVal=1.0, decPoints=3, append=True):   
-        # make a copy of the graph
-        G = nx.Graph() 
-        G.add_nodes_from(self.G.nodes())
-        for node in G.nodes():
-            G.node[node] = self.G.node[node]
-        G.add_edges_from(self.G.edges())
-        for edge in G.edges():
-            G.edge[edge[0]][edge[1]] = self.G.edge[edge[0]][edge[1]]    
-        
-        sgLen = len(components.connected.connected_component_subgraphs(self.G))
-        # get list of edges in order of strength
-
-        maxEdges = None
-        maxEdgeVal = None
-
-        for e in self.G.edges():
-            if not maxEdges:
-                maxEdges = [e]
-
-            else:
-                carryOn = True
-                for n,edge in enumerate(maxEdges):
-                    if self.adjMat[e[0], e[1]] < self.adjMat[edge[0],edge[1]] or not carryOn:
-                        pass
-                    else:
-                        maxEdges.insert(n,e)
-                        carryOn = False
-                if carryOn:
-                    maxEdges.append(e)
-                            
-        for e in maxEdges:
-            print e
-            self.G.remove_edge(e[0], e[1])
-            
-            if len(components.connected.connected_component_subgraphs(self.G)) > sgLen:
-                print len(components.connected.connected_component_subgraphs(self.G))
-                break
-            
-            maxEdgeVal = self.adjMat[e]
-                    
-        print maxEdgeVal
-        
-        # return the original graph
-        self.G = G
-        return(maxEdgeVal)
+            fList[i] = nr
+        fc = np.mean(fList) / len(self.G.nodes())
+        return(fc)
 
 class plotObj():
     ''' classes that plot various aspects of a brain object '''
