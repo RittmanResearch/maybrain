@@ -1067,26 +1067,8 @@ class brainObj:
     #   identify nodes as hubs if 2 standard deviations above hub score
         for node in hubScores.keys():
             self.hubs.append(node)
-    
-    def replaceDiags(self, W, d):
-        ''' for use in the modularity function'''
-
-        mask = np.array((False))
         
-        count = 0
-        while not np.any(mask):
-            mask = W.mask[count,:]              # get mask from masked array input
-            count+=1
-    
-        n = len(W)                      # length of nodes (masked and unmasked)
-        W[0,0] = d                     # ensure first row on the diagonal is d
-        
-        # change diagonals to d only in non-masked rows/columns
-        for i in np.array(range(n))[np.invert(mask)]:
-            W[i,i] = d
-        return(W)
-    
-    def modularity(self, hierarchy=False, diagVal=0.):
+    def modularity(self, hierarchy=False, diagVal=0., nodesToExclude=None):
         '''
         Modularity function borrowed (after asking nicely!) from
         https://sites.google.com/site/bctnet/measures/list and converted from 
@@ -1104,12 +1086,24 @@ class brainObj:
         W = self.adjMat.copy()
         n0 = len(W)                                # number of nodes
         
-        W = np.ma.array(W, mask=np.isnan(W))    # convert to masked array
-        W = self.replaceDiags(W, diagVal)            # replace diagonal values
-    
-        h=0                                     # hierarchy index
-        Ci = { h:np.ma.array(np.zeros(n0), mask=W.mask[0,:], dtype=int) } # create dictionary of hierarchy assignments and blank arrays
+        W = np.ma.array(W, mask=False)    # convert to masked array
+        W.mask = W.data
+        W.mask = False
+        W[np.isnan(self.adjMat)] = 0.
         
+        h=0                                     # hierarchy index
+        Ci = { h:np.ma.array(np.zeros(n0),mask=False, dtype=int) } # create dictionary of hierarchy assignments and blank arrays
+        if nodesToExclude:
+            Ci[h].mask = Ci[h].data
+            Ci[h].mask = False
+            for i in [int(v) for v in nodesToExclude]:
+                Ci[h].mask[i] = True
+                W.mask[i,:] = True
+                W.mask[:,i] = True
+        
+        
+        # change diagonals to d only in non-masked rows/columns and assign
+        # initial values
         count = 0
         for i in range(n0):
             if np.ma.is_masked(Ci[h][i]):
@@ -1117,12 +1111,16 @@ class brainObj:
             else:
                 Ci[h][i] = int(count)
                 count+=1
+                W[i,i] = diagVal
+                W.mask[i,i] = False
+        
         Q = { h:-1 }
         
         # get rid of nan's
         W = W[np.invert(W.mask)]
         W.shape = np.repeat(np.sqrt(len(W)),2)
         n = len(W)
+
         s = np.sum(W)                           # weight of edges
     
         while 1:
@@ -1166,13 +1164,14 @@ class brainObj:
                         flag=True
     
     
+            print Nm
             x, M1 = np.unique(M, return_inverse=True)
-            
+
             h+=1
             Ci[h] = np.ma.array(np.zeros(n0), dtype=int)
             
             for i in range(n):
-                Ci[h][Ci[h-1]==i] = int(M1[i])
+                Ci[h][Ci[h-1]==i] = int(M[i])
             Ci[h].mask=Ci[0].mask.copy()
             
             n = len(x)                                 # new number of modules
