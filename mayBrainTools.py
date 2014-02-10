@@ -23,7 +23,7 @@ Change log:
 
 """
 
-import os,community
+import os
 from shutil import move
 import networkx as nx
 import numpy as np
@@ -320,7 +320,7 @@ class brainObj:
         T = self.minimum_spanning_tree(self)
         lenEdges = len(T.edges())
         if lenEdges > edgeNum:
-            print "The minimum spanning tree already has: "+ lenEdges + " edges, select more edges."
+            print "The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges."
         
         while lenEdges<edgeNum:
             print "NNG degree: "+str(k)
