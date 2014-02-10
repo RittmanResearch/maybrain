@@ -1164,7 +1164,6 @@ class brainObj:
                         flag=True
     
     
-            print Nm
             x, M1 = np.unique(M, return_inverse=True)
 
             h+=1
@@ -1270,7 +1269,10 @@ class brainObj:
         else:
             self.modularity = 0
             
-    def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, threshLimit=None, pcLimit=None, weightLossLimit=None, toxicNodes=None, riskEdges=None, spread=False, updateAdjmat=True):
+    def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, threshLimit=None,
+                   pcLimit=None, weightLossLimit=None, toxicNodes=None,
+                   riskEdges=None, spread=False, updateAdjmat=True,
+                   distances=False):
         ''' remove random edges from connections of the toxicNodes set, or from the riskEdges set. This occurs either until edgesRemovedLimit
         number of edges have been removed (use this for a thresholded weighted graph), or until the weight loss
         limit has been reached (for a weighted graph). For a binary graph, weight loss should be set
@@ -1324,7 +1326,7 @@ class brainObj:
                 nodeList = self.G.nodes()
             
             # generate list of at risk edges
-            riskEdges = nx.edges(self.G, nodeList)
+            riskEdges = [v for v in nx.edges(self.G, nodeList) if self.G.edge[v[0]][v[1]]['weight'] != 0.]
         else:
             reDefineEdges=False
             
@@ -1333,7 +1335,7 @@ class brainObj:
             
         # iterate number of steps
         self.lengthEdgesRemoved = []
-        while limit>0:
+        while limit>0.:
             if not riskEdges:
                 # find spatially closest nodes if no edges exist
                 # is it necessary to do this for all nodes?? - waste of computing power,
@@ -1353,8 +1355,9 @@ class brainObj:
             w = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
             
             if np.absolute(w) < weightloss:
-                loss = w
+                loss = np.absolute(w)
                 self.G[dyingEdge[0]][dyingEdge[1]]['weight'] = 0.
+                riskEdges.remove(dyingEdge)
             
             elif w>0:
                 loss = weightloss
@@ -1364,12 +1367,10 @@ class brainObj:
                 loss = weightloss
                 self.G[dyingEdge[0]][dyingEdge[1]]['weight'] += weightloss
             
-            # record the edges length of edges lost
-            self.dyingEdges[dyingEdge] = self.G[dyingEdge[0]][dyingEdge[1]]
-            try:
+            # record the edge length of edges lost
+            if distances:
+                self.dyingEdges[dyingEdge] = self.G[dyingEdge[0]][dyingEdge[1]]
                 self.dyingEdges[dyingEdge]['distance'] =  np.linalg.norm( np.array((self.G.node[dyingEdge[0]]['xyz'])) - np.array((self.G.node[dyingEdge[1]]['xyz']))  )
-            except:
-                pass
             
             # update the adjacency matrix (essential if robustness is to be calculated)            
             if updateAdjmat:
@@ -1384,6 +1385,7 @@ class brainObj:
             # remove edge if below the graph threshold
             if self.G[dyingEdge[0]][dyingEdge[1]]['weight'] < self.threshold and self.threshold != -1:      # checks that the graph isn't fully connected and weighted, ie threshold = -1
                 self.G.remove_edge(dyingEdge[0], dyingEdge[1])
+                riskEdges.remove(dyingEdge)
                 print ' '.join(["Edge removed:",str(dyingEdge[0]),str(dyingEdge[1])])
                 if not weightLossLimit:
                     limit-=1
@@ -1718,7 +1720,8 @@ class brainObj:
         N = size of the sliding window for smoothing the gradient
         iterLen = number of iterations
         
-        Note, this function is relatively slow compared to other metrics
+        Note, this function is relatively slow compared to other metrics due to
+        the multiple iterations.
         
         '''
         fList = np.zeros(iterLen)
@@ -1747,8 +1750,7 @@ class brainObj:
             nr = np.argmin(diffs)
             
             fList[i] = nr
-        fc = np.mean(fList) / len(self.G.nodes())
-        return(fc)
+        self.fc = np.mean(fList) / len(self.G.nodes())
 
 class plotObj():
     ''' classes that plot various aspects of a brain object '''

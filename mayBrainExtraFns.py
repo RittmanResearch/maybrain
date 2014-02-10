@@ -575,3 +575,38 @@ def histograms(brain, outfilebase="brain"):
     # save the figure
     fig.savefig(outfilebase+"_histograms.png")
     
+def modularityWrite(brain, outfilebase="brain", append=True):
+    outfile= outfilebase + '_modularity'
+    
+    if not append and os.path.exists(outfile):
+        print "Moving existing file to "+outfile+'.old'
+        os.rename(outfile,outfile+'.old')
+    
+    if append and os.path.exists(outfile):
+        f = open(outfile,"ab")
+        
+    else:
+        f= open(outfile,"wb")
+        f.writelines("Modularity\n")
+        
+    m = brain.Q
+    f.writelines(str(m)+'\n')
+    f.close()
+
+def robustnessWrite(brain, outfilebase="brain", append=True):
+    outfile= outfilebase + '_robustness'
+    
+    if not append and os.path.exists(outfile):
+        print "Moving existing file to "+outfile+'.old'
+        os.rename(outfile,outfile+'.old')
+    
+    if append and os.path.exists(outfile):
+        f = open(outfile,"ab")
+        
+    else:
+        f= open(outfile,"wb")
+        f.writelines("Robustness\n")
+        
+    r = brain.fc
+    f.writelines(str(r)+'\n')
+    f.close()
