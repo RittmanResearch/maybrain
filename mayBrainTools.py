@@ -32,10 +32,10 @@ from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
 from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort, min, max
-#from mayavi import mlab
+from mayavi import mlab
 from string import split
-#import nibabel as nb
-#from mayavi.core.ui.api import MlabSceneModel, SceneEditor
+import nibabel as nb
+from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 from copy import deepcopy
 
 class brainObj:
@@ -823,15 +823,18 @@ class brainObj:
             self.adjMat[edge[1], edge[0]] = np.nan
         
     
-    def findSpatiallyNearest(self, nodeList):
+    def findSpatiallyNearest(self, nodeList, allNodes=None):
         # find the spatially closest node as no topologically close nodes exist
         print "Finding spatially closest node"
         if isinstance(nodeList, list):
             duffNode = random.choice(nodeList)
         else:
             duffNode = nodeList
+        
+        if not allNodes:
+            allNodes = self.G.nodes()
             
-        nodes = [v for v in self.G.nodes() if v!=duffNode]
+        nodes = [v for v in allNodes if v!=duffNode]
         nodes = [v for v in nodes if not v in nodeList]
 
         shortestnode = (None, None)
