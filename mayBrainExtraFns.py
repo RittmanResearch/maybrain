@@ -13,7 +13,7 @@ from networkx.algorithms import cluster
 from networkx.algorithms import centrality
 import random
 from networkx.algorithms import components
-from matplotlib import pyplot as plt
+#from matplotlib import pyplot as plt
 from numpy import linalg as lg
 from numpy import fill_diagonal
 
@@ -407,7 +407,8 @@ def GlobalEfficiencywrite(brain,outfilebase = "brain", append=True):
     
     else:
         f= open(outfile,"wb")
-
+        f.writelines("GlobalEfficiency\n")
+        
     f.writelines("{:0.5f}".format(globalefficiency(brain.G))+'\n')
     f.close()
     
@@ -605,8 +606,9 @@ def robustnessWrite(brain, outfilebase="brain", append=True):
         
     else:
         f= open(outfile,"wb")
-        f.writelines("Robustness\n")
+        f.writelines("robustness\n")
         
     r = brain.fc
     f.writelines(str(r)+'\n')
     f.close()
+    

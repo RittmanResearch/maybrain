@@ -23,7 +23,7 @@ Change log:
 
 """
 
-import os,community
+import os
 from shutil import move
 import networkx as nx
 import numpy as np
@@ -32,10 +32,10 @@ from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
 from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort, min, max
-from mayavi import mlab
+#from mayavi import mlab
 from string import split
-import nibabel as nb
-from mayavi.core.ui.api import MlabSceneModel, SceneEditor
+#import nibabel as nb
+#from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 from copy import deepcopy
 
 class brainObj:
@@ -1282,7 +1282,10 @@ class brainObj:
         
         By default this function will enact a random attack model, with a weight loss of 0.1 each iteration.
         
-        Weights are taken as absolute values, so the weight in any affected edge tends to 0.        
+        Weights are taken as absolute values, so the weight in any affected edge tends to 0.    
+        
+        Spread can either be False, or a number specifying the weight above which to add
+        nodes within the list of at-risk nodes.
         
         '''
         
@@ -1379,7 +1382,7 @@ class brainObj:
             # add nodes to toxic list if the spread option is selected
             if spread:
                 for node in dyingEdge:
-                    if not node in nodeList:
+                    if not node in nodeList and self.G.edge[dyingEdge[0]][dyingEdge[1]] > spread:
                         nodeList.append(node)
                         
             # remove edge if below the graph threshold
