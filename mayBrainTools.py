@@ -957,7 +957,7 @@ class brainObj:
                 self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
 
 
-    def hubIdentifier(self, weighted=False):
+    def hubIdentifier(self, sdT=2, weighted=False):
         """ 
         define hubs by generating a hub score, based on the sum of normalised scores for:
             betweenness centrality
@@ -969,6 +969,9 @@ class brainObj:
         defines self.hubs
         
         if assign is true, then each node's dictionary is assigned a hub score
+        
+        sdT defines the number of standard deviations above the mean to define a
+        node as a hub (default is 2)
         
         Changelog 7/12/12:
             - added possibility of weighted measures
@@ -1016,7 +1019,7 @@ class brainObj:
             self.G.node[node]['hubscore'] = hubScores[n]
             
     #   find 2 standard deviations above mean hub score
-        upperLimit = np.mean(np.array(hubScores)) + 2*np.std(np.array(hubScores))
+        upperLimit = np.mean(np.array(hubScores)) + sdT*np.std(np.array(hubScores))
     
     #   identify nodes as hubs if 2 standard deviations above hub score
         
@@ -1275,7 +1278,7 @@ class brainObj:
     def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, threshLimit=None,
                    pcLimit=None, weightLossLimit=None, toxicNodes=None,
                    riskEdges=None, spread=False, updateAdjmat=True,
-                   distances=False):
+                   distances=False, spatialSearch=False):
         ''' remove random edges from connections of the toxicNodes set, or from the riskEdges set. This occurs either until edgesRemovedLimit
         number of edges have been removed (use this for a thresholded weighted graph), or until the weight loss
         limit has been reached (for a weighted graph). For a binary graph, weight loss should be set
@@ -1341,8 +1344,16 @@ class brainObj:
             
         # iterate number of steps
         self.lengthEdgesRemoved = []
+        
+        # check if there are enough weights left
+        riskEdgeWtSum = np.sum([self.G.edge[v[0]][v[1]]['weight'] for v in riskEdges])
+        if limit > riskEdgeWtSum:
+            print "Not enough weight left to remove"
+            return nodeList
+            
+        
         while limit>0.:
-            if not riskEdges:
+            if not riskEdges and spatialSearch:
                 # find spatially closest nodes if no edges exist
                 # is it necessary to do this for all nodes?? - waste of computing power,
                 # choose node first, then calculated spatially nearest of a single node
