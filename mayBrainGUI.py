@@ -56,7 +56,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         
         QtGui.QMainWindow.__init__(self, parent)
         # set up UI
-        self.ui = ui.Ui_MainWindow()
+        self.ui = ui.Ui_Maybrain()
         self.ui.setupUi(self)
         self.ui.adjPlot.setEnabled(0)
         self.ui.skullPlot.setEnabled(0)
@@ -103,8 +103,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.ui.blueSlider.valueChanged.connect(self.setColourBlue)
         self.ui.blueValueBox.valueChanged.connect(self.setColourBlueDial)
         self.ui.hlApplyButton.clicked.connect(self.makeHighlight)
-#        self.ui.subPlotButtonNodes.clicked.connect(self.plotSubBrainNodes)
-#        self.ui.subPlotButtonEdges.clicked.connect(self.plotSubBrainEdges)
+
 #        self.ui.propsLoad.clicked.connect(self.addProperties)
         
         
@@ -288,10 +287,6 @@ class mayBrainGUI(QtGui.QMainWindow):
         except:
             print('could not plot skull, has file been loaded?')
          
-    
-    def saveFig(self):
-        ''' save a figure to  file ''' 
-        a = 1
         
         
     def readAvailablePlots(self):
@@ -333,7 +328,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         br = self.brains[brName]        
         
         # get settings from ui
-        propName = str(self.ui.hlProp.text())
+        propName = str(self.ui.hlProp.currentText())
         relation = self.getRelation()
         try:
             val1 = float(self.ui.hlValue1.text())
@@ -345,6 +340,9 @@ class mayBrainGUI(QtGui.QMainWindow):
             val2 = str(self.ui.hlValue2.text())
         # *** should change the name to hlName ***
         label = str(self.ui.subPlotName.text())
+        # NEEDS MODIFICATION
+        if label=='':
+            label = 'highlight1'
         mode = str(self.ui.hlNodesOrEdgesBox.currentText())
         # remove 's' from edge of mode
         mode = mode[:-1]
@@ -352,7 +350,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         green = float(self.ui.hlGreenSpin.value())
         blue = float(self.ui.hlBlueSpin.value())
         # *** maybe change to a box??
-        opacity = float(self.ui.hlOpacitySpin.value())
+        opacity = float(self.ui.hlOpacityValue.text())
         
         # get value correct
         if relation in ['in()', 'in[)', 'in(]', 'in[]']:
@@ -361,6 +359,7 @@ class mayBrainGUI(QtGui.QMainWindow):
             val = val1
         
         # create the highlight object
+        print('property name: ' + propName)
         br.highlightFromConds(propName, relation, val, label=label, mode=mode, colour = (red, green, blue), opacity=opacity)
         
         # plot        
@@ -394,64 +393,17 @@ class mayBrainGUI(QtGui.QMainWindow):
         
         return outval
     
-    def plotHighlight(self):
-        ''' plot the selected highlight '''
-        # Get highlight name
-#        brainName, hlName = 
-        
-        # Do the plot
-        self.plot.plotHighlights(self.br[brainName], highlights=[hlName])
-        
-        QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainNode', label])
-        QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainEdge', label])
-        
+#    def plotHighlight(self):
+#        ''' plot the selected highlight '''
+#        # Get highlight name
+##        brainName, hlName = 
+#        
+#        # Do the plot
+#        self.plot.plotHighlights(self.br[brainName], highlights=[hlName])
+#        
+#        QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainNode', label])
+#        QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainEdge', label])
 
-    ## subbrain functions
-    def plotSubBrainNodes(self):
-        self.plotSubBrain('nodes')
-        
-    def plotSubBrainEdges(self):
-        label = self.plotSubBrain('edges')
-        
-        # toggle visibility of nodes
-        # THIS DOESN'T WORK FOR SOME REASON...
-        self.selectedPlot = label
-        self.selectedPlotType = 'brainNode'
-        self.setVisibility()
-        
-    
-    def plotSubBrain(self, nodesOrEdges = 'nodes'):
-        ''' plot a subBrain with certain properties '''
-        
-        # get values from ui
-        prop = str(self.ui.subPlotProp.text())
-        val = str(self.ui.subPlotValue.text())
-        val2 = str(self.ui.subPlotValue_2.text())
-        sb = str(self.ui.subPlotBrain.currentText())
-        
-        # need to add check for self.ui.subPlotValue_2 box, to define a range of values
-        if val2!='':
-            newName = sb+prop+val+val2
-            val = {'min':float(val), 'max':float(val2)}            
-        else:            
-            # create the subBrain
-            newName = sb+prop+val
-        
-        if nodesOrEdges == 'nodes':
-            self.brains[newName] = self.brains[sb].makeSubBrain(prop, val)
-        else:
-            self.brains[newName] = self.brains[sb].makeSubBrainEdges(prop, val)
-        
-        # do the plot
-        self.plotBrain(labelIn = newName)
-        
-        # add to list of plots for subBrains
-        self.ui.subPlotBrain.addItem(newName)
-        
-        return newName
-        
-        
-        
         
     ## =============================================
     
@@ -466,7 +418,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         # call function from mayBrainTools to add properties to brain
         brain = (self.ui.subPlotBrain.currentText())
         self.brains[brain].nodePropertiesFromFile(fname)
-        
+             
     
     def setPlotValues(self, item):
         ''' update all values for sliders and stuff of a specific plot '''
