@@ -27,15 +27,15 @@ import os
 from shutil import move
 import networkx as nx
 import numpy as np
-#from networkx.drawing import *
+from networkx.drawing import *
 from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
 from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort, min, max
-#from mayavi import mlab
+from mayavi import mlab
 from string import split
-#import nibabel as nb
-#from mayavi.core.ui.api import MlabSceneModel, SceneEditor
+import nibabel as nb
+from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 from copy import deepcopy
 
 class brainObj:
@@ -412,9 +412,10 @@ class brainObj:
         
     def parcels(self, nodeList):
         """
-        Plots 3D parcels specified in the nodeList. This function assumes the parcellation template has
-        been loaded to the brain using brain.importISO. Note, values passed to this function should
-        corresond with those in the iso image, not necessarily the node values.
+        Plots 3D parcels specified in the nodeList. This function assumes the 
+        parcellation template has been loaded to the brain using brain.importISO.
+        Note, values passed to this function should corresond with those in the 
+        iso image, not necessarily the node values.
         """
         
         zeroArr = zeros(self.iso.shape)
@@ -957,7 +958,7 @@ class brainObj:
                 self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
 
 
-    def hubIdentifier(self, sdT=2, weighted=False):
+    def hubIdentifier(self, sdT=2, weighted=False, reCalc=False):
         """ 
         define hubs by generating a hub score, based on the sum of normalised scores for:
             betweenness centrality
@@ -978,26 +979,27 @@ class brainObj:
         """
         
     #    get centrality measures
-        if weighted:
-            self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='weight').values()))
+        if reCalc or not 'hubscore' in self.G.node[0].keys():
+            if weighted:
+                self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='weight').values()))
+                
+                self.weightToDistance()
+                self.closenessCentrality = np.array((centrality.closeness_centrality(self.G, distance="distance").values()))
+                self.degrees = np.array((nx.degree(self.G, weight='weight').values()))
+                          
+            else:
+                self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G).values()))
+                self.closenessCentrality = np.array((centrality.closeness_centrality(self.G).values()))
+                self.degrees = np.array((nx.degree(self.G).values()))
             
-            self.weightToDistance()
-            self.closenessCentrality = np.array((centrality.closeness_centrality(self.G, distance="distance").values()))
-            self.degrees = np.array((nx.degree(self.G, weight='weight').values()))
-                      
-        else:
-            self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G).values()))
-            self.closenessCentrality = np.array((centrality.closeness_centrality(self.G).values()))
-            self.degrees = np.array((nx.degree(self.G).values()))
-        
-        # normalise values to mean 0, sd 1
-        self.betweenessCentrality -= np.mean(self.betweenessCentrality)
-        self.closenessCentrality -=  np.mean(self.closenessCentrality)        
-        self.degrees -= np.mean(self.degrees)
-        
-        self.betweenessCentrality /= np.std(self.betweenessCentrality)
-        self.closenessCentrality /=  np.std(self.closenessCentrality)        
-        self.degrees /= np.std(self.degrees)
+            # normalise values to mean 0, sd 1
+            self.betweenessCentrality -= np.mean(self.betweenessCentrality)
+            self.closenessCentrality -=  np.mean(self.closenessCentrality)        
+            self.degrees -= np.mean(self.degrees)
+            
+            self.betweenessCentrality /= np.std(self.betweenessCentrality)
+            self.closenessCentrality /=  np.std(self.closenessCentrality)        
+            self.degrees /= np.std(self.degrees)
         
         
         
@@ -1013,16 +1015,17 @@ class brainObj:
 #            
 #            hubScores.append(self.G.node[node]['hubScore'])
 
-        hubScores = map(self.hubHelper, range(len(self.G.nodes())))
-        
-        for n,node in enumerate(self.G.nodes()):
-            self.G.node[node]['hubscore'] = hubScores[n]
+            hubScores = map(self.hubHelper, range(len(self.G.nodes())))
+            
+            for n,node in enumerate(self.G.nodes()):
+                self.G.node[node]['hubscore'] = hubScores[n]
+        else:
+            hubScores = [ self.G.node[v]['hubscore'] for v in self.G.nodes() ]
             
     #   find 2 standard deviations above mean hub score
         upperLimit = np.mean(np.array(hubScores)) + sdT*np.std(np.array(hubScores))
     
     #   identify nodes as hubs if 2 standard deviations above hub score
-        
         self.hubs = [n for n in self.G.nodes() if self.G.node[n]['hubscore'] > upperLimit ]
                 
     def psuedohubIdentifier(self):
@@ -1768,6 +1771,25 @@ class brainObj:
             
             fList[i] = nr
         self.fc = np.mean(fList) / len(self.G.nodes())
+        
+    def makebctmat(self):
+        """
+        Create a matrix for use with brain connectivity toolbox measures.
+        See https://pypi.python.org/pypi/bctpy
+        
+        Note that missing nodes are not included, so the matrix order in
+        the resulting matrix may not match the node number in the maybrain
+        networkx object
+        """
+        self.bctmat = np.zeros((len(self.G.nodes()),len(self.G.nodes())))
+        nodeIndices = dict(zip(self.G.nodes(), range(len(self.G.nodes()))))
+        for nx,x in enumerate(self.G.nodes()):
+            for y in self.G.edge[x].keys():
+                self.bctmat[nx,nodeIndices[y]] = self.G.edge[x][y]['weight']
+    
+    def assignbctResult(self, bctRes):
+        out = dict(zip(self.G.nodes(), bctRes))
+        return(out)
 
 class plotObj():
     ''' classes that plot various aspects of a brain object '''
