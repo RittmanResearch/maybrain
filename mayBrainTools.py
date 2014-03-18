@@ -190,13 +190,17 @@ class brainObj:
         N = nb.Nifti1Image(self.parcelList, self.nbiso.get_affine(), header=self.isoHeader)
         nb.save(N, outname+'.nii')
         
-    def importNodeProperties(self, filename):
-        ''' add node properties from a file. first lines should contain the property 
+    def importProperties(self, filename):
+        ''' add properties from a file. first lines should contain the property 
             name and the following lines tabulated node indices and property value e.g.:
                 
             colour
             1 red
-            2 white                
+            2 white       
+            
+            if 2 indices are given, the property is applied to edges instead
+            
+            
         ''' 
         
         f = open(filename)
@@ -211,19 +215,46 @@ class brainObj:
         
         nodes = []
         propVals = []
-        for l in data[1:]:
-            try:
-                vals = split(l)
+        # check length of second line:
+        try:
+            values = split(data[1])
+        except:
+            print('couldn\'t determine mode, defaulting to nodes. Please check properties file.')
+
+        mode = 'nodes'
+        if len(values)==3:
+            mode = 'edges'
+        
+        # get data into format to add to brain
+        if mode=='nodes':
+            for l in data[1:]:
+                try:
+                    vals = split(l)
+                except:
+                    pass                
                 nodes.append(int(vals[0]))
                 propVals.append(vals[1])
-            except:
-                pass
+                
+            # add to brain                
+            self.addNodeProperties(prop, nodes, propVals)
+                
+        elif mode=='edges':
+            for l in data[1:]:
+                try:
+                    vals = split(l)
+                except:
+                    pass                
+                edges.append([vals[0],lvals[1]])
+                values.append(vals[2])
 
-        print(nodes)
-        print(propVals)
-        print(prop)
+            # add to brain
+            self.addEdgeProperty(prop, edges, values)
+                
         
-        self.addNodeProperties(prop, nodes, propVals)
+        return mode, prop # required for GUI
+        
+
+                    
             
         
     def addNodeProperties(self, propertyName, nodeList, propList):
@@ -1705,6 +1736,11 @@ class plotObj():
                 continue
                 
             ex1, ey1, ez1, ux, uy, yz, s = ho.getEdgeCoordsToPlot(brain)
+            
+            # case where edge opacity is not separately defined
+            if not(ho.edgeOpacity):
+                ho.edgeOpacity = ho.opacity
+            
             # plot the edges
             if not(len(ex1)==0):
                 self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = ho.colour, opacity = ho.edgeOpacity, label=label)
@@ -1725,6 +1761,7 @@ class plotObj():
         p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor = 0.1)
         
         self.brainNodePlots[label] = p
+        print(label, p)
         
         
     def plotEdges(self, ex1, ey1, ez1, ux, uy, uz, s, col = None, opacity = 1., label='plot'):
@@ -1932,8 +1969,6 @@ class plotObj():
             
             This is basically a shortcut to mayavi visualisation functions 
             
-            THIS IS GOING TO NEED SOME CHANGES
-            
         '''
         
 
@@ -1941,12 +1976,12 @@ class plotObj():
             # get plot
             if plotType == 'skull':
                 plot = self.skullPlots[plotLabel]
-            elif plotType == 'brainNode':
+            elif plotType == 'nodes':
                 plot = self.brainNodePlots[plotLabel]
-            elif plotType == 'brainEdge':
+            elif plotType == 'edges':
                 plot = self.brainEdgePlots[plotLabel]
             else:
-                print 'plotType not recognised'
+                print('plotType not recognised: ' + plotType)
                 return
         except:
             # quietly go back if the selected plot doesn't exist
@@ -1986,12 +2021,12 @@ class plotObj():
         # get plot
         if plotType == 'skull':
             plot = self.skullPlots[plotLabel]
-        elif plotType == 'brainNode':
+        elif plotType == 'nodes':
             plot = self.brainNodePlots[plotLabel]
-        elif plotType == 'brainEdge':
+        elif plotType == 'edges':
             plot = self.brainEdgePlots[plotLabel]
         else:
-            print('plotType not recognised')
+            print('plotType not recognised: ' + plotType )
             return
             
         if prop == 'opacity':

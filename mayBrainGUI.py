@@ -297,13 +297,14 @@ class mayBrainGUI(QtGui.QMainWindow):
         
         # add new values
         lists = [self.plot.brainEdgePlots, self.plot.brainNodePlots, self.plot.skullPlots, self.plot.isosurfacePlots]
-        labels = ['nodes', 'edges', 'skull', 'isosurf']
+        labels = ['edges', 'nodes', 'skull', 'isosurf']
         
         for ls in range(len(lists)):
             names = lists[ls].keys()
             names.sort()
+            lab = labels[ls]
             for p in names:
-                QtGui.QTreeWidgetItem(self.ui.plotTree, [labels[ls], p])
+                QtGui.QTreeWidgetItem(self.ui.plotTree, [lab, p])
         
 #        for p in self.plot.brainEdgePlots:
 #            QtGui.QTreeWidgetItem(self.ui.plotTree, ['brainEdge', p])
@@ -344,6 +345,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         if label=='':
             label = 'highlight1'
         mode = str(self.ui.hlNodesOrEdgesBox.currentText())
+        print('makeHighlight mode: ', mode)
         # remove 's' from edge of mode
         mode = mode[:-1]
         red = float(self.ui.hlRedSpin.value())        
@@ -417,7 +419,10 @@ class mayBrainGUI(QtGui.QMainWindow):
         
         # call function from mayBrainTools to add properties to brain
         brain = (self.ui.subPlotBrain.currentText())
-        self.brains[brain].nodePropertiesFromFile(fname)
+        prop = self.brains[brain].nodePropertiesFromFile(fname)
+        
+        # add to plot properties box
+        self.ui.hlProp.addItem(str(prop))
              
     
     def setPlotValues(self, item):
