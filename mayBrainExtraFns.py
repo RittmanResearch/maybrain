@@ -12,7 +12,7 @@ from networkx.algorithms import cluster
 from networkx.algorithms import centrality
 import random
 from networkx.algorithms import components
-#from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 from numpy import linalg as lg
 from numpy import fill_diagonal
 
