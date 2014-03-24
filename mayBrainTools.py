@@ -981,7 +981,7 @@ class brainObj:
     #    get centrality measures
         if reCalc or not 'hubscore' in self.G.node[0].keys():
             if weighted:
-                self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='weight').values()))
+                self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='distance').values()))
                 
                 self.weightToDistance()
                 self.closenessCentrality = np.array((centrality.closeness_centrality(self.G, distance="distance").values()))
