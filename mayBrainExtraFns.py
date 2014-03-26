@@ -98,13 +98,13 @@ def nodalefficiency(G, nodes=None):
     return(outDict)
     
   
-def edgeLengths(brain, nodeWise=False):
-    el =  dict(zip(brain.G.edges(),
-                            [ np.absolute(np.linalg.norm(np.array(brain.G.node[edge[0]]['xyz']) - np.array(brain.G.node[edge[1]]['xyz']))) for edge in brain.G.edges()]))
+def edgeLengths(G, nodeWise=False):
+    el =  dict(zip(G.edges(),
+                            [ np.absolute(np.linalg.norm(np.array(G.node[edge[0]]['xyz']) - np.array(G.node[edge[1]]['xyz']))) for edge in G.edges()]))
     
     if nodeWise:
         eln = {}
-        for n in brain.G.nodes():
+        for n in G.nodes():
             eln[n] = np.sum([el[e] for e in el.keys() if n in e])
         return(eln)
     else:
