@@ -32,10 +32,10 @@ from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
 from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort, min, max
-from mayavi import mlab
+#from mayavi import mlab
 from string import split
-import nibabel as nb
-from mayavi.core.ui.api import MlabSceneModel, SceneEditor
+#import nibabel as nb
+#from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 from copy import deepcopy
 
 class brainObj:
@@ -64,7 +64,6 @@ class brainObj:
         self.adjMat = None # adjacency matrix, containing weighting of edges.
         self.threshold = 0
         
-        self.hubs = []
         self.dyingEdges = {}
         self.nodesRemoved = None
         self.bigconnG = None
@@ -437,7 +436,7 @@ class brainObj:
         N = nb.Nifti1Image(self.parcelList, self.nbiso.get_affine(), header=self.isoHeader)
         nb.save(N, outname+'.nii')
         
-    def nodePropertiesFromFile(self, filename):
+    def nodePropertiesFromFile(self, filename, delimiter=None):
         ''' add node properties from a file. first lines should contain the property 
             name and the following lines tabulated node indices and property value e.g.:
                 
@@ -454,23 +453,25 @@ class brainObj:
             print('no data in properties file')
             return
         
-        prop = data[0][:-1]       
+        if delimiter:
+            prop = split(data[0], sep=delimiter)[:-1]
+        else:
+            prop = data[0][:-1]
         
-        nodes = []
-        propVals = []
+        propVals = {}
         for l in data[1:]:
-            try:
+#            try:
+            if delimiter:
+                vals = split(l, sep=delimiter)
+            else:
                 vals = split(l)
-                nodes.append(int(vals[0]))
-                propVals.append(vals[1])
-            except:
-                pass
+            propVals[int(vals[0])] = dict(zip(prop, vals[1:]))
+#            except:
+#                pass
 
-        print(nodes)
-        print(propVals)
-        print(prop)
-        
-        self.inputNodeProperties(prop, nodes, propVals)
+        for n in propVals.keys():
+            for p in prop:
+                self.G.node[n][p] = propVals[n][p]
             
         
     def inputNodeProperties(self, propertyName, nodeList, propList):
@@ -764,7 +765,6 @@ class brainObj:
         ''' make an exact copy of this brain '''
         
         newbrain = self.makeSubBrain(None, 'any')
-        newbrain.hubs = self.hubs
         newbrain.lengthEdgesRemoved = self.lengthEdgesRemoved
         newbrain.bigconnG = self.bigconnG
 
@@ -948,135 +948,11 @@ class brainObj:
                 self.G.node[l[1]]['linkedNodes'] = self.G.node[l[1]]['linkedNodes'] + [l[0]]
             except:
                 self.G.node[l[1]]['linkedNodes'] = [l[0]]
-    
-    def hubHelper(self, node):
-        hubscore = self.betweenessCentrality[node] + self.closenessCentrality[node] + self.degrees[node]
-        return(hubscore)
-        
+                    
     def weightToDistance(self):
         for edge in self.G.edges():
-                self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
-
-
-    def hubIdentifier(self, sdT=2, weighted=False, reCalc=False):
-        """ 
-        define hubs by generating a hub score, based on the sum of normalised scores for:
-            betweenness centrality
-            closeness centrality
-            degree
-        
-        hubs are defined as nodes 2 standard deviations above the mean hub score
-        
-        defines self.hubs
-        
-        if assign is true, then each node's dictionary is assigned a hub score
-        
-        sdT defines the number of standard deviations above the mean to define a
-        node as a hub (default is 2)
-        
-        Changelog 7/12/12:
-            - added possibility of weighted measures
-        """
-        
-    #    get centrality measures
-        if reCalc or not 'hubscore' in self.G.node[0].keys():
-            if weighted:
-                self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='distance').values()))
-                
-                self.weightToDistance()
-                self.closenessCentrality = np.array((centrality.closeness_centrality(self.G, distance="distance").values()))
-                self.degrees = np.array((nx.degree(self.G, weight='weight').values()))
-                          
-            else:
-                self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G).values()))
-                self.closenessCentrality = np.array((centrality.closeness_centrality(self.G).values()))
-                self.degrees = np.array((nx.degree(self.G).values()))
+            self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
             
-            # normalise values to mean 0, sd 1
-            self.betweenessCentrality -= np.mean(self.betweenessCentrality)
-            self.closenessCentrality -=  np.mean(self.closenessCentrality)        
-            self.degrees -= np.mean(self.degrees)
-            
-            self.betweenessCentrality /= np.std(self.betweenessCentrality)
-            self.closenessCentrality /=  np.std(self.closenessCentrality)        
-            self.degrees /= np.std(self.degrees)
-        
-        
-        
-        # deprecated code follows:
-#    #    combine normalised measures for each node to generate a hub score
-#        hubScores = []
-#        for node in self.G.nodes():
-#            if weighted:
-#                self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
-#            else:
-#                self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
-#                
-#            
-#            hubScores.append(self.G.node[node]['hubScore'])
-
-            hubScores = map(self.hubHelper, range(len(self.G.nodes())))
-            
-            for n,node in enumerate(self.G.nodes()):
-                self.G.node[node]['hubscore'] = hubScores[n]
-        else:
-            hubScores = [ self.G.node[v]['hubscore'] for v in self.G.nodes() ]
-            
-    #   find 2 standard deviations above mean hub score
-        upperLimit = np.mean(np.array(hubScores)) + sdT*np.std(np.array(hubScores))
-    
-    #   identify nodes as hubs if 2 standard deviations above hub score
-        self.hubs = [n for n in self.G.nodes() if self.G.node[n]['hubscore'] > upperLimit ]
-                
-    def psuedohubIdentifier(self):
-        """ 
-        define hubs by generating a hub score, based on the sum of normalised scores for:
-            betweenness centrality
-            closeness centrality
-            degree
-            
-        hubs are the two 5% connected nodes
-        """
-        self.hubs = []
-        # get degree
-        degrees = nx.degree(self.G)
-        sum_degrees = np.sum(degrees.values())
-        
-    #    get centrality measures
-        betweenessCentrality = centrality.betweenness_centrality(self.G)
-        sum_betweenness = np.sum(betweenessCentrality.values())
-        
-        closenessCentrality = centrality.closeness_centrality(self.G)
-        sum_closeness = np.sum(closenessCentrality.values())
-        
-    #   calculate the length of 5% of nodes
-        numHubs = len(self.G.nodes()) * 0.05
-        if numHubs < 1:
-            numHubs = 1
-            
-    #    combine normalised measures for each node to generate a hub score
-        hubScores = {}
-        for node in self.G.nodes():
-            self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
-            
-    #   Check if hub scores is more than those previously collected, and if so replace it in the list of hubs            
-            if len(hubScores.keys()) < numHubs:
-                hubScores[node] = self.G.node[node]['hubScore']
-                
-            else:
-                minhubScore = np.min(hubScores.values())
-                if self.G.node[node]['hubScore'] > minhubScore:
-                    minKeyList = [v for v in hubScores.keys() if hubScores[v] == minhubScore]
-                    for key in minKeyList:
-                        del(hubScores[key])
-                    
-                    hubScores[node] = self.G.node[node]['hubScore']
-                    
-    
-    #   identify nodes as hubs if 2 standard deviations above hub score
-        for node in hubScores.keys():
-            self.hubs.append(node)
-        
     def modularity(self, hierarchy=False, diagVal=0., nodesToExclude=None):
         '''
         Modularity function borrowed (after asking nicely!) from
@@ -1625,62 +1501,6 @@ class brainObj:
             
         return toxicNodes, toxicNodeRecord              
             
-            
-    def neuronsusceptibility(self, edgeloss=1, largestconnectedcomp=False):
-        """
-        LEGACY CODE - FOR REMOVAL
-        Models loss of edges according to a neuronal suceptibility model with the most highly connected nodes losing
-        edges. Inputs are the number of edges to be lost each iteration and the number of iterations.
-        """
-        self.lengthEdgesRemoved = []
-        edgesleft = edgeloss
-        if not self.iter:
-            self.iter = 0
-        
-        while edgesleft > 0:
-            try:
-                # redefine hubs
-                self.hubIdentifier()
-                
-                if self.G.edges(self.hubs) == []:
-                    print "No hub edges left, generating pseudohubs"
-                    self.psuedohubIdentifier()
-                                    
-                edgetoremove = random.choice(self.G.edges(self.hubs))
-                
-                try: # records length of edge removal if spatial information is available
-                    self.lengthEdgesRemoved.append(np.linalg.norm(np.array(self.G.node[edgetoremove[0]]['xyz']) - np.array(self.G.node[edgetoremove[1]]['xyz'])))
-                    
-                except:
-                    pass
-                    
-                self.G.remove_edge(edgetoremove[0],edgetoremove[1])
-                edgesleft -= 1
-            
-            except:
-                if self.G.edges(self.hubs) == []:
-                    print "No hub edges left, redefining hubs"
-                    self.hubIdentifier()
-
-                if self.G.edges(self.hubs) == []:
-                    print "No hub edges left, generating pseudohubs"
-                    self.psuedohubIdentifier()
-                
-                if self.G.edges(self.hubs) == []:
-                    print "Still no hub edges left, exiting loop"
-                    break
-                    
-                else:
-                    continue
-        
-        self.iter += 1
-        
-        if largestconnectedcomp:
-            self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
-            
-        # Update adjacency matrix to reflect changes
-        self.reconstructAdjMat()                      
-                      
         
     def percentConnected(self):
         '''
@@ -1785,7 +1605,10 @@ class brainObj:
         nodeIndices = dict(zip(self.G.nodes(), range(len(self.G.nodes()))))
         for nx,x in enumerate(self.G.nodes()):
             for y in self.G.edge[x].keys():
-                self.bctmat[nx,nodeIndices[y]] = self.G.edge[x][y]['weight']
+                try:
+                    self.bctmat[nx,nodeIndices[y]] = self.G.edge[x][y]['weight']
+                except:
+                    pass
     
     def assignbctResult(self, bctRes):
         out = dict(zip(self.G.nodes(), bctRes))
