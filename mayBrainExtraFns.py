@@ -5,10 +5,9 @@ Created on Fri Oct 19 22:25:22 2012
 Functions that used to be at the end of networkutils_bin_camb
 
 """
-import os
+from os import path,rename
 import numpy as np
 import networkx as nx
-import csv
 from networkx.algorithms import cluster
 from networkx.algorithms import centrality
 import random
@@ -17,525 +16,100 @@ from matplotlib import pyplot as plt
 from numpy import linalg as lg
 from numpy import fill_diagonal
 
-class extraFns():
-    def globalefficiencyhelper(self, node, G):
-        # nicked from nx.single_source_shortest_path_length to sum shortest lengths
-        seen={}                  # level (number of hops) when seen in BFS
-        level=0                  # the current level
-        nextlevel={node:1}  # dict of nodes to check at next level
-        while nextlevel:
-            thislevel=nextlevel  # advance to next level
-            nextlevel={}         # and start a new list (fringe)
-            for v in thislevel:
-                if v not in seen: 
-                    seen[v]=level # set the level of vertex v
-                    nextlevel.update(G[v]) # add neighbors of v
-            level=level+1
-        if sum(seen.values())>0:
-            invpls = [1/float(v) for v in seen.values() if v!=0 ]
-            invpl = np.sum(invpls)
-        else:
-            invpl = 0.
-            
-        return(invpl)
+def efficiencyfunc(node, G, weight=None):
+    pls = nx.shortest_path_length(G, source=node, weight=weight)
+    del(pls[node])
+                                        
+    invpls = [1/float(v) for v in pls.values()]
+    invpl = np.sum(invpls)
     
+    return(invpl)
     
-    def globalefficiency(self, G):
-        """
-        A set of definitions to calculate global efficiency and local efficiency. Definitions are taken from Latora and Marchiori
-        2001, Physical Review Letters. 
-        """
+def globalefficiency(G, weight=None):
+    """
+    A set of definitions to calculate global efficiency and local efficiency.
+    Definitions are taken from Latora and Marchiori 2001, Physical Review
+    Letters. 
+    """
+
+    N = float(len(G.nodes())) # count nodes
+    ssl = 0            # sum of inverse of the shortest path lengths
     
-        N = len(G.nodes())      # count nodes
-        ssl = 0            # sum of inverse of the shortest path lengths
-        
-        ssl = [ extraFns.globalefficiencyhelper(self, v, G) for v in G.nodes() ]
-        ssl = np.sum(np.array((ssl)))
-        
-        if N>1:
-            Geff = (1/(float(N)*(float(N-1))))*float(ssl)
-            return Geff
-        else:
-            "Number of nodes <1, can't calculate global efficiency"
-            return None
-        
+    ssl = [ efficiencyfunc(v, G, weight=weight) for v in G.nodes() ]
+    ssl = np.sum(np.array((ssl)))
     
-    def localeffhelper(self, node, G):
+    if N>1:
+        Geff = float(ssl) / (N*N-N)
+        return Geff
+    else:
+        "Number of nodes <1, can't calculate global efficiency"
+        return None
+
+def localefficiency(G, nodes=None, weight=None):
+    """
+    Returns a dictionary of local efficiency values for each node in the graph.
+    """    
+    # if node list is not specified, use all nodes in the graph
+    if not nodes:
+        nodes = G.nodes()
+    
+    outDict={}
+
+    for node in nodes:
         Ginodes = nx.neighbors(G,node)
+        Ginodes.append(node)
         Giedges = G.edges(Ginodes)
+
+        Giedges = [ e for e in Giedges if e[1] in Ginodes ]
+        Giedges = [ e for e in Giedges if e[0] in Ginodes ]
+
         Gi = nx.Graph()
-        Gi.add_nodes_from(Ginodes)
         Gi.add_edges_from(Giedges)
-        
-        Gi_globeff = self.globalefficiency(Gi)
-        
-        return(Gi_globeff)
-    
-    def localefficiency(self, G):
-        nodecalcs = [ extraFns.localeffhelper(self, node, G) for node in G.nodes() ]
-        
-        nodecalcs = np.array(nodecalcs, dtype="float32")
-        
-        try:
-            loceff = np.nansum(nodecalcs) / len(G.nodes())
-            return(loceff)
-        
-        except:
-            print "Can not calculate local efficiency"
-            print "Local efficiency list for each node:"+','.join(loceff)
-            return None
-        
-    
-    def smallworldparameters(self, brain,outfilebase = "brain", append=True, smallWorldness=False, SWiters=50):
-        """A calculation for average cluster coefficient and average shortest path length (as defined in Humphries
-        2008 http://www.plosone.org/article/info:doi/10.1371/journal.pone.0002051).
-        """
-        outfile = outfilebase+'_smallworldparameters'
-        
-        if not append and os.path.exists(outfile):
-            print "Moving existing file to "+outfile+'.old'
-            os.rename(outfile,outfile+'.old')
-        
-        if append and os.path.exists(outfile):
-            f = open(outfile,"ab")
-        
+        for e in Gi.edges():
+            Gi.edge[e[0]][e[1]] = G.edge[e[0]][e[1]]
+
+        if Giedges:
+            ssl = [ efficiencyfunc(v,
+                                   Gi,
+                                   weight=weight) for v in Gi.nodes() if not v==node]
+            
+            # correct by number of edges in local graph
+            locEff = np.sum(ssl) / (len(Ginodes)-1)  # -1 because self connections are not expected
+            outDict[node] = locEff
         else:
-            f= open(outfile,"wb")
-            if smallWorldness:
-                line = 'ClusterCoeff\tAvShortPathLength\tSmallWorldness\n'
-            else:
-                line = 'ClusterCoeff\tAvShortPathLength\n'
-            f.writelines(line)
-        
-        writer = csv.writer(f,delimiter='\t')       
-        cc_pl =  [None,None]
-        
-        # check biggest connected component is defined
-        if not brain.bigconnG:
-            brain.largestConnComp()
+            outDict[node] =  0.
     
-        # calculate parameters
-        try:
-            cc_pl = [cluster.average_clustering(brain.bigconnG),nx.average_shortest_path_length(brain.bigconnG)]
-        
-        except:
-            if brain.bigconnG.nodes() == []:
-                print "No nodes left in network, can not calculate path length, clustering coeff or smallworldness"
-            
-            else:
-                print "No edges, can not calculate shortest path length"
-                print "Writing clustering coefficient only"
-                cc_pl = [cluster.average_clustering(brain.bigconnG),None]
-        
-        if smallWorldness:
-            # peform multiple iterations for robustness
-            randcc = []
-            randpl = []
-            for i in range(SWiters):
-                # generate random brain
-                randG = nx.Graph()
-                randG.add_nodes_from([v for v in brain.G.nodes()])
-                for n in range(len(brain.G.edges())):
-                    node1 = random.choice(randG.nodes())
-                    node2 = random.choice([v for v in randG.nodes() if v != node1])
-                    randG.add_edge(node1, node2)
-                
-                # find largest connected component
-                randG = components.connected.connected_component_subgraphs(randG)[0]
-                
-                # take random brain metrics
-                randcc.append(cluster.average_clustering(randG))
-                randpl.append(nx.average_shortest_path_length(randG))
-                del(randG)
-            
-            randcc_pl = (np.mean(randcc), np.mean(randpl))
-            print randcc_pl
-            print cc_pl
-            
-            # calculate small worldness
-            sw = (cc_pl[0]/randcc_pl[0]) / (cc_pl[1]/randcc_pl[1])
-            cc_pl.append(sw)
-            
-        writer.writerow(cc_pl)
-        f.close()
-            
-## Everything below this line will soon be deprecated. It's currently kept for backwards
-## compatibility.     
+    return(outDict)
     
-
-def degreewrite(brain,outfilebase="brain", append=True):
-    # node degrees
-    outfile = outfilebase+'_degrees_nodes'
-
-    try:
-        if not append and os.path.exists(outfile):
-            print "Moving existing file to "+outfile+'.old'
-            os.rename(outfile,outfile+'.old')
-    except:
-        pass
-    
-    if append and os.path.exists(outfile):
-        f = open(outfile,"ab")
-        nodewriter = csv.DictWriter(f,fieldnames = brain.G.nodes())
-        
-    else:
-        f= open(outfile,"wb")
-        nodewriter = csv.DictWriter(f,fieldnames = brain.G.nodes())
-        headers = dict((n,n) for n in brain.G.nodes())
-        nodewriter.writerow(headers)
-        
-    degs = brain.G.degree()
-    degstowrite = dict((n,None) for n in brain.G.nodes())
-    for node in degs.keys():
-        degstowrite[node] = degs[node]
-    nodewriter.writerow(degstowrite)
-    f.close()
-    
-    # hub degrees
-    outfile = outfilebase+'_degrees_hubs'
-    hubidfile = outfilebase+'_degrees_hubs_ids'
-
-    try:
-        if not append and os.path.exists(outfile):
-            print "Moving existing file to "+outfile+'.old'
-            try:
-                os.rename(outfile,outfile+'.old')
-                os.rename(hubidfile,hubidfile+'.old')
-                print "Moving existing degrees file to "+outfile+'.old'
-                print "Moving existing hub ID file to "+hubidfile+'.old'
-                
-            except IOError, error:
-                (errorno, errordetails) = error
-                print "Error moving files "+errordetails
-                print "Carrying on anyway"
-    except:
-        pass
-    
-    if append and os.path.exists(outfile):
-        f = open(outfile,"ab")
-        g = open(hubidfile,"ab")
-        
-    else:
-        f= open(outfile,"wb")
-        g = open(hubidfile,"wb")
-    
-    deghubs = [hub for hub in brain.hubs if hub in brain.G] # hubs within largest connected graph component
-
-    # write hub identifies to file    
-    idwriter = csv.DictWriter(f,fieldnames = brain.hubs)
-    hubwriter = csv.DictWriter(g,fieldnames = brain.hubs)
-    
-    headers = dict((n,n) for n in brain.hubs)
-    hubwriter.writerow(headers)
-    
-    degstowrite = dict((n,None) for n in brain.hubs) # empty dictionary to populate with degree data
-
-    try:
-        degs = brain.G.degree(deghubs)
-        for node in degs.keys():
-            degstowrite[node] = degs[node]
-    except:
-        print "no hubs in largest connected component"
-    idwriter.writerow(degstowrite)
-    f.close()
-    g.close()
-    
-    # write degree histogram
-    outfileHist = outfilebase+'_degreehistogram'
-    if not append and os.path.exists(outfileHist):
-        print "Moving existing file to "+outfileHist+'.old'
-        os.rename(outfileHist,outfileHist+'.old')
-    
-    if append and os.path.exists(outfileHist):
-        f = open(outfileHist,"ab")
-    
-    else:
-        f= open(outfileHist,"wb")
-        
-    degreeHist = nx.degree_histogram(brain.G)
-    
-    histwriter = csv.writer(f)
-    histwriter.writerow(degreeHist)
-    f.close()
-        
-
-            
-
-def betweennesscentralitywrite(brain,outfilebase = "brain", append=True):
-    """ Calculates node and hub betwenness centralities. For hub centralities there are two files, one with the values in and another
-    with the hub identities in corresponding rows.
+def nodalefficiency(G, nodes=None):
     """
+    Returns a dictionary of nodal efficiency values for each node in the graph.
+    """        
     
-    ## betweenness centrality
-    # node centrality
-    outfile = outfilebase+'_betweenness_centralities_nodes'
+    # if node list is not specified, use all nodes in the graph
+    if not nodes:
+        nodes = G.nodes()
     
-    if not append and os.path.exists(outfile):
-        print "Moving existing file to "+outfile+'.old'
-        os.rename(outfile,outfile+'.old')
+    outDict={}
+    for node in nodes:
+        nodEff = efficiencyfunc(node,G)
+        outDict[node] = nodEff / (len(nodes) * (len(nodes)-1))
     
-    if append and os.path.exists(outfile):
-        f= open(outfile,"ab")
-        writer = csv.DictWriter(f,fieldnames = brain.G.nodes())
-        
+    return(outDict)
+    
+  
+def edgeLengths(G, nodeWise=False):
+    el =  dict(zip(G.edges(),
+                            [ np.absolute(np.linalg.norm(np.array(G.node[edge[0]]['xyz']) - np.array(G.node[edge[1]]['xyz']))) for edge in G.edges()]))
+    
+    if nodeWise:
+        eln = {}
+        for n in G.nodes():
+            eln[n] = np.sum([el[e] for e in el.keys() if n in e])
+        return(eln)
     else:
-        f = open(outfile,"wb")
-        writer = csv.DictWriter(f,fieldnames = brain.G.nodes())
-        headers = dict((n,n) for n in brain.G.nodes())
-        writer.writerow(headers)
+        return(el)
         
-    centralities = centrality.betweenness_centrality(brain.G)  # calculate centralities for largest connected component
-    nodecentralitiestowrite = dict((n,None) for n in brain.G.nodes())   # create a blank dictionary of all nodes in the graph
-    for node in centralities:
-        nodecentralitiestowrite[node] = centralities[node]    # populate the blank dictionary with centrality values
-    writer.writerow(nodecentralitiestowrite)                    # write out centrality values
-    f.close()
-    
-    # hub centrality
-    outfile = outfilebase+'_betweenness_centralities_hubs'
-    hubidfile = outfilebase+'_betweenness_centralities_hubs_ids'
-    
-    if not append and os.path.exists(outfile):
-        print "Moving existing file to "+outfile+'.old'
-        try:
-            os.rename(outfile,outfile+'.old')
-            os.rename(hubidfile,hubidfile+'.old')
-            print "Moving existing degrees file to "+outfile+'.old'
-            print "Moving existing hub ID file to "+hubidfile+'.old'
-            
-        except IOError, error:
-            (errorno, errordetails) = error
-            print "Error moving files "+errordetails
-            print "Carrying on anyway"
-    
-    if append and os.path.exists(outfile):
-        f = open(outfile,"ab")
-        g = open(hubidfile,"ab")
-        
-    else:
-        f= open(outfile,"wb")
-        g = open(hubidfile,"wb")
-        
-    centhubs = [hub for hub in brain.hubs if hub in brain.G] # hubs within largest connected graph component
-
-    # write hub identifies to file    
-    writer = csv.DictWriter(f,fieldnames = brain.hubs)
-    hubwriter = csv.DictWriter(g,fieldnames = brain.hubs)
-    
-    headers = dict((n,n) for n in brain.hubs)         # dictionary of all hubs in network to write
-    hubwriter.writerow(headers)
-    
-    hubcentralitieistowrite = dict((n,None) for n in brain.hubs) # empty dictionary to populate with centralities data
-
-    for hub in centhubs:
-        hubcentralitieistowrite[hub] = nodecentralitiestowrite[hub]
-        
-    writer.writerow(hubcentralitieistowrite)
-    f.close()
-    g.close()
-    
-def closenesscentralitywrite(brain,outfilebase = "brain", append=True):
-    """ Calculates node and hub betwenness centralities. For hub centralities there are two files, one with the values in and another
-    with the hub identities in corresponding rows.
-    """
-    ## closeness centrality
-    # node centrality
-    outfile = outfilebase+'_closeness_centralities_nodes'
-    
-    if not append and os.path.exists(outfile):
-        print "Moving existing file to "+outfile+'.old'
-        os.rename(outfile,outfile+'.old')
-    
-    if append and os.path.exists(outfile):
-        f= open(outfile,"ab")
-        writer = csv.DictWriter(f,fieldnames = brain.G.nodes())
-        
-    else:
-        f = open(outfile,"wb")
-        writer = csv.DictWriter(f,fieldnames = brain.G.nodes())
-        headers = dict((n,n) for n in brain.G.nodes())
-        writer.writerow(headers)
-        
-        
-    centralities = centrality.closeness_centrality(brain.G)  # calculate centralities for largest connected component
-    nodecentralitiestowrite = dict((n,None) for n in brain.G.nodes())   # create a blank dictionary of all nodes in the graph
-    for node in centralities:
-        nodecentralitiestowrite[node] = centralities[node]    # populate the blank dictionary with centrality values
-    writer.writerow(nodecentralitiestowrite)                    # write out centrality values
-    f.close()
-    
-    # hub centrality
-    outfile = outfilebase+'_closeness_centralities_hubs'
-    hubidfile = outfilebase+'_closeness_centralities_hubs_ids'
-    
-    if not append and os.path.exists(outfile):
-        print "Moving existing file to "+outfile+'.old'
-        try:
-            os.rename(outfile,outfile+'.old')
-            os.rename(hubidfile,hubidfile+'.old')
-            print "Moving existing degrees file to "+outfile+'.old'
-            print "Moving existing hub ID file to "+hubidfile+'.old'
-            
-        except IOError, error:
-            (errorno, errordetails) = error
-            print "Error moving files "+errordetails
-            print "Carrying on anyway"
-    
-    if append and os.path.exists(outfile):
-        f = open(outfile,"ab")
-        g = open(hubidfile,"ab")
-        
-    else:
-        f= open(outfile,"wb")
-        g = open(hubidfile,"wb")
-        
-    centhubs = [hub for hub in brain.hubs if hub in brain.G] # hubs within largest connected graph component
-
-    # write hub identifies to file    
-    writer = csv.DictWriter(f,fieldnames = brain.hubs)
-    hubwriter = csv.DictWriter(g,fieldnames = brain.hubs)
-    
-    headers = dict((n,n) for n in brain.hubs)         # dictionary of all hubs in network to write
-    hubwriter.writerow(headers)
-    
-    hubcentralitieistowrite = dict((n,None) for n in brain.hubs) # empty dictionary to populate with centralities data
-
-    for hub in centhubs:
-        hubcentralitieistowrite[hub] = nodecentralitiestowrite[hub]
-        
-    writer.writerow(hubcentralitieistowrite)
-    f.close()
-    g.close()
-
-def efficiencywrite(brain,outfilebase = "brain", append=True):
-    """
-    Writes to a file the output of global and local efficiencies for the largest connected component of a network.
-    """
-    from maybrain import analysis
-    outfile = outfilebase+'_efficiency'
-    if not append and os.path.exists(outfile):
-        print "Moving existing file to "+outfile+'.old'
-        os.rename(outfile,outfile+'.old')
-    
-    if append and os.path.exists(outfile):
-        f = open(outfile,"ab")
-    
-    else:
-        f= open(outfile,"wb")
-    
-    # set headers
-    effs = {"Globalefficiency":None,"Localefficiency":None}
-    
-    # local efficiency
-    effs["Localefficiency"] = analysis.localefficiency(brain.bigconnG)
-        
-    # global efficiency
-    effs["Globalefficiency"] = analysis.globalefficiency(brain.bigconnG)
-    
-    # write results to file
-    writer = csv.DictWriter(f,fieldnames = effs.keys())
-    
-    # write headers at the top of the file if append not specified
-    if not append:
-        f.writelines("Localefficiency,Globalefficiency\n")
-    writer.writerow(effs)
-    f.close()
-
-def modularstructure(brain,outfilebase = "brain", redefine_clusters=True, append=True):
-    """
-    Writes to a file the output of cluster membership and modularity.
-    """
-    # redefine graph clusters
-    if redefine_clusters == True:
-        brain.clusters()
-    
-    # write out modularity
-    outfile = outfilebase+'_modularity'
-    
-    if not append and os.path.exists(outfile):
-        print "Moving existing file to "+outfile+'.old'
-        os.rename(outfile,outfile+'.old')
-    
-    if append and os.path.exists(outfile):
-        f = open(outfile,"ab")
-    
-    else:
-        f= open(outfile,"wb")
-
-    writer = csv.writer(f,delimiter='\t')
-    writer.writerow([brain.modularity])
-    f.close()
-
-def writeEdgeLengths(brain,outfilebase = "brain", append=True):
-    outfile = outfilebase+'_edgeLengths'
-    try:
-        if not append and os.path.exists(outfile):
-            print "Moving existing file to "+outfile+'.old'
-            os.rename(outfile,outfile+'.old')
-        
-        if append and os.path.exists(outfile):
-            f = open(outfile,"ab")
-        
-        else:
-            f= open(outfile,"wb")
-            
-        writer = csv.writer(f,delimiter='\t')
-        writer.writerow([brain.lengthEdgesRemoved])
-        f.close()
-        
-    except AttributeError:
-        pass
-        
-    # mean edge lengths
-    edgeLengths = []
-    for edge in brain.G.edges():
-        edgeLengths.append(np.linalg.norm(np.array(brain.G.node[edge[0]]['xyz']) - np.array(brain.G.node[edge[1]]['xyz'])))
-        
-    meanEdgeLengths = np.mean(np.absolute(edgeLengths))
-    
-    hubEdgeLengths = []
-    for edge in brain.G.edges(brain.hubs):
-        hubEdgeLengths.append(np.linalg.norm(np.array(brain.G.node[edge[0]]['xyz']) - np.array(brain.G.node[edge[1]]['xyz'])))
-
-    meanHubLengths = np.mean(np.absolute(hubEdgeLengths))
-    
-    outfile = outfilebase+'_meanEdgeLengths'
-    
-    if not append and os.path.exists(outfile):
-        print "Moving existing file to "+outfile+'.old'
-        os.rename(outfile,outfile+'.old')
-    
-    if append and os.path.exists(outfile):
-        f = open(outfile,"ab")
-            
-    else:
-        f= open(outfile,"wb")
-        f.writelines("MeanEdgeLengths\tMeanHubEdgeLengths\n")
-        
-    writer = csv.writer(f,delimiter='\t')
-    writer.writerow([meanEdgeLengths, meanHubLengths])
-    f.close()
-    
-def writeEdgeNumber(brain, outfilebase = "brain", append=True):
-    outfile = outfilebase+'_EdgeNumber'
-    
-    
-    if not append and os.path.exists(outfile):
-        print "Moving existing file to "+outfile+'.old'
-        os.rename(outfile,outfile+'.old')
-    
-    if append and os.path.exists(outfile):
-        f = open(outfile,"ab")
-        
-    else:
-        f= open(outfile,"wb")
-        f.writelines("EdgeNumber\n")
-        
-    edgeNum = len(brain.G.edges())
-    writer = csv.writer(f,delimiter='\t')
-    writer.writerow([edgeNum])
-    f.close()
-    
 def histograms(brain, outfilebase="brain"):
     """ 
     Produces histograms of association matrix weights and edge lengths.
@@ -579,4 +153,73 @@ def histograms(brain, outfilebase="brain"):
     
     # save the figure
     fig.savefig(outfilebase+"_histograms.png")
+    
+def withinModuleDegree(brain, ci):
+    """
+    To calculate mean within module degree
+    """
+    moduleList = [v for v in np.unique(ci.values())] # get module list
+    withinDegDict = {}  # output dictionary of modules and mean within module degree
+    for m in moduleList: # iterate through modules
+        eList = [e for e in brain.edges() if ci[e[0]]==m] # find edges exclusively within the module
+        eList = [e for e in eList if ci[e[1]]==m]
+        
+        nMnodes = float(len([v for v in brain.nodes() if ci[v]==m]))
+        
+        wts = np.sum([brain.edge[e[0]][e[1]]['weight'] for e in eList])  # get weights/degree
+        withinDegDict[m] = wts/nMnodes  # mean of weight/degree
+    return(withinDegDict)
+    
+def writeResults(results, measure,
+                 outfilebase="brain",
+                 append=True,
+                 edgePC=None,
+                 threshold=None):
+    """ 
+    Function to write out results    
+    """
+    outFile = outfilebase+measure+'.txt'
+    if not path.exists(outFile) or not append:
+        if path.exists(outFile):
+            rename(outFile, outFile+'.old')
+        f = open(outFile, "w")
+        writeHeadFlag=True
+
+    else:
+        f = open(outFile, "a")
+        writeHeadFlag=False
+    
+    # check to see what form the results take
+    if isinstance(results, (dict)):
+        headers = [v for v in results.keys()]
+        headers.sort()
+
+        out = ' '.join([ str(results[v]) if v in results.keys() else 'NA' for v in headers] )
+        
+    elif isinstance(results, (list)):
+        if writeHeadFlag:
+            headers = ' '.join([str(v) for v in range(len(results))])
+        out = ' '.join([str(v) for v in results])
+    
+    else:
+        if writeHeadFlag:
+            headers = [measure]
+        out = str(results)
+
+    # write headers
+    if writeHeadFlag:
+        headers = ' '.join([str(v) for v in headers])
+        if edgePC:
+            headers = ' '.join(['edgePC', headers])
+        if threshold:
+            headers = ' '.join(['threshold', headers])
+        f.writelines(headers+'\n')
+
+    # add on optional extras
+    if edgePC:
+        out = ' '.join([str(edgePC), out])
+    if threshold:
+        out = ' '.join([str(threshold), out])
+    f.writelines(out+'\n')
+    f.close()
     

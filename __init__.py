@@ -14,4 +14,3 @@ import mayBrainExtraFns
 from recipes import *
 
 write = writeFns.writeFns()
-analysis = mayBrainExtraFns.extraFns()

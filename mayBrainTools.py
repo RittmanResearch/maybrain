@@ -2094,5 +2094,3 @@ class plotObj():
         self.labelNo = self.labelNo + 1
         
         return label
-    
-        
