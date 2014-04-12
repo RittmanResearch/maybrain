@@ -103,8 +103,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.ui.blueSlider.valueChanged.connect(self.setColourBlue)
         self.ui.blueValueBox.valueChanged.connect(self.setColourBlueDial)
         self.ui.hlApplyButton.clicked.connect(self.makeHighlight)
-
-#        self.ui.propsLoad.clicked.connect(self.addProperties)
+        self.ui.propsLoad.clicked.connect(self.addProperties)
         
         
 #        QtCore.QObject.connect(self.ui.opacitySlider, QtCore.SIGNAL('mouseReleaseEvent()'), self.setOpacity)
@@ -417,9 +416,11 @@ class mayBrainGUI(QtGui.QMainWindow):
         # get properties filename from GUI
         fname = str(self.ui.propsFilename.text())        
         
+        # find the active brain (doesn't allow multiple brains currently)
+        brain = 'brain0'
+        
         # call function from mayBrainTools to add properties to brain
-        brain = (self.ui.subPlotBrain.currentText())
-        prop = self.brains[brain].nodePropertiesFromFile(fname)
+        nodesOrEdges, prop = self.brains[brain].importProperties(fname)
         
         # add to plot properties box
         self.ui.hlProp.addItem(str(prop))

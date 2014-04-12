@@ -196,13 +196,15 @@ class brainObj:
                 
             colour
             1 red
-            2 white       
+            2 white    
+            2   4   green
             
-            if 2 indices are given, the property is applied to edges instead
+            if 2 indices are given, the property is applied to edges instead. Can mix nodes and edges in the same file.
             
             
         ''' 
         
+        # load file from data
         f = open(filename)
         data = f.readlines()
         
@@ -211,47 +213,82 @@ class brainObj:
             print('no data in properties file')
             return
         
+        # get the proprety name
         prop = data[0][:-1]       
-        
+
+        # initialise output        
         nodes = []
-        propVals = []
-        # check length of second line:
-        try:
-            values = split(data[1])
-        except:
-            print('couldn\'t determine mode, defaulting to nodes. Please check properties file.')
-
-        mode = 'nodes'
-        if len(values)==3:
-            mode = 'edges'
+        propValsNodes = []
+        edges = []
+        propValsEdges = []
         
-        # get data into format to add to brain
-        if mode=='nodes':
-            for l in data[1:]:
-                try:
-                    vals = split(l)
-                except:
-                    pass                
-                nodes.append(int(vals[0]))
-                propVals.append(vals[1])
+        # extract data from file
+        for l in data[1:]:
+            # determine if it should apply to edges or nodes (by length)
+            try:
+                print(l)
+                value = split(l)
+                if len(value)==2:
+                    mode = 'nodes'
+                elif len(value)==3:
+                    mode =  'edges'
+            except:
+                print('couldn\'t parse data line. Please check property file', l)
+            
+            # get data
+            if mode=='nodes':
+                nodes.append(int(value[0]))
+                propValsNodes.append(value[1])
                 
-            # add to brain                
-            self.addNodeProperties(prop, nodes, propVals)
-                
-        elif mode=='edges':
-            for l in data[1:]:
-                try:
-                    vals = split(l)
-                except:
-                    pass                
-                edges.append([vals[0],lvals[1]])
-                values.append(vals[2])
-
-            # add to brain
-            self.addEdgeProperty(prop, edges, values)
-                
+            elif mode=='edges':
+                edges.append([value[0],value[1]])
+                propValsEdges.append(value[2])
         
+        # add data to brain
+        if len(nodes)>0:
+            self.addNodeProperties(prop, nodes, propValsNodes)
+        if len(edges)>0:
+            self.addEdgeProperty(prop, edges, propValsEdges)
+
         return mode, prop # required for GUI
+        
+#        # check length of second line:
+#        try:
+#            values = split(data[1])
+#        except:
+#            print('couldn\'t determine mode, defaulting to nodes. Please check properties file.')
+
+#        mode = 'nodes'
+#        if len(values)==3:
+#            mode = 'edges'
+#        
+#        # get data into format to add to brain
+#        if mode=='nodes':
+#            for l in data[1:]:
+#                try:
+#                    vals = split(l)
+#                except:
+#                    pass                
+#                nodes.append(int(vals[0]))
+#                propVals.append(vals[1])
+#                
+#            # add to brain                
+#            
+#                
+#        elif mode=='edges':
+#            for l in data[1:]:
+#                try:
+#                    vals = split(l)
+#                except:
+#                    pass                
+#                edges.append([vals[0],lvals[1]])
+#                values.append(vals[2])
+#
+#            # add to brain
+#            self.addEdgeProperty(prop, edges, values)
+                
+        
+
         
 
                     
