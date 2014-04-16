@@ -8,7 +8,7 @@ Functions that used to be at the end of networkutils_bin_camb
 from os import path,rename
 import numpy as np
 import networkx as nx
-#from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 from numpy import linalg as lg
 from numpy import fill_diagonal
 
@@ -133,15 +133,15 @@ def hubscore(G, bc=None, cc=None, degs=None, weighted=False, Gaussian=False):
                 for edge in G.edges():
                     G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
 
-            bc = nx.centrality.betweenness_centrality(G, weight='distance').values()
-            cc = nx.centrality.closeness_centrality(G, distance="distance").values()
-            degs = nx.degree(G).values()
+            bc = nx.centrality.betweenness_centrality(G, weight='distance')
+            cc = nx.centrality.closeness_centrality(G, distance="distance")
+            degs = nx.degree(G)
         
     else:
         if not all([bc, cc, degs]):
-            bc = nx.centrality.betweenness_centrality(G).values()
-            cc = nx.centrality.closeness_centrality(G).values()
-            degs = nx.degree(G).values()
+            bc = nx.centrality.betweenness_centrality(G)
+            cc = nx.centrality.closeness_centrality(G)
+            degs = nx.degree(G)
             
     bc = np.array([bc[v] for v in G.nodes()])
     cc = np.array([cc[v] for v in G.nodes()])

@@ -32,10 +32,10 @@ from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
 from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort, min, max
-#from mayavi import mlab
+from mayavi import mlab
 from string import split
-#import nibabel as nb
-#from mayavi.core.ui.api import MlabSceneModel, SceneEditor
+import nibabel as nb
+from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 from copy import deepcopy
 
 class brainObj:
@@ -147,15 +147,17 @@ class brainObj:
                     self.G.remove_node(node)
 
         # create edges by thresholding adjacency matrix
-        if MST:
+        if MST:  # run just to get nodes in the graph and set up the adjacency matrix
             self.adjMatThresholding(edgePC=None, totalEdges=None, MST=False)
-                
+        
         if(threshold or edgePC or totalEdges):
             if thresholdtype=="global":
                 self.adjMatThresholding(edgePC, totalEdges, threshold, MST=MST)
     
             elif thresholdtype=="local":
                 self.localThresholding(totalEdges, edgePC)
+        else:
+            self.adjMatThresholding(MST=False)
         
         if not weighted:
             self.binarise()
@@ -297,7 +299,7 @@ class brainObj:
         T.graph = self.G.graph.copy()
         return T
     
-    def localThresholding(self, totalEdges=None, edgePC=None):
+    def localThresholding(self, totalEdges=None, edgePC=None, doPrint=False):
         nodecount = len(self.G.nodes())
         
         # get the number of edges to link
@@ -322,7 +324,8 @@ class brainObj:
             print "The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges."
         
         while lenEdges<edgeNum:
-            print "NNG degree: "+str(k)
+            if doPrint:
+                print "NNG degree: "+str(k)
             # create nearest neighbour graph
             nng = self.NNG(k)
             
@@ -1548,7 +1551,7 @@ class brainObj:
         
         return sn
 
-    def robustness(self, iterLen=500, N=50):
+    def robustness(self, iterLen=200, N=50):
         ''' a function to calculate robustness based on "Error and attack
         tolerance of complex networks" Albert et al Nature 2000 406:378-382
         
@@ -1560,37 +1563,36 @@ class brainObj:
         N = size of the sliding window for smoothing the gradient
         iterLen = number of iterations
         
-        Note, this function is relatively slow compared to other metrics due to
-        the multiple iterations.
-        
         '''
         fList = np.zeros(iterLen)
         for i in range(iterLen):
-            mat = np.zeros((len(self.G.nodes())))
-        
-            a = deepcopy(self.G)
-            nList = [v for v in a.nodes()]
+            a = nx.components.connected.connected_component_subgraphs(self.G)[0]
+            nList = [v for v in self.G.nodes()]
             random.shuffle(nList)
             nList = nList[:-1]
-            
+            mat = np.zeros((len(nList)))
             count = 0
-            while nList:
+            S = len(a.nodes())
+            
+            while nList and S>1:
                 n = nList.pop()
-                a.remove_node(n)
-                bigConnG = nx.components.connected.connected_component_subgraphs(a)[0]
-                S = len(bigConnG.nodes())
-                del(bigConnG)
-                
-                mat[count] = S
+                if n in a.nodes():
+                    a.remove_node(n)
+                    if not nx.is_connected(a): # only recalculate if the further fragmentation
+                        a = nx.components.connected.connected_component_subgraphs(a)[0]
+                        S = len(a.nodes())
+                    else:
+                        S-=1
+                mat[count] = S            
                 count+=1
-                
+            
             g = np.gradient(mat)
             runMean = np.convolve(g, np.ones((N,))/N)[(N-1):]
             diffs = np.diff(runMean)
             nr = np.argmin(diffs)
             
             fList[i] = nr
-        self.fc = np.mean(fList) / len(self.G.nodes())
+        return(np.mean(fList) / len(self.G.nodes()))
         
     def makebctmat(self):
         """
