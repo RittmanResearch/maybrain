@@ -8,7 +8,8 @@ A series of recipes for maybrain, intended to act as a quick start
 
 """
 
-from mayBrainTools import brainObj, plotObj
+from mayBrainTools import brainObj
+from mbplot import plotObj
 
 def loadFiles(adjname, coordname):
     ''' create a brain object and load adjacency matrix and coordinates. Returns a brain object. '''
@@ -16,7 +17,6 @@ def loadFiles(adjname, coordname):
     brain = brainObj()
     brain.importAdjFile(adjname)
     brain.importSpatialInfo(coordname)
-    brain.createNetworkX()
     
     return brain
     
@@ -27,7 +27,6 @@ def loadAndThreshold(adjname, coordname, threshold):
     brain = brainObj()
     brain.importAdjFile(adjname)
     brain.importSpatialInfo(coordname)
-    brain.createNetworkX()
     
     brain.applyThreshold(tVal = threshold)
     
@@ -43,9 +42,6 @@ def loadAndPlot(adjname, coordname, threshold, opacity = 1.0):
     # load date from files
     brain.importAdjFile(adjname)
     brain.importSpatialInfo(coordname)
-    
-    # make networkx object
-    brain.createNetworkX()
     
     # apply threshold
     brain.applyThreshold(tVal = threshold)
