@@ -18,8 +18,6 @@ from networkx.drawing import *
 from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
-#!! some functions commented out in next line
-from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort # min, max, ones, isnan
 from string import split
 import nibabel as nb
 #!! I assume the next line is required
@@ -110,7 +108,7 @@ class brainObj:
         f.close()
 
         # set adjacency matrix
-        self.adjMat = array(lines)
+        self.adjMat = np.array(lines)
 
     #!! After much deliberation, this function was kept from the master, but renamed
     def importSpatialInfo(self, fname, delimiter=None, convertMNI=False, newGraph=True):
@@ -277,7 +275,7 @@ class brainObj:
         iso image, not necessarily the node values.
         """
         
-        zeroArr = zeros(self.iso.shape)
+        zeroArr = np.zeros(self.iso.shape)
         
         for n in nodeList:
             n = float(n)
@@ -315,7 +313,7 @@ class brainObj:
 
         # get the number of edges to link
         if edgePC:
-            n = shape(self.adjMat)[0]
+            n = np.shape(self.adjMat)[0]
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
             if self.directed:
                 edgeNum = int(round(edgePC/100. * n * (n-1) * 0.5))                
@@ -368,12 +366,12 @@ class brainObj:
         ##### carry out thresholding on adjacency matrix
         boolMat = self.adjMat>=self.threshold
         try:
-            fill_diagonal(boolMat, 0)
+            np.fill_diagonal(boolMat, 0)
         except:
             for x in range(len(boolMat[0,:])):
                 boolMat[x,x] = 0
                 
-        es = where(boolMat) # lists of where edges should be
+        es = np.where(boolMat) # lists of where edges should be
 
         # exclude duplicates if not directed 
         if not(self.directed):
@@ -400,7 +398,7 @@ class brainObj:
     def reconstructAdjMat(self):
         ''' redefine the adjacency matrix from the edges and weights '''
         n = len(self.G.nodes())
-        adjMat = zeros([n,n])
+        adjMat = np.zeros([n,n])
         
         for e in self.G.edges():
             try:
@@ -488,6 +486,14 @@ class brainObj:
         
         #!! are you sure you want to redefine G here??
         self.G = T
+        
+        
+    def binarise(self):
+        '''
+            removes weighting from edges 
+        '''
+        for edge in self.G.edges():
+            self.G.edge[edge[0]][edge[1]]['weight'] = 1        
 
 
     ### making highlights
@@ -916,6 +922,8 @@ class brainObj:
 
     #!! This and following functions added during merge. Need explanation.
     def NNG(self, k):
+        ''' '''
+        #!! docstring missing
         G = nx.Graph()
         nodes = range(len(self.adjMat[0]))
         
@@ -1142,15 +1150,15 @@ class brainObj:
         print 'newxyzlist'
         print newxyzList
         for l in newxyzList:
-            d = sqrt((l[1]-xyz0[0])**2 + (l[2]-xyz0[1])**2 + (l[3]-xyz0[2]**2))
+            d = np.sqrt((l[1]-xyz0[0])**2 + (l[2]-xyz0[1])**2 + (l[3]-xyz0[2]**2))
             dists = dists + [(d, l[0])]
         
         print('presort')
         print(dists)
         # sort distances
         dtype = [('d', float), ('ind', int)]
-        dists = array(dists, dtype = dtype)
-        dists = sort(dists, order = ['d', 'ind'])
+        dists = np.array(dists, dtype = dtype)
+        dists = np.sort(dists, order = ['d', 'ind'])
         print('postsort')
         print(dists)
         
@@ -1188,7 +1196,7 @@ class brainObj:
         
     ### hubs
 
-    def hubIdentifier(self, weighted=False, assign=False):
+    def hubIdentifier(self, weighted=False, assign=False, recalc=True):
         """ 
         define hubs by generating a hub score, based on the sum of normalised scores for:
             betweenness centrality
@@ -1208,6 +1216,7 @@ class brainObj:
         self.hubs = []
         
         #    get centrality measures
+        #!! got an error because reCalc wasn't a string, should it be??
         if reCalc or not 'hubscore' in self.G.node[0].keys():
             if weighted:
                 self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='distance').values()))
@@ -1238,6 +1247,7 @@ class brainObj:
             hubScores = [ self.G.node[v]['hubscore'] for v in self.G.nodes() ]
             
         # find 2 standard deviations above mean hub score
+        #!! sdT not defined
         upperLimit = np.mean(np.array(hubScores)) + sdT*np.std(np.array(hubScores))
     
         # identify nodes as hubs if 2 standard deviations above hub score
@@ -1473,30 +1483,12 @@ class brainObj:
         self.percentConnections = float(len(self.G.edges()))/float(totalConnections)
         
         return self.percentConnections
-
-    
-    def binarise(self):
-        '''
-            removes weighting from edges 
-        '''
-        for edge in self.G.edges():
-            self.G.edge[edge[0]][edge[1]]['weight'] = 1
         
         
     def largestConnComp(self):
         self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
 
-        
-    def strnum(num, length=5):
-        ''' convert a number into a string of a given length'''
-        
-        sn = str(num)
-        lenzeros = length - len(sn)
-        sn = lenzeros*'0' + sn
-        
-        return sn
-
-        
+                
     def checkrobustness(self, conVal, step):
         ''' Robustness is a measure that starts with a fully connected graph, \
         then reduces the threshold incrementally until the graph breaks up in \
@@ -1583,6 +1575,18 @@ class brainObj:
     def assignbctResult(self, bctRes):
         out = dict(zip(self.G.nodes(), bctRes))
         return(out)
+        
+
+    ##### miscellaneous functions        
+    
+    def strnum(num, length=5):
+        ''' convert a number into a string of a given length'''
+        
+        sn = str(num)
+        lenzeros = length - len(sn)
+        sn = lenzeros*'0' + sn
+        
+        return sn        
 
 
 class highlightObj():
