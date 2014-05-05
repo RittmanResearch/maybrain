@@ -302,6 +302,14 @@ class brainObj:
     #!! need to create minimum spanning tree option??
     #!! doPrint option removed in merge
     def applyThreshold(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False):
+        ''' Treshold the adjacency matrix to determine which nodes are linked by edges. There are 
+            three options:
+            
+            edgePC - a percentage of edges are taken
+            totalEdges - give a number for the total edges found
+            tVal - give a value for the threshold at which edges are chosen 
+            
+            rethreshold can be used if the threshold has already been applied '''
 
         #### Determine threshold value
         
