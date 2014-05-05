@@ -8,11 +8,7 @@ Initialisation file for maybrain
 
 """
 
-from mayBrainTools import *
-from mbplot import *
+from mayBrainTools import brainObj, plotObj#, mlab
 import writeFns
 import mayBrainExtraFns
-from recipes import *
-
-
 write = writeFns.writeFns()

@@ -8,7 +8,7 @@ Functions that used to be at the end of networkutils_bin_camb
 from os import path,rename
 import numpy as np
 import networkx as nx
-from matplotlib import pyplot as plt
+#from matplotlib import pyplot as plt
 from numpy import linalg as lg
 from numpy import fill_diagonal
 
@@ -243,8 +243,7 @@ def withinModuleDegree(G, ci, weight=None):
 def writeResults(results, measure,
                  outfilebase="brain",
                  append=True,
-                 edgePC=None,
-                 threshold=None):
+                 propDict=None):
     """ 
     Function to write out results    
     """
@@ -277,19 +276,22 @@ def writeResults(results, measure,
         out = str(results)
 
     # write headers
+    if propDict:
+        propHeaders = propDict.keys()
+        propHeaders.sort()
+
     if writeHeadFlag:
         headers = ' '.join([str(v) for v in headers])
-        if edgePC:
-            headers = ' '.join(['edgePC', headers])
-        if threshold:
-            headers = ' '.join(['threshold', headers])
+        if propDict:
+            headers = ' '.join([' '.join(propHeaders), headers])
+            
         f.writelines(headers+'\n')
 
     # add on optional extras
-    if edgePC:
-        out = ' '.join([str(edgePC), out])
-    if threshold:
-        out = ' '.join([str(threshold), out])
+    if propDict:
+        outProps = ' '.join([str(propDict[v]) for v in propHeaders])
+        out = ' '.join([outProps, out])
+        
     f.writelines(out+'\n')
     f.close()
     
