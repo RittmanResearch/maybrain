@@ -32,10 +32,10 @@ from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
 from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort, min, max
-#from mayavi import mlab
+from mayavi import mlab
 from string import split
-#import nibabel as nb
-#from mayavi.core.ui.api import MlabSceneModel, SceneEditor
+import nibabel as nb
+from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 from copy import deepcopy
 
 class brainObj:

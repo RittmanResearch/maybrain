@@ -8,7 +8,7 @@ Functions that used to be at the end of networkutils_bin_camb
 from os import path,rename
 import numpy as np
 import networkx as nx
-#from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 from numpy import linalg as lg
 from numpy import fill_diagonal
 
