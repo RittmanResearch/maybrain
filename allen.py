@@ -13,6 +13,7 @@ from os import path,rename
 import numpy as np
 from scipy import stats
 from matplotlib import pyplot as plt
+from glob import glob
 
 class allenBrain:
     def __init__(self, allenSubj, assocMat, delim=",",
@@ -49,7 +50,8 @@ class allenBrain:
         self.c.readAdjFile(assocMat, delimiter=delim,
                            excludedNodes=nodesToExclude)
         self.c.readSpatialInfo("parcel_500_xyz.txt")
-        
+    
+    def comparison(self):
         # set up dictionary to link nodes from probe data and graph
         nodeDictMRIs = {}
         
@@ -115,7 +117,7 @@ class allenBrain:
         self.saveFig()
                                      
     def probeData(self, propDict, graphMetric="gm", nodeList=None, plot=False,
-                  probeList=[], sigVal=1.0, T=False):
+                  probeList=[], probeNumbers=[], sigVal=1.0, T=False):
         self.gm=graphMetric
         self.sigVal=sigVal
         
@@ -248,3 +250,63 @@ class allenBrain:
         x = np.array((x)) - xMin
         x = (x/xMax) * 20
         return([v for v in x])
+
+class multiSubj:
+    def __init__(self, subjList=None):
+        if subjList:
+            self.subjList = subjList
+        else:
+            self.subjList = [v for v in glob("17823*") if path.isdir(v)]
+            
+        self.fName = "SampleAnnot.csv"
+        self.maFile = "MicroarrayExpression.csv"
+        
+        # set up brain for expression data
+        self.a = mbt.brainObj()
+        
+        self.headers={}
+        for subj in self.subjList:
+            # import probe data
+            f = open(path.join(subj, self.fName), "rb")        
+            reader = csv.DictReader(f, delimiter=",", quotechar='"')
+            
+            self.headers[subj] = ['probe']
+            for l in reader:
+                n = int(l["structure_id"])
+                if not self.a.G.has_node(n):
+                    self.a.G.add_node(n)
+                    self.a.G.node[n] = l
+                self.headers[subj].append(l["structure_id"])
+            f.close()
+            
+            # convert location data for Allen brain from MNI space
+            for n in self.a.G.nodes():
+                x = 45 - (float(self.a.G.node[n]['mni_x'])/2)
+                y = 63 + (float(self.a.G.node[n]['mni_y'])/2)
+                z = 36 + (float(self.a.G.node[n]['mni_z'])/2)
+                self.a.G.node[n]['xyz'] = (x,y,z)
+
+    def probeData(self,probeNumbers=[]):
+        for subj in self.subjList:
+            # import probe data
+            f = open(path.join(subj, self.maFile), "rb")
+            reader = csv.DictReader(f, delimiter=",",
+                                    fieldnames=self.headers[subj],
+                                    quotechar='"')
+            for l in reader:
+                probe = l['probe']
+                if probe in probeNumbers:
+                    # assign probe values to sample numbers
+                    for node in self.a.G.nodes():
+                        if not probe in self.a.G.node[node].keys():
+                            self.a.G.node[node][probe] = {}
+                            
+                        if str(node) in l.keys():
+                            self.a.G.node[node][probe][subj] = l[str(node)]
+            f.close()
+            del(reader)
+            
+        for n in self.a.G.nodes():
+            for probe in probeNumbers:
+                self.a.G.node[n][probe] = np.mean([float(v) for v in self.a.G.node[n][probe].values()])
+                
