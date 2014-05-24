@@ -53,6 +53,8 @@ from os import path
 
 class mayBrainGUI(QtGui.QMainWindow):
     def __init__(self, parent=None):
+#        app=QtGui.QApplication([])  # is this required to get it working properly?
+#        app.exec_()
         
         QtGui.QMainWindow.__init__(self, parent)
         # set up UI
