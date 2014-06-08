@@ -36,7 +36,7 @@ to do:
 
 #import os
 #os.environ['ETS_TOOLKIT'] = 'qt4'
-import maybrain as mb
+import __init__ as mb
 
 # To be able to use PySide or PyQt4 and not run in conflicts with traits,
 # we need to import QtGui and QtCore from pyface.qt
@@ -344,7 +344,6 @@ class mayBrainGUI(QtGui.QMainWindow):
         if label=='':
             label = 'highlight1'
         mode = str(self.ui.hlNodesOrEdgesBox.currentText())
-        print('makeHighlight mode: ', mode)
         # remove 's' from edge of mode
         mode = mode[:-1]
         red = float(self.ui.hlRedSpin.value())        
@@ -360,14 +359,13 @@ class mayBrainGUI(QtGui.QMainWindow):
             val = val1
         
         # create the highlight object
-        print('property name: ' + propName)
         br.highlightFromConds(propName, relation, val, label=label, mode=mode, colour = (red, green, blue), opacity=opacity)
         
         # plot        
-        self.plot.plotBrainHighlights(br, highlights=[label])                
+        self.plot.plotBrainHighlights(br, highlights=[label])          
         
         # add to list of plots
-        self.readAvailablePlots()      
+        self.readAvailablePlots()
         
         
     def getRelation(self):

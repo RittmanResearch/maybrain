@@ -8,6 +8,13 @@ Documentation available at http://code.google.com/p/maybrain/
 
 This is a merge version. Notes prepended with #!!
 
+To do:
+Move nibabel functions into another script
+Add in link to brain connectivity toolbox
+Date of conference: 3rd June
+
+
+
 """
 #!! are string, csv, community needed?
 # import community #, string,os,csv
@@ -52,6 +59,7 @@ class brainObj:
         self.threshold = 0 # value of threshold for including edges
         
         # need to define the following, what do they do???
+        self.edgePC = 5 # an arbitrary value for percentage of edges to plot. #!! is this necessary?
         self.hubs = []
         self.lengthEdgesRemoved = None
         self.bigconnG = None
@@ -1564,6 +1572,7 @@ class brainObj:
         self.fc = np.mean(fList) / len(self.G.nodes())
         
         
+    ### brain connectivity toolbox
     def makebctmat(self):
         """
         Create a matrix for use with brain connectivity toolbox measures.
@@ -1577,15 +1586,20 @@ class brainObj:
         nodeIndices = dict(zip(self.G.nodes(), range(len(self.G.nodes()))))
         for nx,x in enumerate(self.G.nodes()):
             for y in self.G.edge[x].keys():
-                self.bctmat[nx,nodeIndices[y]] = self.G.edge[x][y]['weight']
-
+                try:
+                    self.bctmat[nx,nodeIndices[y]] = self.G.edge[x][y]['weight']
+                except:
+                    pass
+    
     
     def assignbctResult(self, bctRes):
+        ''' translate a maybrain connectome into a bct compatible format ''' 
         out = dict(zip(self.G.nodes(), bctRes))
-        return(out)
-        
+        return(out) 
 
-    ##### miscellaneous functions        
+    ##### miscellaneous functions
+
+
     
     def strnum(num, length=5):
         ''' convert a number into a string of a given length'''
