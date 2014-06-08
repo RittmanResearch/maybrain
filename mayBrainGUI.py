@@ -76,12 +76,6 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.lastFolder = None # last folder viewed by user
         self.brainName = ['brain', 0] # used to auto-create labels for brains if no user input given (currently only supports 1 brain)
         
-        # set up for logging
-        self.log = True
-        self.logDict = 'logDict.txt'
-        self.loadLogDict()
-        
-        
         
         
     def connectSlots(self):
@@ -195,9 +189,6 @@ class mayBrainGUI(QtGui.QMainWindow):
             pass
         QtCore.QObject.connect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
         self.ui.adjPlot.setEnabled(True)
-        
-        # logging
-        self.logging('loadBrain', adj, thold, coords)
      
         
     def loadSkull(self):
@@ -218,9 +209,6 @@ class mayBrainGUI(QtGui.QMainWindow):
         
         # enable plot button
         self.ui.skullPlot.setEnabled(True)
-        
-        # logging
-        self.logging('loadSkull', f)
         
 
     ## =============================================
@@ -572,48 +560,6 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.plot.changePlotProperty(self.selectedPlotType, 'colour', self.selectedPlot, value = v1)        
         # set slider value
         self.ui.blueSlider.setValue(int(b*100.))
-   
-    #### logging functions     
-    def logging(function, *args):
-        ''' logging funtion to be able to rerun from command line '''
-        
-        if not(self.log):
-            return
-            
-        # get maybrain command
-        fn = self.logDict[function]
-        
-        # put together text
-        argstxt= ''
-        for a in args:
-            argstxt = argstxt + ',' + a
-        
-        
-        command = fn + '(' + argstxt + ')'
-        
-        # display in textbox
-        
-        
-            
-        
-    def loadLogDict():
-        ''' load dictionary to look up logging commands. Dictionary entries
-         have 2 parts: gui fn name and maybrain fn name '''
-        
-        # open files with commands in
-        f = open(self.logDict)
-        d = f.readlines()
-        
-        # set up dictionary of commands and dict with no of args
-        self.logDict = {}
-        for l in d:
-            data = split(l)
-            self.logDict[data[0]] = data[1]
-        print(self.logDict)
-            
-        f.close()
-            
-            
                 
 
         
