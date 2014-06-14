@@ -12,6 +12,8 @@ To do:
 Move nibabel functions into another script
 Add in link to brain connectivity toolbox
 Date of conference: 3rd June
+change skull to background
+pysurfer??
 
 
 
@@ -67,10 +69,10 @@ class brainObj:
         self.dyingEdges = {}
         self.nodesRemoved = None
         
-        # skull info imported by nibabel
-        self.nbskull = None # the nibabel object
-        self.skull = None # coordinates of skull
-        self.skullHeader = None # header of nibabel data
+        # background info imported by nibabel
+        self.nbbackground = None # the nibabel object
+        self.background = None # coordinates of background
+        self.backgroundHeader = None # header of nibabel data
         
         # isosurface information imported by nibabel
         self.nbiso = None # all the isosurface info, nibabel object
@@ -250,18 +252,18 @@ class brainObj:
         
     ### supplementary structures
 
-    #!! rename skull to template
-    def importSkull(self, fname):
-        ''' Import a file for skull info using nbbabel
+    #!! rename background to template
+    def importBackground(self, fname):
+        ''' Import a file for background info using nbbabel
             gives a 3D array with data range 0 to 255 for test data
             could be 4d??
             defines an nibabel object, plus ndarrays with data and header info in
         
         '''        
         
-        self.nbskull = nb.load(fname)
-        self.skull = nbskull.get_data()
-        self.skullHeader = nbskull.get_header()        
+        self.nbbackground = nb.load(fname)
+        self.background = nbbackground.get_data()
+        self.backgroundHeader = nbbackground.get_header()        
                 
     def importISO(self, fname):
         ''' Import a file for isosurface info using nibabel
@@ -817,7 +819,7 @@ class brainObj:
 
     #!! degenerateNew function removed
 
-    def contiguousspread(self, edgeloss, largestconnectedcomp=False, startNodes = None):
+    def contiguousspread(self, edgeloss, startNodes = None):
         ''' degenerate nodes in a continuous fashion. Doesn't currently include spreadratio '''
 
         # make sure nodes have the linkedNodes attribute
@@ -836,7 +838,7 @@ class brainObj:
         # start with a random node or set of nodes
         if not(startNodes):
             # start with one random node if none chosen
-            toxicNodes = [random.randint(len(self.G.nodes))]
+            toxicNodes = [random.randint(0, len(self.G.nodes()))]
         else:
             # otherwise use user provided nodes
             toxicNodes = startNodes
