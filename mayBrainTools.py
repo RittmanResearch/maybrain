@@ -18,9 +18,6 @@ pysurfer??
 
 
 """
-#!! are string, csv, community needed?
-# import community #, string,os,csv
-# from shutil import move
 import networkx as nx
 import numpy as np
 from networkx.drawing import *
@@ -29,8 +26,7 @@ from networkx.algorithms import components
 import random
 from string import split
 import nibabel as nb
-#!! I assume the next line is required
-from copy import deepcopy
+
 #from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 
 class brainObj:
@@ -1490,9 +1486,9 @@ class brainObj:
 
         
     def percentConnected(self):
-        #!! I feel something is missing in the docstring, although it is reassuring
         '''
-        This will only give the correct results 
+        This returns the percentage of the total number of possible connections
+        where an edge actually exists.
         '''
         if self.directed:
             totalConnections = len(self.G.nodes()*(len(self.G.nodes())-1))
@@ -1547,32 +1543,33 @@ class brainObj:
         '''
         fList = np.zeros(iterLen)
         for i in range(iterLen):
-            mat = np.zeros((len(self.G.nodes())))
-        
-            a = deepcopy(self.G)
-            nList = [v for v in a.nodes()]
+            a = nx.components.connected.connected_component_subgraphs(self.G)[0]
+            nList = [v for v in self.G.nodes()]
             random.shuffle(nList)
             nList = nList[:-1]
-            
+            mat = np.zeros((len(nList)))
             count = 0
-            while nList:
+            S = len(a.nodes())
+            
+            while nList and S>1:
                 n = nList.pop()
-                a.remove_node(n)
-                bigConnG = nx.components.connected.connected_component_subgraphs(a)[0]
-                S = len(bigConnG.nodes())
-                del(bigConnG)
-                
-                mat[count] = S
+                if n in a.nodes():
+                    a.remove_node(n)
+                    if not nx.is_connected(a): # only recalculate if the further fragmentation
+                        a = nx.components.connected.connected_component_subgraphs(a)[0]
+                        S = len(a.nodes())
+                    else:
+                        S-=1
+                mat[count] = S            
                 count+=1
-                
+            
             g = np.gradient(mat)
             runMean = np.convolve(g, np.ones((N,))/N)[(N-1):]
             diffs = np.diff(runMean)
             nr = np.argmin(diffs)
             
             fList[i] = nr
-        self.fc = np.mean(fList) / len(self.G.nodes())
-        
+        return(np.mean(fList) / len(self.G.nodes()))
         
     ### brain connectivity toolbox
     def makebctmat(self):
