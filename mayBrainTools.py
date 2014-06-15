@@ -48,7 +48,7 @@ class brainObj:
         '''        
         
         # create an empty graph
-        self.G = None # networkX object is now created by created by importSpatialInfo
+        self.G = nx.Graph() # create networkx object
         self.directed = False # is this a directed graph or not?
         
         # initialise global variables
@@ -82,20 +82,21 @@ class brainObj:
 
     ### edges and nodes
 
-    def importAdjFile(self, fname, delimiter = None, NAval="nan", excludedNodes=None, delNanNodes=True):
+    def importAdjFile(self, fname, delimiter = None, NAval="nan", excludedNodes=None, delNanNodes=True, directed=False):
         ''' get the adjacency data from a file and return as an array '''
         
         # open file
         f = open(fname,"rb")
-        reader = f.readlines()        
+        reader = f.readlines() 
 
-        # get line that data starts in 
+        # get line that data starts in, particularly useful for association matrices from brainwaver
         startLine = 0
         for line in reader:
             if 'begins line' in str(line):
                 lstr = str(line)
                 whereLabel = lstr.find('begins line')
                 startLine = int(lstr[whereLabel + 12])-1
+                reader = f.readlines() 
                 break
                 
         # get data and convert to lists of floats
@@ -103,15 +104,14 @@ class brainObj:
         lines = []
         
         for l in linesStr:
-            while l[-1] in ('\n', '\t'):
-            	lines.append(map(float, [v if not NAval in v else np.nan for v in split(l, sep=delimiter)]))
+            lines.append(map(float, [v if not NAval in v else np.nan for v in split(l, sep=delimiter)]))
 
         # close file                
         f.close()
 
         # create adjacency matrix as an array
-        self.adjMat = np.memmap("adjmat.mat",dtype="float32", shape=(len(lines), len(lines)), mode="w+")
-        self.adjMat[:] = array(lines)       # array of data
+        self.adjMat = np.memmap("adjmat.mat",dtype="float64", shape=(len(lines), len(lines)), mode="w+")
+        self.adjMat[:] = np.array(lines)       # array of data
         
         # set excluded node connectivity values to nan
         if excludedNodes:
@@ -125,7 +125,7 @@ class brainObj:
                 self.adjMat[x,x] = np.nan
                     
         # check if it's diagonal
-        sh = shape(self.adjMat)
+        sh = np.shape(self.adjMat)
         if sh[0]!=sh[1]:
             print("Note Bene: adjacency matrix not square.")
             print(sh)
@@ -140,14 +140,13 @@ class brainObj:
             note that the graph object is recreated here by default
         '''
         
-        # create a new networkX graph object
+        # convert networkx object to directed if specified
         if newGraph:
-            if self.directed:
-                # directional case
-                self.G = nx.DiGraph()
-            else:
-                # non-directional case
-                self.G = nx.Graph()
+            self.G = nx.Graph()
+
+        if self.directed:
+            # directional case
+            self.G = nx.DiGraph()
         
         # open file
         try:
@@ -322,9 +321,7 @@ class brainObj:
     ##### Functions to alter the brain
 
     ### adjacency matrix and edge thresholding
-
-    #!! need to create minimum spanning tree option?? - yes!
-    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, directed = False, weighted=True, MST=True):
+    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, weighted=True, MST=False):
         ''' Treshold the adjacency matrix to determine which nodes are linked by edges. There are 
             three options:
             
@@ -334,8 +331,12 @@ class brainObj:
             
             rethreshold can be used if the threshold has already been applied '''
 
+        # create minimum spanning tree if specified
+        if MST:
+            # create minimum spanning tree
+            T = self.minimum_spanning_tree(self.G)
+
         #### Determine threshold value
-        
         ## case 1: edgePC - percent of edges are shown
 
         # get the number of edges to link
@@ -389,8 +390,8 @@ class brainObj:
         else:
             self.threshold  = tVal
         
-            
         ##### carry out thresholding on adjacency matrix
+        print self.threshold
         boolMat = self.adjMat>=self.threshold
         try:
             np.fill_diagonal(boolMat, 0)
@@ -413,15 +414,28 @@ class brainObj:
         
         # add edges to networkx
 
+        if MST:
+            # recreate minimum spanning tree
+            self.G = T
+
         # could improve the next few lines by spotting when you're only adding edges            
         
         # remove previous edges
         self.G.remove_edges_from(self.G.edges())
         # add new edges
         for ii in range(len(es[0])):
-            self.G.add_edge(es[0][ii],es[1][ii], weight = self.adjMat[es[0][ii],es[1][ii]])
-    
-    
+                node1 = es[0][ii]
+                node2 = es[1][ii]
+                
+                # check if edge doesn't already exist and weight isn't nan
+                if not(self.G.has_edge(node1, node2)) and not(np.isnan(self.adjMat[node1, node2])):
+                    self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
+                
+                    if MST:
+                        edgeCount = len(self.G.edges())
+                        if edgeCount >= edgeNum:
+                            break
+            
     def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False,
                     delimiter=None, weighted=True, NAval="nan", thresholdtype="global", MST=True,
                     excludedNodes=None, delNanNodes=True):
@@ -435,13 +449,14 @@ class brainObj:
         f = open(fname,"rb")
         reader = f.readlines()        
 
-        # get line that data starts in 
+        # get line that data starts in, particularly useful for association matrices from brainwaver 
         startLine = 0
         for line in reader:
             if 'begins line' in str(line):
                 lstr = str(line)
                 whereLabel = lstr.find('begins line')
                 startLine = int(lstr[whereLabel + 12])-1
+                reader = f.readlines()        
                 break
                 
         # get data and convert to lists of floats
@@ -506,6 +521,110 @@ class brainObj:
         
         if not weighted:
             self.binarise()
+
+    def adjMatThresholding(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, doPrint=True, MST=True):
+        ''' apply thresholding to the adjacency matrix. This can be done in one of
+            three ways (in order of decreasing precendence):
+                edgePC - this percentage of nodes will be linked
+                totalEdges - this number of nodes will be linked
+                tVal - give an absolute threshold value. Pairs of nodes with a corresponding adj matrix
+                       value greater than this will be linked. Defaults to -1.1 to produce a fully connected graph.
+        '''
+
+        # check if adjacency matrix is there
+        if self.adjMat == None:
+            print("No adjacency matrix. Please load one.")
+            return
+
+        if MST:
+            # create minimum spanning tree
+            T = self.minimum_spanning_tree(self.G)
+ 
+        if not rethreshold:
+            # remove existing edges
+            self.G.remove_edges_from(self.G.edges())
+
+        nodecount = len(self.G.nodes())
+            
+        # get the number of edges to link
+        if not edgePC == None:  # needs to be written this way in case edgePC is 0
+            # find threshold as a percentage of total possible edges
+            # note this works for undirected graphs because it is applied to the whole adjacency matrix
+            edgeNum = int(edgePC * nodecount * (nodecount-1))
+            self.edgePC=edgePC
+            
+        elif totalEdges:
+            # allow a fixed number of edges
+            edgeNum = totalEdges
+        else:
+            edgeNum = -1
+            
+        # get threshold
+        if edgeNum>0:
+            # get threshold value
+            if rethreshold:
+                weights = [self.G[v[0]][v[1]]['weight'] for v in self.G.edges()]
+            else:
+                weights = [v for v in self.adjMat.flatten() if not np.isnan(v)]
+            weights.sort()
+
+            try:
+                threshold = weights[-edgeNum]
+            except IndexError:
+                print "Check you are not trying to apply a lower threshold than the current "+str(self.threshold)
+                
+                if not 'self.threshold' in locals():
+                    threshold = -1                
+                else:
+                    return
+            if doPrint:
+                print("Threshold set at: "+str(threshold))
+        elif edgeNum==0.:
+            threshold=1.
+        else:
+            threshold  = tVal      
+            
+        self.threshold = threshold
+            
+        if rethreshold:
+            edgesToRemove = [v for v in self.G.edges() if self.G[v[0]][v[1]]['weight'] < threshold]
+            self.G.remove_edges_from(edgesToRemove)
+        else:
+            # carry out thresholding on adjacency matrix
+            boolMat = self.adjMat>threshold
+            
+            edgeCos = where(boolMat) # lists of where edges should be
+            
+            # display coordinates (for testing only)
+    #        for x in range(len(edgeCos[0])):
+    #            print(edgeCos[0][x], edgeCos[1][x])
+    
+            if MST:
+                # recreate minimum spanning tree
+                self.G = T
+            
+            edgeCount = len(self.G.edges())
+            
+            if edgeNum == -1:
+                edgeNum = len(self.G.nodes()) * (len(self.G.nodes())-1)
+            
+            # correct for undirected graph
+            edgeNum = edgeNum/2
+            
+            for ind in range(len(edgeCos[0])):
+                node1 = edgeCos[0][ind]
+                node2 = edgeCos[1][ind]
+                
+                # check if edge doesn't already exist and weight isn't nan
+                if not(self.G.has_edge(node1, node2)) and not(np.isnan(self.adjMat[node1, node2])):
+                    self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
+                
+                    if MST:
+                        edgeCount = len(self.G.edges())
+                        if edgeCount >= edgeNum:
+                            break
+                    
+
 
     def localThresholding(self, totalEdges=None, edgePC=None):
         '''

@@ -207,7 +207,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         else:
             br = self.brains[brainName]
         # read in file
-        br.importSkull(f)
+        br.importBackground(f)
         
         # enable plot button
         self.ui.skullPlot.setEnabled(True)
@@ -286,7 +286,7 @@ class mayBrainGUI(QtGui.QMainWindow):
             # QtGui.QTreeWidgetItem(self.ui.plotTree, ['skull', 'skull'])     
             
         except:
-            print('could not plot skull, has file been loaded?')
+            print('could not plot background image, has file been loaded?')
          
         
         
