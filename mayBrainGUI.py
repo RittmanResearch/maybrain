@@ -34,8 +34,8 @@ to do:
 # environment variable to qt4, to tell Traits that we will use Qt.
 
 
-import os
-os.environ['ETS_TOOLKIT'] = 'qt4'
+#import os
+#os.environ['ETS_TOOLKIT'] = 'qt4'
 import maybrain as mb
 
 # To be able to use PySide or PyQt4 and not run in conflicts with traits,

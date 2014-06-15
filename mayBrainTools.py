@@ -31,7 +31,7 @@ import nibabel as nb
 
 class brainObj:
     """
-    A class that defines a brain network created from an adjacency matrix and spatial information 
+    A class that defines a brain network created from an adjacency matrix and spatial inforamtion 
     with certain properties. The added extras are:
         - a list of hub nodes
         - spatial xyz information for each nodes (if input files available)
@@ -105,6 +105,7 @@ class brainObj:
         
         for l in linesStr:
             lines.append(map(float, [v if not NAval in v else np.nan for v in split(l, sep=delimiter)]))
+
         # close file                
         f.close()
 
@@ -552,10 +553,9 @@ class brainObj:
                 geq - greater than or equal to
                 leq - less than or equal to
                 gt - strictly greater than
-                lt - strictly less than
+                lt - stricctly less than
                 eq - equal to (i.e. exactly)
                 in(), in[), in(], in[] - within an interval, in this case val is a list of two numbers
-                        round brackets denote an exclusive range, for square brackets the endpoints are included
                 contains - val is a string
         '''
 
@@ -1589,14 +1589,6 @@ class brainObj:
                 except:
                     pass
     
-    def saveViews(self, outFile, res=(1200,1200)):
-        mbt.mlab.view(0, 90)
-        mbt.mlab.savefig(outFile + "_sag_graph.png", size=res, magnification=1)
-        mbt.mlab.view(0,180)
-        mbt.mlab.savefig(outFile + "_ax_graph.png", size=res, magnification=1)
-        mbt.mlab.view(90,90)    
-        mbt.mlab.savefig(outFile + "_cor_graph.png", size=res, magnification=1)
-
     
     def assignbctResult(self, bctRes):
         ''' translate a maybrain connectome into a bct compatible format ''' 
