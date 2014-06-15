@@ -2,24 +2,11 @@
 """
 Created on Fri Mar 16 18:10:07 2012
 
-@author: -
+@authors: Timothy Rittman, Martyn Rittman
 
-Change log:
-5/2/2013
-    - critical bug fix: readSpatial info was assigning coordinates to the wrong nodes
-    
-7/2/2013
-    - Changed readAdjFile to deal with non-whitespace delimiters through the 'delimiter' option
-    - Changed readAdjFile to replace string "NA" with 0 from adjacency matrices
-    - Added 'weighted' property to readAdjFile to allow a choice of binary or weighted graphs
-    - Changed binarise to change the weight of each edge to 1 rather than remove all edge properties
-    - Removed contiguousspread and contiguousspreadold functions (superceded by degenerate)
-    - Removed the 'symmetric' argument and replaced with directed, which creates a directed graph if required.
-        Note that if the graph is undirected, it can not have reciprocal connections eg (2,1) and (1,2)
-    - Added clusterslices function to produce 2D images with nodes plotted ***this needs testing***
-    - Removed a lost, lonely and wandering dictionary definition from readSpatialInfo
-    - Added a function to import isosurfaces, enabling the plotting function to be useful
-    - Simplified the spatial positioning function
+Documentation available at http://code.google.com/p/maybrain/
+
+This is a merge version. Notes prepended with #!!
 
 To do:
 Move nibabel functions into another script
@@ -37,11 +24,10 @@ from networkx.drawing import *
 from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
-from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort, min, max
-from mayavi import mlab
 from string import split
 import nibabel as nb
 
+#from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 
 class brainObj:
     """
@@ -57,43 +43,48 @@ class brainObj:
     
     def __init__(self):
         ''' 
-        initialise the brain model. Arguments are:
+        Initialise the brain model.
     
         '''        
         
         # create an empty graph
         self.G = nx.Graph() # create networkx object
-        self.iter = None # not sure where this is used. It is often defined, but never actually used!
+        self.directed = False # is this a directed graph or not?
         
         # initialise global variables
-        self.adjMat = None # adjacency matrix, containing weighting of edges.
+        self.adjMat = None # adjacency matrix, containing weighting of edges. Should be square.
         self.threshold = 0. # value of threshold for including edges
         
+        # need to define the following, what do they do???
+        self.hubs = []
+        self.lengthEdgesRemoved = None
+        self.bigconnG = None
 
         self.dyingEdges = {}
         self.nodesRemoved = None
-        self.bigconnG = None
         
         # background info imported by nibabel
         self.nbbackground = None # the nibabel object
         self.background = None # coordinates of background
         self.backgroundHeader = None # header of nibabel data
         
-        self.nbiso = None
-        self.iso = None
-        self.isoHeader = None
+        # isosurface information imported by nibabel
+        self.nbiso = None # all the isosurface info, nibabel object
+        self.iso = None # the isosurface
+        self.isoHeader = None # header information
+        
+        self.labelNo = 0 # index for autolabeling of highlights
+        self.highlights = {} # highlights items consist of a list contating a name, a highlight object and a colour
 
     ## ================================================
 
-    ## File inputs        
+    ##### File inputs and outputs
 
-    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False, delimiter=None, weighted=True, NAval="nan", thresholdtype="global", MST=True, excludedNodes=None, delNanNodes=True):
-        ''' load adjacency matrix with filename and threshold for edge definition 
-        Comment - I don't seem to be able to construct an unweighted directed graph, ie with edge number N(N-1) for an NxN adjacency matrix 
-        '''
-        
+    ### edges and nodes
+
     def importAdjFile(self, fname, delimiter = None, NAval="nan", excludedNodes=None, delNanNodes=True, directed=False):
-
+        ''' get the adjacency data from a file and return as an array '''
+        
         # open file
         f = open(fname,"rb")
         reader = f.readlines() 
@@ -144,63 +135,814 @@ class brainObj:
         if directed:
             self.G = nx.DiGraph()
             
+    def importSpatialInfo(self, fname, delimiter=None, convertMNI=False, newGraph=True):
+        ''' add 3D coordinate information for each node from a given file
+            note that the graph object is recreated here by default
+        '''
+        
         # convert networkx object to directed if specified
+        if newGraph:
             self.G = nx.Graph()
 
         if self.directed:
             # directional case
             self.G = nx.DiGraph()
         
-        # set excluded node connectivity values to nan
-        if excludedNodes:
-            for en in excludedNodes:
-                self.adjMat[:,en] = np.nan
-                self.adjMat[en,:] = np.nan
+        # open file
         try:
-            fill_diagonal(self.adjMat, np.nan)
-        except: # needed for older version of numpy
-            for x in range(len(self.adjMat[0,:])):
-                self.adjMat[x,x] = np.nan
-                    
-        # check if it's diagonal
-        sh = shape(self.adjMat)
-        if sh[0]!=sh[1]:
-            print("Note Bene: adjacency matrix not square.")
-            print(sh)
+            f = open(fname,"rb")
+        except IOError, error:
+            (errorno, errordetails) = error
+            print "Couldn't find 3D position information"
+            print "Problem with opening file: "+errordetails                
+            return                
+               
+        # get data from file
+        lines = f.readlines()
+        nodeCount=0
+        for line in lines:
+            if delimiter:
+                l = split(line,sep=delimiter)
+            else:
+                l = split(line)
 
-        # create directed graph if necessary
-        self.directed = directed
-        if directed:
-            self.G = nx.DiGraph()
-            
-        # create nodes on graph
-        self.G.add_nodes_from(range(nodecount))  # creates one node for every line in the adjacency matrix
-        
-        # removes nodes with no connectivity (nan values) in the adjacency matrix
-        if delNanNodes:
-            for node in self.G.nodes():
-                if np.all(np.isnan(self.adjMat[node,:])):
-                    self.G.remove_node(node)
+            if convertMNI:
+                l[1] = 45 - (float(l[1])/2)
+                l[2] = 63 + (float(l[2])/2)
+                l[3] = 36 + (float(l[3])/2)
+            self.G.add_node(nodeCount, xyz=(float(l[1]),float(l[2]),float(l[3])), anatlabel=l[0])
 
-        # create edges by thresholding adjacency matrix
-        if MST:  # run just to get nodes in the graph and set up the adjacency matrix
-            self.adjMatThresholding(edgePC=None, totalEdges=None, MST=False)
-        
-        if(threshold or edgePC or totalEdges):
-            if thresholdtype=="global":
-                self.adjMatThresholding(edgePC, totalEdges, threshold, MST=MST)
-    
-            elif thresholdtype=="local":
-                self.localThresholding(totalEdges, edgePC)
-        else:
-            self.adjMatThresholding(MST=False)
-        
-        if not weighted:
-            self.binarise()
-            
+            nodeCount+=1
+                        
+    def importProperties(self, filename):
+        ''' add properties from a file. first lines should contain the property 
+            name and the following lines tabulated node indices and property value e.g.:
                 
+            colour
+            1 red
+            2 white    
+            2   4   green
+            
+            if 2 indices are given, the property is applied to edges instead. Can mix nodes and edges in the same file.
+            
+            
+        ''' 
+        
+        # load file from data
+        f = open(filename)
+        data = f.readlines()
+        
+        # check that there are enough lines to read
+        if len(data)<2:
+            print('no data in properties file')
+            return
+        
+        # get the proprety name
+        prop = data[0][:-1]       
+
+        # initialise output        
+        nodes = []
+        propValsNodes = []
+        edges = []
+        propValsEdges = []
+        
+        # extract data from file
+        for l in data[1:]:
+            # determine if it should apply to edges or nodes (by length)
+            try:
+                print(l)
+                value = split(l)
+                if len(value)==2:
+                    mode = 'nodes'
+                elif len(value)==3:
+                    mode =  'edges'
+            except:
+                print('couldn\'t parse data line. Please check property file', l)
+            
+            # get data
+            if mode=='nodes':
+                nodes.append(int(value[0]))
+                propValsNodes.append(value[1])
+                
+            elif mode=='edges':
+                edges.append([value[0],value[1]])
+                propValsEdges.append(value[2])
+        
+        # add data to brain
+        if len(nodes)>0:
+            self.addNodeProperties(prop, nodes, propValsNodes)
+        if len(edges)>0:
+            self.addEdgeProperty(prop, edges, propValsEdges)
+
+        return mode, prop # required for GUI
+                    
+        
+    def addNodeProperties(self, propertyName, nodeList, propList):
+        ''' add properties to nodes, reading from a list of nodes and a list of 
+            corresponding properties '''
+        
+        for ind in range(len(nodeList)):
+            n = nodeList[ind]
+            p = propList[ind]
+            try:
+                self.G.node[n][propertyName] = p
+            except:
+                print('property assignment failed: ' + propertyName + ' ' + str(n) + ' ' + str(p))
+
+
+    def addEdgeProperty(self, propertyName, edgeList, propList):
+        ''' add a property to a selection of edges '''
+        
+        for ind in range(len(edgeList)):
+            e = edgeList[ind]
+            p = propList[ind]
+            try:
+                self.G.edge[e[0]][e[1]][propertyName] = p
+            except:
+                print('edge property assignment failed: ' + propertyName + ' ' + str(e) + ' ' + str(p))
+
+        
+    ### supplementary structures
+
+    def importBackground(self, fname):
+        ''' Import a file for background template using nbbabel
+            gives a 3D array with data range 0 to 255 for test data
+            could be 4d??
+            defines an nibabel object, plus ndarrays with data and header info in
+        
+        '''        
+        self.nbbackground = nb.load(fname)
+        self.background = nbbackground.get_data()
+        self.backgroundHeader = nbbackground.get_header()        
+                
+    def importISO(self, fname):
+        ''' Import a file for isosurface info using nibabel
+            gives a 3D array with data range 0 to 255 for test data
+            could be 4d??
+            defines an nibabel object, plus ndarrays with data and header info in
+        
+        '''
+        self.nbiso = nb.load(fname)
+        self.iso = self.nbiso.get_data()
+        self.isoHeader = self.nbiso.get_header()
+        
+    def parcels(self, nodeList):
+        """
+        Plots 3D parcels specified in the nodeList. This function assumes the 
+        parcellation template has been loaded to the brain using brain.importISO.
+        Note, values passed to this function should corresond with those in the 
+        iso image, not necessarily the node values.
+        """
+        
+        zeroArr = np.zeros(self.iso.shape)
+        
+        for n in nodeList:
+            n = float(n)
+            nArr = np.ma.masked_where(self.iso !=n, self.iso)
+            nArr.fill_value=0.0
+            zeroArr = zeroArr + nArr
+            zeroArr.mask=None
+            
+        self.parcelList = np.ma.masked_values(zeroArr, 0.0)
+
+    def exportParcelsNii(self, outname='brain'):
+        """
+        This function saves the parcelList as a nifti file. It requires the
+        brain.parcels function has been run first.
+        """
+        N = nb.Nifti1Image(self.parcelList, self.nbiso.get_affine(), header=self.isoHeader)
+        nb.save(N, outname+'.nii')
+                     
+        
+
+    ## ===========================================================================    
     
+    
+    ##### Functions to alter the brain
+
+    ### adjacency matrix and edge thresholding
+    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, weighted=True, MST=False):
+        ''' Treshold the adjacency matrix to determine which nodes are linked by edges. There are 
+            three options:
+            
+            edgePC - a percentage of edges are taken
+            totalEdges - give a number for the total edges found
+            tVal - give a value for the threshold at which edges are chosen 
+            
+            rethreshold can be used if the threshold has already been applied '''
+
+        # create minimum spanning tree if specified
+        if MST:
+            # create minimum spanning tree
+            T = self.minimum_spanning_tree(self.G)
+
+        #### Determine threshold value
+        ## case 1: edgePC - percent of edges are shown
+
+        # get the number of edges to link
+        if edgePC:
+            n = np.shape(self.adjMat)[0]
+            # note this works for undirected graphs because it is applied to the whole adjacency matrix
+            if self.directed:
+                edgeNum = int(round(edgePC/100. * n * (n-1) * 0.5))                
+            else:
+                edgeNum = int(round(edgePC/100. * n * (n-1) ))
+
+            self.edgePC=edgePC # !! why  is this necessary?
+            print(edgeNum)
+            
+        ## case 2: totalEdges - give a fixed number of edges
+        elif totalEdges:
+            # allow a fixed number of edges
+            edgeNum = totalEdges
+            if not(self.directed):
+                edgeNum =  edgeNum * 2
+
+        ## case 3: absolute threshold - show all edges with weighting above threshold
+        else:
+            edgeNum = -1
+        
+        
+        ##### get threshold value
+        if edgeNum>=0:
+            # cases 1 and 2 from above - get threshold value for given number of edges
+#            if rethreshold:
+#                weights = [self.G[v[0]][v[1]]['weight'] for v in self.G.edges()]
+#            else:
+            weights = self.adjMat.flatten()
+            weights.sort()
+            while (str(weights[-1]) == 'nan'):
+                weights = weights[:-1]
+#            weights = [v for v in self.adjMat.flatten() if not str(v)=="nan"]
+#            weights.sort()
+
+            # case where all edges are included
+            if edgeNum > len(weights):
+                self.threshold = weights[0]
+
+            # case where only some edges are included
+            else:
+                self.threshold = weights[-edgeNum]
+#            try:
+#                threshold = weights[-edgeNum]
+#            except IndexError:
+#                threhsold = weights[0]
+        else:
+            self.threshold  = tVal
+        
+        ##### carry out thresholding on adjacency matrix
+        boolMat = self.adjMat>=self.threshold
+        try:
+            np.fill_diagonal(boolMat, 0)
+        except:
+            for x in range(len(boolMat[0,:])):
+                boolMat[x,x] = 0
+                
+        es = np.where(boolMat) # lists of where edges should be
+
+        # exclude duplicates if not directed 
+        if not(self.directed):
+            newes1 = []
+            newes2 = []
+            for ii in range(len(es[1])):
+                if es[0][ii]<=es[1][ii]:
+                    newes1.append(es[0][ii])
+                    newes2.append(es[1][ii])
+                    
+            es = (newes1, newes2)                   
+        
+        # add edges to networkx
+
+        if MST:
+            # recreate minimum spanning tree
+            self.G = T
+
+        # could improve the next few lines by spotting when you're only adding edges            
+        
+        # remove previous edges
+        self.G.remove_edges_from(self.G.edges())
+        # add new edges
+        for ii in range(len(es[0])):
+                node1 = es[0][ii]
+                node2 = es[1][ii]
+                
+                # check if edge doesn't already exist and weight isn't nan
+                if not(self.G.has_edge(node1, node2)) and not(np.isnan(self.adjMat[node1, node2])):
+                    self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
+                
+                    if MST:
+                        edgeCount = len(self.G.edges())
+                        if edgeCount >= edgeNum:
+                            break
+            
+    def localThresholding(self, totalEdges=None, edgePC=None):
+        '''
+        Applies a local threshold by adding connections based on local degree
+        rule from a nearest neighbour degree graph and built on a minimum
+        spanning tree. See Alexander-Bloch et al 2010
+        (http://www.pubmedcentral.nih.gov/articlerender.fcgi?artid=2965020&tool=pmcentrez&rendertype=abstract)
+        '''
+        nodecount = len(self.G.nodes())
+        
+        # get the number of edges to link
+        if not edgePC == None:  # needs to be written this way in case edgePC is 0
+            # find threshold as a percentage of total possible edges
+            # note this works for undirected graphs because it is applied to the whole adjacency matrix
+            edgeNum = int(edgePC * nodecount * (nodecount-1) / 2) 
+            self.edgePC=edgePC
+            
+        elif totalEdges:
+            # allow a fixed number of edges
+            edgeNum = totalEdges
+        else:
+            edgeNum = -1
+
+        k=1 # number of degrees for NNG
+    
+        # create minimum spanning tree
+        T = self.minimum_spanning_tree(self)
+        lenEdges = len(T.edges())
+        if lenEdges > edgeNum:
+            print "The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges."
+        
+        while lenEdges<edgeNum:
+            print "NNG degree: "+str(k)
+            # create nearest neighbour graph
+            nng = self.NNG(k)
+            
+            # failsafe in case there are no more edges to add
+            if len(nng.edges())==0:
+                print "There are no edges in the nearest neighbour graph - check you have set the delimiter appropriately"
+                break
+            
+            # remove edges from the NNG that exist already in the new graph/MST
+            nng.remove_edges_from(T.edges())
+            
+            # add weights to NNG
+            for e in nng.edges():
+                nng.edge[e[0]][e[1]]['weight'] = self.adjMat[e[0],e[1]]
+            
+            nng.edges(data=True)
+            
+            # get a list of edges from the NNG in order of weight
+            edgeList = sorted(nng.edges(data=True), key=lambda t: t[2]['weight'], reverse=True)
+            
+            # add edges to graph in order of connectivity strength
+            for edge in edgeList:
+                T.add_edges_from([edge])
+                lenEdges = len(T.edges())
+                if lenEdges >= edgeNum:
+                    break
+            
+            k+=1
+        
+        # redefine the graph as the MST with added edges
+        self.G = T
+        
+
+
+    def reconstructAdjMat(self):
+        ''' redefine the adjacency matrix from the edges and weights '''
+        n = len(self.G.nodes())
+        adjMat = np.zeros([n,n])
+        
+        for e in self.G.edges():
+            try:
+                w = self.G.edge[e[0]][e[1]]['weight']
+                adjMat[e[0], e[1]] = w
+                adjMat[e[1], e[0]] = w
+            except:
+                #print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )
+                adjMat[e[0], e[1]] = np.nan
+
+        self.adjMat = adjMat
+        
+        return adjMat
+        
+    def updateAdjMat(self, edge):
+        ''' update the adjacency matrix for a single edge '''
+        
+        try:
+            w = self.G.edge[edge[0]][edge[1]]['weight']
+            self.adjMat[edge[0], edge[1]] = w
+            self.adjMat[edge[1], edge[0]] = w
+        except:
+            print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
+            self.adjMat[edge[0], edge[1]] = np.nan
+            self.adjMat[edge[1], edge[0]] = np.nan
+            
+        
+    def binarise(self):
+        '''
+            removes weighting from edges 
+        '''
+        for edge in self.G.edges():
+            self.G.edge[edge[0]][edge[1]]['weight'] = 1        
+
+
+    ### making highlights
+
+                
+    def highlightFromConds(self, prop, rel, val, label = None, mode = 'edge', colour = (1.,0.,0.), opacity = 1.0):
+        ''' Creates a highlight by asking if the propertly prop is related to val by rel 
+        
+            type can be 'edge' or 'nodes', to filter for edges or nodes (coordinates) 
+            with the given property
+
+            rel can be one of the following strings:
+                geq - greater than or equal to
+                leq - less than or equal to
+                gt - strictly greater than
+                lt - stricctly less than
+                eq - equal to (i.e. exactly)
+                in(), in[), in(], in[] - within an interval, in this case val is a list of two numbers
+                contains - val is a string
+        '''
+
+        # check filter mode
+        if not(mode in ['edge', 'node']):
+            print('filter mode not recognised')
+            return
+        # check if label given
+        if not label:
+            label = self.getAutoLabel()
+            
+        # make a highlight object
+        h = highlightObj()
+        h.colour = colour
+        h.opacity = opacity
+        
+        # extract lists from edges        
+        if mode == 'edge':
+            h.edgeIndices = []
+            ind = -1
+            for e in self.G.edges(data = True):
+                ind = ind +1
+                try:
+                    d = self.G.edge[e[0]][e[1]][prop]
+                except:
+                    continue           
+                
+                # match properties
+                boolval = self.propCompare(d, rel, val)
+                
+                # save data in highlight
+                if boolval:
+                    h.edgeIndices.append((e[0],e[1])) 
+                    
+        
+        # extract lists from nodes
+        elif mode == 'node':
+            h.nodeIndices = []
+            for c in range(len(self.G.nodes())):
+                # get property
+
+                # special treatment for 'x', 'y' and 'z'
+                if prop=='x':
+                    d = self.G.node[c]['xyz'][0]
+                elif prop=='y':
+                    d = self.G.node[c]['xyz'][1]
+                elif prop=='z':
+                    d = self.G.node[c]['xyz'][2]
+                else:
+                    # any other property
+                    try:
+                        d = self.G.node[c][prop]
+                    except:
+                        continue
+                
+                # test property against criteria
+                boolval = self.propCompare(d, rel, val)
+                
+                # add to highlight if good
+                if boolval:
+                    h.nodeIndices.append(c)
+
+        
+        # add highlight to dictionary
+        self.highlights[label] = h
+                
+                
+    def makeHighlight(self, edgeInds, coordInds, col, label = None):
+        ''' create a highlight object from some edge indices '''
+        
+        h = highlightObj()
+        
+        h.edgeIndices = edgeInds
+        h.nodeIndices = coordsInds
+        h.colour = col
+        
+        if not(label):
+            label = self.getAutoLabel()
+        
+        self.highlights[label] = h
+        
+        
+    def propCompare(self, d, rel, val):
+        ''' compare d relative to val, used by highlightFromConds
+        
+        geq - greater than or equal to
+                leq - less than or equal to
+                gt - strictly greater than
+                lt - stricctly less than
+                eq - equal to (i.e. exactly)
+                in(), in[), in(], in[] - with
+                contains '''
+                
+        
+        if rel == 'eq':
+            b = d == val
+        elif rel == 'gt':
+            b = d > val
+        elif rel == 'lt':
+            b = d < val
+        elif rel == 'leq':
+            b = d <= val
+        elif rel == 'geq':
+            b = d >=val
+        elif rel == 'in()':
+            b = (d>val[0]) & (d<val[1])
+        elif rel == 'in[)':
+            b = (d>=val[0]) & (d<val[1])
+        elif rel == 'in(]':
+            b = (d>val[0]) & (d<=val[1])
+        elif rel == 'in[]':
+            b = (d>=val[0]) & (d<=val[1])
+        elif rel == 'contains':
+            b = d in val
+        else:
+            print('relation not recognised: ' + rel )
+        
+        return b        
+
+
+    def getAutoLabel(self):
+        ''' generate an automatic label for a highlight object if none given '''
+        
+        # get index of label
+        num = str(self.labelNo)
+        num = '0' * (4-len(num)) + num
+        
+        # make label and print
+        label = 'plot ' + num
+        print('automatically generated label: '+ label)
+        
+        # iterate label index
+        self.labelNo = self.labelNo + 1
+        
+        return label     
+
+
+    ### edge removal/degeneration
+            
+    def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, threshLimit=None,
+                   pcLimit=None, weightLossLimit=None, toxicNodes=None,
+                   riskEdges=None, spread=False, updateAdjmat=True,
+                   distances=False, spatialSearch=False):
+        ''' remove random edges from connections of the toxicNodes set, or from the riskEdges set. This occurs either until edgesRemovedLimit
+        number of edges have been removed (use this for a thresholded weighted graph), or until the weight loss
+        limit has been reached (for a weighted graph). For a binary graph, weight loss should be set
+        to 1.
+        
+        The spread option recruits connected nodes of degenerating edges to the toxic nodes list.
+        
+        By default this function will enact a random attack model, with a weight loss of 0.1 each iteration.
+        
+        Weights are taken as absolute values, so the weight in any affected edge tends to 0.    
+        
+        Spread can either be False, or a number specifying the weight above which to add
+        nodes within the list of at-risk nodes.
+        
+        '''
+        
+        if toxicNodes:
+            nodeList = [v for v in toxicNodes]
+        else:
+            nodeList = []
+            
+        # set limit
+        if weightLossLimit and pcLimit:
+            print "You have asked for both a weight and percentage connectivity limit, using the percentage connectivity limit"
+        
+        if threshLimit:
+            pcLimit = self.thresholdToPercentage(threshLimit)
+        
+        if pcLimit:
+            lenNodes = len(self.G.nodes())
+            lenEdges = len(self.G.edges())
+            
+            maxEdges = float(lenNodes * (lenNodes-1))
+            if not self.G.is_directed():
+                maxEdges = maxEdges / 2
+                
+            newEdgeNum = int(round(pcLimit * maxEdges))
+            if newEdgeNum > lenEdges:
+                print "The percentage threshold set is lower than the current graph, please choose a larger value"
+            
+            limit = lenEdges - newEdgeNum
+            weightLossLimit = False
+            
+        elif weightLossLimit:
+            limit = weightLossLimit
+        
+        else:
+            limit = edgesRemovedLimit
+        
+        if not riskEdges:
+            reDefineEdges=True
+            # if no toxic nodes defined, select the whole graph
+            if not nodeList:
+                nodeList = self.G.nodes()
+            
+            # generate list of at risk edges
+            riskEdges = [v for v in nx.edges(self.G, nodeList) if self.G.edge[v[0]][v[1]]['weight'] != 0.]
+        else:
+            reDefineEdges=False
+            
+        if spread:
+            nodeList = []
+            
+        # iterate number of steps
+        self.lengthEdgesRemoved = []
+        
+        # check if there are enough weights left
+        riskEdgeWtSum = np.sum([self.G.edge[v[0]][v[1]]['weight'] for v in riskEdges])
+        if limit > riskEdgeWtSum:
+            print "Not enough weight left to remove"
+            return nodeList
+            
+        
+        while limit>0.:
+            if not riskEdges and spatialSearch:
+                # find spatially closest nodes if no edges exist
+                # is it necessary to do this for all nodes?? - waste of computing power,
+                # choose node first, then calculated spatially nearest of a single node
+                newNode = self.findSpatiallyNearest(nodeList)
+                if newNode:
+                    print "Found spatially nearest node"
+                    nodeList.append(newNode)
+                    riskEdges = nx.edges(self.G, nodeList)
+                else:
+                    print "No further edges to degenerate"
+                    break
+            # choose at risk edge to degenerate from           
+            dyingEdge = random.choice(riskEdges)            
+                        
+            # remove specified weight from edge
+            w = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
+            
+            if np.absolute(w) < weightloss:
+                loss = np.absolute(w)
+                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] = 0.
+                riskEdges.remove(dyingEdge)
+            
+            elif w>0:
+                loss = weightloss
+                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] -= weightloss
+                
+            else:
+                loss = weightloss
+                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] += weightloss
+            
+            # record the edge length of edges lost
+            if distances:
+                self.dyingEdges[dyingEdge] = self.G[dyingEdge[0]][dyingEdge[1]]
+                self.dyingEdges[dyingEdge]['distance'] =  np.linalg.norm( np.array((self.G.node[dyingEdge[0]]['xyz'])) - np.array((self.G.node[dyingEdge[1]]['xyz']))  )
+            
+            # update the adjacency matrix (essential if robustness is to be calculated)            
+            if updateAdjmat:
+                self.updateAdjMat(dyingEdge)
+                            
+            # add nodes to toxic list if the spread option is selected
+            if spread:
+                for node in dyingEdge:
+                    if not node in nodeList and self.G.edge[dyingEdge[0]][dyingEdge[1]] > spread:
+                        nodeList.append(node)
+                        
+            # remove edge if below the graph threshold
+            if self.G[dyingEdge[0]][dyingEdge[1]]['weight'] < self.threshold and self.threshold != -1:      # checks that the graph isn't fully connected and weighted, ie threshold = -1
+                self.G.remove_edge(dyingEdge[0], dyingEdge[1])
+                riskEdges.remove(dyingEdge)
+                print ' '.join(["Edge removed:",str(dyingEdge[0]),str(dyingEdge[1])])
+                if not weightLossLimit:
+                    limit-=1
+            
+            if weightLossLimit:
+                limit -= loss
+                
+            # redefine at risk edges
+            if reDefineEdges or spread:
+                riskEdges = nx.edges(self.G, nodeList)
+
+        
+        
+        ## Update adjacency matrix to reflect changes
+        #self.reconstructAdjMat()
+        
+        print "Number of toxic nodes: "+str(len(nodeList))
+        
+        return nodeList
+
+    def contiguousspread(self, edgeloss, startNodes = None):
+        ''' degenerate nodes in a continuous fashion. Doesn't currently include spreadratio '''
+
+        # make sure nodes have the linkedNodes attribute
+        try:
+            self.G.node[0]['linkedNodes']
+        except:
+            self.findLinkedNodes()
+            
+        # make sure all nodes have degenerating attribute
+        try:
+            self.G.node[0]['degenerating']
+        except:
+            for n in range(len(self.G.nodes())):
+                self.G.node[n]['degenerating']=False 
+        
+        # start with a random node or set of nodes
+        if not(startNodes):
+            # start with one random node if none chosen
+            toxicNodes = [random.randint(0, len(self.G.nodes()))]
+        else:
+            # otherwise use user provided nodes
+            toxicNodes = startNodes
+        # make all toxic nodes degenerating
+        for t in toxicNodes:
+            self.G.node[t]['degenerating'] = True
+                
+        # put at-risk nodes into a list
+        riskNodes = []
+        for t in toxicNodes:
+            l = self.G.node[t]['linkedNodes']
+            newl = []
+            # check the new indices aren't already toxic
+            for a in l:
+                if a in toxicNodes:
+                    continue
+                if self.G.node[a]['degenerating']:
+                    continue
+#                if not(a in toxicNodes)&(not(self.G.node[a]['degenerating'])):
+                newl.append(a)
+
+            riskNodes = riskNodes + newl
+
+        # iterate number of steps
+        toxicNodeRecord = [toxicNodes[:]]
+        for count in range(edgeloss):
+            # find at risk nodes
+            ind = random.randint(0, len(riskNodes)-1)
+            deadNode = riskNodes.pop(ind) # get the index of the node to be removed and remove from list
+            # remove all instances from list
+            while deadNode in riskNodes:
+                riskNodes.remove(deadNode)
+            
+            # add to toxic list    
+            toxicNodes.append(deadNode)
+            # make it degenerate
+            self.G.node[deadNode]['degenerating'] = True
+            print('deadNode', deadNode)
+            
+            
+            # add the new at-risk nodes
+            l = self.G.node[deadNode]['linkedNodes']
+            newl = []
+            # check the new indices aren't already toxic
+            for a in l:
+                if a in toxicNodes:
+                    continue
+                if self.G.node[a]['degenerating']:
+                    continue
+                newl.append(a)
+                
+            riskNodes = riskNodes + newl
+            
+            toxicNodeRecord.append(toxicNodes[:])
+            
+            # check that there are any more nodes at risk
+            if len(riskNodes)==0:
+                break
+            
+#            print(toxicNodes)
+            
+        # Update adjacency matrix to reflect changes
+        self.reconstructAdjMat()
+            
+        return toxicNodes, toxicNodeRecord              
+
+    ### other modifying functions
+    def randomiseGraph(self, largestconnectedcomp = False):
+        self.G = nx.gnm_random_graph(len(self.G.nodes()), len(self.G.edges()))
+        if largestconnectedcomp:
+            self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
+   
+    # =============================================================
+    
+    ##### Analysis functions
+
+    ### Minimum spanning tree functions
+
     def NNG(self, k):
+        ''' Creates nearest neighbour degree graph '''
         G = nx.Graph()
         nodes = range(len(self.adjMat[0]))
         
@@ -219,14 +961,19 @@ class brainObj:
                 l.mask[node] = True
         
         return(G)
-        
-    def importBackground(self, fname):
-        ''' Import a file for background template using nbbabel
+
+
+    def minimum_spanning_edges(self, weight='weight', data=True):
+        """Generate edges in a minimum spanning forest of an undirected 
+        weighted graph.
     
         A minimum spanning tree is a subgraph of the graph (a tree)
-        self.nbbackground = nb.load(fname)
-        self.background = nbbackground.get_data()
-        self.backgroundHeader = nbbackground.get_header()        
+        with the minimum sum of edge weights.  A spanning forest is a
+        union of the spanning trees for each connected component of the graph.
+    
+        Parameters
+        ----------
+        G : NetworkX Graph
         
         weight : string
            Edge data key to use for weight (default 'weight').
@@ -234,6 +981,7 @@ class brainObj:
         data : bool, optional
            If True yield the edge data along with the edge.
            
+        Returns
         -------
         edges : iterator
            A generator that produces edges in the minimum spanning tree.
@@ -268,22 +1016,6 @@ class brainObj:
         if self.G.is_directed():
             raise nx.NetworkXError(
                 "Mimimum spanning tree not defined for directed graphs.")
-    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, weighted=True, MST=False):
-        ''' Treshold the adjacency matrix to determine which nodes are linked by edges. There are 
-            three options:
-            
-            edgePC - a percentage of edges are taken
-            totalEdges - give a number for the total edges found
-            tVal - give a value for the threshold at which edges are chosen 
-            
-            rethreshold can be used if the threshold has already been applied '''
-
-        # create minimum spanning tree if specified
-        if MST:
-            # create minimum spanning tree
-            T = self.minimum_spanning_tree(self.G)
-
-        #### Determine threshold value
     
         subtrees = UnionFind()
         edges = sorted(self.G.edges(data=True),key=lambda t: t[2][weight], reverse=True)
@@ -297,36 +1029,47 @@ class brainObj:
                 else:
                     yield (u,v)
                 subtrees.union(u,v)
-        if MST:
-            # recreate minimum spanning tree
-            self.G = T
 
                 
     def minimum_spanning_tree(self, weight='weight'):
         """Return a minimum spanning tree or forest of an undirected 
         weighted graph.
-                node1 = es[0][ii]
-                node2 = es[1][ii]
+    
         A minimum spanning tree is a subgraph of the graph (a tree) with
         the minimum sum of edge weights.
+    
+        If the graph is not connected a spanning forest is constructed.  A
+        spanning forest is a union of the spanning trees for each
+        connected component of the graph.
+    
+        Parameters
+        ----------
+        G : NetworkX Graph
+        
+        weight : string
            Edge data key to use for weight (default 'weight').
+    
+        Returns
         -------
         G : NetworkX Graph
            A minimum spanning tree or forest. 
+        
+        Examples
+        --------
         >>> G=nx.cycle_graph(4)
         >>> G.add_edge(0,3,weight=2) # assign weight 2 to edge 0-3
         >>> T=nx.minimum_spanning_tree(G)
         >>> print(sorted(T.edges(data=True)))
         [(0, 1, {}), (1, 2, {}), (2, 3, {})]
-                
-                # check if edge doesn't already exist and weight isn't nan
-                if not(self.G.has_edge(node1, node2)) and not(np.isnan(self.adjMat[node1, node2])):
-                    self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
-                
-                    if MST:
-                        edgeCount = len(self.G.edges())
-                        if edgeCount >= edgeNum:
-                            break
+    
+        Notes
+        -----
+        Uses Kruskal's algorithm.
+    
+        If the graph edges do not have a weight attribute a default weight of 1
+        will be used.
+        """
+        T=nx.Graph(self.minimum_spanning_edges(weight="weight", data=True))
         # Add isolated nodes
         if len(T)!=len(self.G):
             T.add_nodes_from([n for n,d in self.G.degree().items() if d==0])
@@ -335,570 +1078,19 @@ class brainObj:
             T.node[n] = self.G.node[n].copy()
         T.graph = self.G.graph.copy()
         return T
-            
-        '''
-        Applies a local threshold by adding connections based on local degree
-        rule from a nearest neighbour degree graph and built on a minimum
-        spanning tree. See Alexander-Bloch et al 2010
-        (http://www.pubmedcentral.nih.gov/articlerender.fcgi?artid=2965020&tool=pmcentrez&rendertype=abstract)
-        '''
-        nodecount = len(self.G.nodes())
-        
-        # get the number of edges to link
-        if not edgePC == None:  # needs to be written this way in case edgePC is 0
-            # find threshold as a percentage of total possible edges
-            # note this works for undirected graphs because it is applied to the whole adjacency matrix
-            edgeNum = int(edgePC * nodecount * (nodecount-1) / 2) 
-            self.edgePC=edgePC
-            
-        elif totalEdges:
-            # allow a fixed number of edges
-            edgeNum = totalEdges
-        else:
-            edgeNum = -1
-
-        k=1 # number of degrees for NNG
-    
-        # create minimum spanning tree
-        T = self.minimum_spanning_tree(self)
-        lenEdges = len(T.edges())
-        if lenEdges > edgeNum:
-            print "The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges."
-        
-        while lenEdges<edgeNum:
-            if doPrint:
-                print "NNG degree: "+str(k)
-            # create nearest neighbour graph
-            nng = self.NNG(k)
-            
-            # failsafe in case there are no more edges to add
-            if len(nng.edges())==0:
-                print "There are no edges in the nearest neighbour graph - check you have set the delimiter appropriately"
-                break
-            
-            # remove edges from the NNG that exist already in the new graph/MST
-            nng.remove_edges_from(T.edges())
-            
-            # add weights to NNG
-            for e in nng.edges():
-                nng.edge[e[0]][e[1]]['weight'] = self.adjMat[e[0],e[1]]
-            
-            nng.edges(data=True)
-            
-            # get a list of edges from the NNG in order of weight
-            edgeList = sorted(nng.edges(data=True), key=lambda t: t[2]['weight'], reverse=True)
-            
-            # add edges to graph in order of connectivity strength
-            for edge in edgeList:
-                T.add_edges_from([edge])
-                lenEdges = len(T.edges())
-                if lenEdges >= edgeNum:
-                    break
-            
-            k+=1
-        
-        # redefine the graph as the MST with added edges
-        self.G = T
 
 
-
-    def reconstructAdjMat(self):
-        ''' redefine the adjacency matrix from the edges and weights '''
-        n = len(self.G.nodes())
-        adjMat = np.zeros([n,n])
-        
-        for e in self.G.edges():
-            try:
-                w = self.G.edge[e[0]][e[1]]['weight']
-                adjMat[e[0], e[1]] = w
-                adjMat[e[1], e[0]] = w
-            except:
-                #print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )
-                adjMat[e[0], e[1]] = np.nan
-
-        self.adjMat = adjMat
-        
-        return adjMat
-        
-    def updateAdjMat(self, edge):
-        ''' update the adjacency matrix for a single edge '''
-        
-        try:
-            w = self.G.edge[edge[0]][edge[1]]['weight']
-            self.adjMat[edge[0], edge[1]] = w
-            self.adjMat[edge[1], edge[0]] = w
-        except:
-            print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
-            self.adjMat[edge[0], edge[1]] = np.nan
-            self.adjMat[edge[1], edge[0]] = np.nan
-            
-        
-
-    def readSpatialInfo(self, fname, delimiter=" ", convertMNI=False):
-        ''' add 3D coordinate information for each node from a given file '''
-        
-        try:
-            f = open(fname,"rb")
-        except IOError, error:
-            (errorno, errordetails) = error
-            print "Couldn't find 3D position information"
-            print "Problem with opening file: "+errordetails                
-            return
-        
-        # get data from file
-        lines = f.readlines()
-        nodeCount=0
-        for line in lines:
-            l = split(line,sep=delimiter)
-            try:
-                self.G.node[nodeCount]['anatlabel'] = l[0]
-                if convertMNI:
-                    l[1] = 45 - (float(l[1])/2)
-                    l[2] = 63 + (float(l[2])/2)
-                    l[3] = 36 + (float(l[3])/2)
-                self.G.node[nodeCount]['xyz'] = (float(l[1]),float(l[2]),float(l[3]))
-                    
-            except:
-                print "Node "+str(nodeCount)+" does not exist in graph"
-            nodeCount+=1
-        del(lines)
-                 
-
-    def importSkull(self, fname):
-        ''' Import a file for skull info using nbbabel
-            gives a 3D array with data range 0 to 255 for test data
-            could be 4d??
-            defines an nibabel object, plus ndarrays with data and header info in
-        
-        '''        
-        
-        self.nbskull = nb.load(fname)
-        self.skull = self.nbskull.get_data()
-        self.skullHeader = self.nbskull.get_header()        
-                
-    def importISO(self, fname):
-        ''' Import a file for isosurface info using nbbabel
-            gives a 3D array with data range 0 to 255 for test data
-            could be 4d??
-            defines an nibabel object, plus ndarrays with data and header info in
-        
-        '''
-        self.nbiso = nb.load(fname)
-        self.iso = self.nbiso.get_data()
-        self.isoHeader = self.nbiso.get_header()
-        
-    def parcels(self, nodeList):
-        """
-        Plots 3D parcels specified in the nodeList. This function assumes the 
-        parcellation template has been loaded to the brain using brain.importISO.
-        Note, values passed to this function should corresond with those in the 
-        iso image, not necessarily the node values.
-        """
-        
-        zeroArr = zeros(self.iso.shape)
-        
-        for n in nodeList:
-            n = float(n)
-            nArr = np.ma.masked_where(self.iso !=n, self.iso)
-            nArr.fill_value=0.0
-            zeroArr = zeroArr + nArr
-            zeroArr.mask=None
-            
-        self.parcelList = np.ma.masked_values(zeroArr, 0.0)
-
-    def exportParcelsNii(self, outname='brain'):
-        """
-        This function saves the parcelList as a nifti file. It requires the
-        brain.parcels function has been run first.
-        """
-        N = nb.Nifti1Image(self.parcelList, self.nbiso.get_affine(), header=self.isoHeader)
-        nb.save(N, outname+'.nii')
-        
-    def nodePropertiesFromFile(self, filename, delimiter=None):
-        ''' add node properties from a file. first lines should contain the property 
-            name and the following lines tabulated node indices and property value e.g.:
-                
-            colour
-            1 red
-            2 white                
-        ''' 
-        
-        f = open(filename)
-        data = f.readlines()
-        
-        # check that there are enough lines to read
-        if len(data)<2:
-            print('no data in properties file')
-            return
-        
-        if delimiter:
-            prop = split(data[0], sep=delimiter)[:-1]
-        else:
-            prop = data[0][:-1]
-        
-        propVals = {}
-        for l in data[1:]:
-#            try:
-            if delimiter:
-                vals = split(l, sep=delimiter)
-            else:
-                vals = split(l)
-            propVals[int(vals[0])] = dict(zip(prop, vals[1:]))
-#            except:
-#                pass
-
-        for n in propVals.keys():
-            for p in prop:
-                self.G.node[n][p] = propVals[n][p]
-            
-        
-    def inputNodeProperties(self, propertyName, nodeList, propList):
-        ''' add properties to nodes, reading from a list of nodes and a list of 
-            corresponding properties '''
-        
-        for ind in range(len(nodeList)):
-            n = nodeList[ind]
-            p = propList[ind]
-            print(n, propertyName, p)
-            try:
-                self.G.node[n][propertyName] = p
-            except:
-                print('property assignment failed: ' + propertyName + ' ' + str(n) + ' ' + str(p))
-
-    
-    ## ===========================================================================
-    
-    ## Functions to alter the brain
-
-    def adjMatThresholding(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, doPrint=True, MST=True):
-        ''' apply thresholding to the adjacency matrix. This can be done in one of
-            three ways (in order of decreasing precendence):
-                edgePC - this percentage of nodes will be linked
-                totalEdges - this number of nodes will be linked
-                tVal - give an absolute threshold value. Pairs of nodes with a corresponding adj matrix
-                       value greater than this will be linked. Defaults to -1.1 to produce a fully connected graph.
-        '''
-
-        # check if adjacency matrix is there
-        if self.adjMat == None:
-            print("No adjacency matrix. Please load one.")
-            return
-
-        if MST:
-            # create minimum spanning tree
-            T = self.minimum_spanning_tree(self.G)
- 
-        if not rethreshold:
-            # remove existing edges
-            self.G.remove_edges_from(self.G.edges())
-
-        nodecount = len(self.G.nodes())
-            
-        # get the number of edges to link
-        if not edgePC == None:  # needs to be written this way in case edgePC is 0
-            # find threshold as a percentage of total possible edges
-            # note this works for undirected graphs because it is applied to the whole adjacency matrix
-            edgeNum = int(edgePC * nodecount * (nodecount-1))
-            self.edgePC=edgePC
-            
-        elif totalEdges:
-            # allow a fixed number of edges
-            edgeNum = totalEdges
-        else:
-            edgeNum = -1
-            
-        # get threshold
-        if edgeNum>0:
-            # get threshold value
-            if rethreshold:
-                weights = [self.G[v[0]][v[1]]['weight'] for v in self.G.edges()]
-            else:
-                weights = [v for v in self.adjMat.flatten() if not np.isnan(v)]
-            weights.sort()
-
-            try:
-                threshold = weights[-edgeNum]
-            except IndexError:
-                print "Check you are not trying to apply a lower threshold than the current "+str(self.threshold)
-                
-                if not 'self.threshold' in locals():
-                    threshold = -1                
-                else:
-                    return
-            if doPrint:
-                print("Threshold set at: "+str(threshold))
-        elif edgeNum==0.:
-            threshold=1.
-        else:
-            threshold  = tVal      
-            
-        self.threshold = threshold
-            
-        if rethreshold:
-            edgesToRemove = [v for v in self.G.edges() if self.G[v[0]][v[1]]['weight'] < threshold]
-            self.G.remove_edges_from(edgesToRemove)
-        else:
-            # carry out thresholding on adjacency matrix
-            boolMat = self.adjMat>threshold
-            
-            edgeCos = where(boolMat) # lists of where edges should be
-            
-            # display coordinates (for testing only)
-    #        for x in range(len(edgeCos[0])):
-    #            print(edgeCos[0][x], edgeCos[1][x])
-    
-            if MST:
-                # recreate minimum spanning tree
-                self.G = T
-            
-            edgeCount = len(self.G.edges())
-            
-            if edgeNum == -1:
-                edgeNum = len(self.G.nodes()) * (len(self.G.nodes())-1)
-            
-            # correct for undirected graph
-            edgeNum = edgeNum/2
-            
-            for ind in range(len(edgeCos[0])):
-                node1 = edgeCos[0][ind]
-                node2 = edgeCos[1][ind]
-                
-                # check if edge doesn't already exist and weight isn't nan
-                if not(self.G.has_edge(node1, node2)) and not(np.isnan(self.adjMat[node1, node2])):
-                    self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
-                
-                    if MST:
-                        edgeCount = len(self.G.edges())
-                        if edgeCount >= edgeNum:
-                            break
-                    
-    
-    def makeSubBrain(self, propName, value):
-        ''' separate out nodes and edges with a certain property '''
-
-        # initialise new brain
-        subBrain = brainObj()
-        
-        # option for making a direct copy
-        if value == "any":
-            subBrain.G = self.G
-        # use some subvalues
-        else:
-        
-            # get nodes from the current list
-            acceptedNodes = []
-    
-            # sort cases for different values
-            if type(value) == dict:
-                try:
-                    v1 = float(value['min'])
-                    v2 = float(value['max'])
-                except:
-                    print('min and max value not found in makeSubBrain')
-    
-                       
-                for n in self.G.nodes(data = True):
-                    print(n[1])
-                    try:
-                        v = n[1][propName]
-                        print(v, n, propName)
-                        if (v>=v1)&(v<=v2):
-        #                if n[1][propName] == value:
-                            subBrain.G.add_nodes_from([n])
-                            acceptedNodes.append(n[0])
-                    except:
-                        print('something went wrong')
-                        continue
-                    
-            else:
-                # make into a list if need be
-                if not(type(value))==list:
-                    value = [value]
-    
-                # check nodes to see if property is true
-                for n in self.G.nodes(data = True):
-                    try:
-    #                    if self.G.node[n][propName] in value:
-                        if n[1][propName] in value:
-                            subBrain.G.add_nodes_from([n])
-                            acceptedNodes.append(n[0])
-                    except:
-                        continue
-                
-            # add edges from the current brain if both nodes are in the current brain
-            for e in self.G.edges():
-                if (e[0] in acceptedNodes) & (e[1] in acceptedNodes):
-                    subBrain.G.add_edges_from([e])
-        
-        # construct adjacency matrix in new brain
-        subBrain.reconstructAdjMat()
-        
-        # transfer skull and isosurface
-        if self.skull != None:
-            subBrain.nbskull = self.nbskull
-            subBrain.skull = self.skull
-            subBrain.skullHeader = self.skullHeader
-        if self.iso != None:
-            subBrain.nbiso = self.nbiso
-            subBrain.iso = self.iso
-            subBrain.isoHeader = self.isoHeader
-        
-        return subBrain
-        
-        
-    def makeSubBrainEdges(self, propName, value):
-        ''' separate out edges with a certain property
-
-            value can be a a single value, or a defined range. The latter is 
-            given as a dictionary e.g. {'min': 0, 'max':1}
-        
-        '''
-
-    def contiguousspread(self, edgeloss, startNodes = None):
-        subBrain = brainObj()
-        subBrain.G.add_nodes_from(self.G.nodes(data=True))
-        acceptedEdges = []
-
-        # sort cases for different values
-        if type(value) == dict:
-            try:
-                v1 = float(value['min'])
-                v2 = float(value['max'])
-            except:
-                print 'min and max value not found in makeSubBrainEdges'
-
-            # check to see if property holds
-            for n in self.G.edges(data = True):
-                try:
-                    v = n[2][propName]
-                    if (v>=v1)&(v<=v2):
-    #                if n[1][propName] == value:
-                        subBrain.G.add_edges_from([n])
-                        acceptedEdges.append(n[0])
-                except:
-                    continue
-                
-            toxicNodes = [random.randint(0, len(self.G.nodes()))]
-        else:
-            # make into a list if need be
-            if not(type(value))==list:
-                value = [value]
-
-            # check edges to see if property is true
-            for n in self.G.edges(data = True):
-                try:
-#                    if self.G.node[n][propName] in value:
-                    if n[2][propName] in value:
-                        subBrain.G.add_nodes_from([n])
-                        acceptedEdges.append(n[0])
-                except:
-                    continue
-
-        # construct adjacency matrix in new brain
-        subBrain.reconstructAdjMat()
-        
-        # transfer skull and isosurface
-        if self.skull != None:
-            subBrain.nbskull = self.nbskull
-            subBrain.skull = self.skull
-            subBrain.skullHeader = self.skullHeader
-        if self.iso != None:
-            subBrain.nbiso = self.nbiso
-            subBrain.iso = self.iso
-            subBrain.isoHeader = self.isoHeader            
-                            
-        return subBrain    
-        
-    def makeSubBrainIndList(self, indices):
-        ''' Create a subbrain using the given list of nodes. Also taks edges those nodes are in '''
-
-        subbrain = brainObj()        
-        for ind in indices:
-            n = self.G.nodes(data=True)[ind]
-            subbrain.G.add_nodes_from([n])
-
-        # add edges from the current brain if both nodes are in the current brain
-        for e in self.G.edges():
-            if (e[0] in indices) & (e[1] in indices):
-                subbrain.G.add_edges_from([e])                      
-            
-        # construct adjacency matrix in new brain
-        subbrain.reconstructAdjMat()
-        
-        # transfer skull and isosurface
-        if self.skull != None:
-            subBrain.nbskull = self.nbskull
-            subBrain.skull = self.skull
-            subBrain.skullHeader = self.skullHeader
-        if self.iso != None:
-            subBrain.nbiso = self.nbiso
-            subBrain.iso = self.iso
-            subBrain.isoHeader = self.isoHeader            
-            
-        # should also transfer the adjacency matrix here
-        return subbrain
-        
-    def copy(self):
-        ''' make an exact copy of this brain '''
-        
-        newbrain = self.makeSubBrain(None, 'any')
-        newbrain.lengthEdgesRemoved = self.lengthEdgesRemoved
-        newbrain.bigconnG = self.bigconnG
-
-    def randomiseGraph(self, largestconnectedcomp = False):
-        self.G = nx.gnm_random_graph(len(self.G.nodes()), len(self.G.edges()))
-        if largestconnectedcomp:
-            self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
+    ### basic proximities
    
-        ''' Creates nearest neighbour degree graph '''
-
-    ## =============================================================
-    
-    ## Analysis functions
-
-    def reconstructAdjMat(self):
-        ''' redefine the adjacency matrix from the edges and weights '''
-        n = len(self.G.nodes())
-        adjMat = zeros([n,n])
-        
-        for e in self.G.edges():
-            try:
-                w = self.G.edge[e[0]][e[1]]['weight']
-                adjMat[e[0], e[1]] = w
-                adjMat[e[1], e[0]] = w
-            except:
-                #print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )
-                adjMat[e[0], e[1]] = np.nan
-
-        self.adjMat = adjMat
-        
-        return adjMat
-        
-    def updateAdjMat(self, edge, force=False):
-        ''' update the adjacency matrix for a single edge '''
-        
-        try:
-            w = self.G.edge[edge[0]][edge[1]]['weight']
-            self.adjMat[edge[0], edge[1]] = w
-            self.adjMat[edge[1], edge[0]] = w
-        except:                
-            print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
-            self.adjMat[edge[0], edge[1]] = np.nan
-            self.adjMat[edge[1], edge[0]] = np.nan
-        
-    
-    def findSpatiallyNearest(self, nodeList, allNodes=None):
+    def findSpatiallyNearest(self, nodeList):
         # find the spatially closest node as no topologically close nodes exist
         print "Finding spatially closest node"
         if isinstance(nodeList, list):
             duffNode = random.choice(nodeList)
         else:
             duffNode = nodeList
-        
-        if not allNodes:
-            allNodes = self.G.nodes()
             
-        nodes = [v for v in allNodes if v!=duffNode]
+        nodes = [v for v in self.G.nodes() if v!=duffNode]
         nodes = [v for v in nodes if not v in nodeList]
 
         shortestnode = (None, None)
@@ -977,15 +1169,15 @@ class brainObj:
         print 'newxyzlist'
         print newxyzList
         for l in newxyzList:
-            d = sqrt((l[1]-xyz0[0])**2 + (l[2]-xyz0[1])**2 + (l[3]-xyz0[2]**2))
+            d = np.sqrt((l[1]-xyz0[0])**2 + (l[2]-xyz0[1])**2 + (l[3]-xyz0[2]**2))
             dists = dists + [(d, l[0])]
         
         print('presort')
         print(dists)
         # sort distances
         dtype = [('d', float), ('ind', int)]
-        dists = array(dists, dtype = dtype)
-        dists = sort(dists, order = ['d', 'ind'])
+        dists = np.array(dists, dtype = dtype)
+        dists = np.sort(dists, order = ['d', 'ind'])
         print('postsort')
         print(dists)
         
@@ -1010,12 +1202,16 @@ class brainObj:
             try:
                 self.G.node[l[1]]['linkedNodes'] = self.G.node[l[1]]['linkedNodes'] + [l[0]]
             except:
-                self.G.node[l[1]]['linkedNodes'] = [l[0]]
-                    
+                self.G.node[l[1]]['linkedNodes'] = [l[0]]     
+
+                
     def weightToDistance(self):
+        ''' convert weights to a positive distance '''
         for edge in self.G.edges():
-            self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
-            
+                self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
+                
+        
+    ### hubs
 # legacy code to be removed
 #    def hubIdentifier(self, weighted=False, assign=False, recalc=True):
 #        """ 
@@ -1129,6 +1325,10 @@ class brainObj:
 #        #!! docstring missing
 #        hubscore = self.betweenessCentrality[node] + self.closenessCentrality[node] + self.degrees[node]
 #        return(hubscore)
+
+
+    ### other functions        
+
     def modularity(self, hierarchy=False, diagVal=0., nodesToExclude=None):
         '''
         Modularity function borrowed (after asking nicely!) from
@@ -1267,413 +1467,23 @@ class brainObj:
         
         # return hierarchy only if desired
         if hierarchy:
-            return(Ci, Q)
+            return(Ci, Q)            
                         
-        """
-        LEGACY CODE - THIS FUNCTION HAS NEVER WORKED WELL AND WILL BE REMOVED SHORTLY
-        Defines clusters using community detection algorithm and adjust layout for pretty presentations
-        
-        """
-        try:
-            clusters = community.best_partition(self.G)
-#            clusters = community.generate_dendogram(self.G)[0]
-                
-            # add community and degenerating attributes for each node
-            for node in self.G.nodes():
-                self.G.node[node]['cluster']=clusters[node] # adds a community attribute to each node
-            self.clusternames = set(clusters.values())
-        
-        except:
-            print "Can not assign clusters"
-            print "Setting all nodes to cluster 0"
-            for node in self.G.nodes():
-                self.G.node[node]['cluster'] = 0
-            self.clusternames = [0]
-            clusters = None
-    
-#        # set layout position for plotting
-#        xy = (0,400)
-#        try:
-#            angle = 360/len(self.clusternames)
-#        except:
-#            angle = 180
-#        
-#        points = {0:xy}
-#        for n in range(1,len(self.clusternames)):
-#            x = points[n-1][0]
-#            y = points[n-1][1]
-#            points[n] = (x*np.cos(angle)-y*np.sin(angle),x*np.sin(angle)+y*np.cos(angle))
-#        
-#        self.pos = {}
-#        
-#        for clust in self.clusternames:
-#            clusternodes = [v for v in self.G.nodes() if self.G.node[v]['cluster']==clust]
-#            clusteredges = [v for v in self.G.edges(clusternodes) if v[0] in clusternodes and v[1] in clusternodes]
-#            
-#            subgraph = nx.Graph()
-#            subgraph.add_nodes_from(clusternodes)
-#            subgraph.add_edges_from(clusteredges)
-#            
-#            if drawpos:
-#                centre = points[clust]
-#                
-#                clusterpos = nx_agraph.graphviz_layout(subgraph,prog='neato')
-#               
-#                for node in clusternodes:
-#                    self.pos[node] = (clusterpos[node][0]+centre[0],clusterpos[node][1]+centre[1])
-    
-        # calculate modularity
-        if clusters:
-            self.modularity = community.modularity(clusters,self.G)
-        else:
-            self.modularity = 0
-            
-    def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, threshLimit=None,
-                   pcLimit=None, weightLossLimit=None, toxicNodes=None,
-                   riskEdges=None, spread=False, updateAdjmat=True,
-                   distances=False, spatialSearch=False):
-        ''' remove random edges from connections of the toxicNodes set, or from the riskEdges set. This occurs either until edgesRemovedLimit
-        number of edges have been removed (use this for a thresholded weighted graph), or until the weight loss
-        limit has been reached (for a weighted graph). For a binary graph, weight loss should be set
-        to 1.
-        
-        The spread option recruits connected nodes of degenerating edges to the toxic nodes list.
-        
-        By default this function will enact a random attack model, with a weight loss of 0.1 each iteration.
-        
-        Weights are taken as absolute values, so the weight in any affected edge tends to 0.    
-        
-        Spread can either be False, or a number specifying the weight above which to add
-        nodes within the list of at-risk nodes.
+    def thresholdToPercentage(self, threshold):
         '''
+        Functional to convert a threshold to a percentage connectivity.
         
-        if toxicNodes:
-            nodeList = [v for v in toxicNodes]
-        else:
-            nodeList = []
-            
-        # set limit
-        if weightLossLimit and pcLimit:
-            print "You have asked for both a weight and percentage connectivity limit, using the percentage connectivity limit"
-        
-        if threshLimit:
-            pcLimit = self.thresholdToPercentage(threshLimit)
-        
-        if pcLimit:
-            lenNodes = len(self.G.nodes())
-            lenEdges = len(self.G.edges())
-            
-            maxEdges = float(lenNodes * (lenNodes-1))
-            if not self.G.is_directed():
-                maxEdges = maxEdges / 2
-                
-            newEdgeNum = int(round(pcLimit * maxEdges))
-            if newEdgeNum > lenEdges:
-                print "The percentage threshold set is lower than the current graph, please choose a larger value"
-            
-            limit = lenEdges - newEdgeNum
-            weightLossLimit = False
-            
-        elif weightLossLimit:
-            limit = weightLossLimit
-        
-        else:
-            limit = edgesRemovedLimit
-        
-        if not riskEdges:
-            reDefineEdges=True
-            # if no toxic nodes defined, select the whole graph
-            if not nodeList:
-                nodeList = self.G.nodes()
-            
-            # generate list of at risk edges
-            riskEdges = [v for v in nx.edges(self.G, nodeList) if self.G.edge[v[0]][v[1]]['weight'] != 0.]
-        else:
-            reDefineEdges=False
-            
-        if spread:
-            nodeList = []
-            
-        # iterate number of steps
-        self.lengthEdgesRemoved = []
-        
-        # check if there are enough weights left
-        riskEdgeWtSum = np.sum([self.G.edge[v[0]][v[1]]['weight'] for v in riskEdges])
-        if limit > riskEdgeWtSum:
-            print "Not enough weight left to remove"
-            return nodeList
-            
-        
-        while limit>0.:
-            if not riskEdges and spatialSearch:
-                # find spatially closest nodes if no edges exist
-                # is it necessary to do this for all nodes?? - waste of computing power,
-                # choose node first, then calculated spatially nearest of a single node
-                newNode = self.findSpatiallyNearest(nodeList)
-                if newNode:
-                    print "Found spatially nearest node"
-                    nodeList.append(newNode)
-                    riskEdges = nx.edges(self.G, nodeList)
-                else:
-                    print "No further edges to degenerate"
-                    break
-            # choose at risk edge to degenerate from           
-            dyingEdge = random.choice(riskEdges)            
-                        
-            # remove specified weight from edge
-            w = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
-            
-            if np.absolute(w) < weightloss:
-                loss = np.absolute(w)
-                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] = 0.
-                riskEdges.remove(dyingEdge)
-            
-            elif w>0:
-                loss = weightloss
-                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] -= weightloss
-                
-            else:
-                loss = weightloss
-                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] += weightloss
-            
-            # record the edge length of edges lost
-            if distances:
-                self.dyingEdges[dyingEdge] = self.G[dyingEdge[0]][dyingEdge[1]]
-                self.dyingEdges[dyingEdge]['distance'] =  np.linalg.norm( np.array((self.G.node[dyingEdge[0]]['xyz'])) - np.array((self.G.node[dyingEdge[1]]['xyz']))  )
-            
-            # update the adjacency matrix (essential if robustness is to be calculated)            
-            if updateAdjmat:
-                self.updateAdjMat(dyingEdge)
-                            
-            # add nodes to toxic list if the spread option is selected
-            if spread:
-                for node in dyingEdge:
-                    if not node in nodeList and self.G.edge[dyingEdge[0]][dyingEdge[1]] > spread:
-                        nodeList.append(node)
-                        
-            # remove edge if below the graph threshold
-            if self.G[dyingEdge[0]][dyingEdge[1]]['weight'] < self.threshold and self.threshold != -1:      # checks that the graph isn't fully connected and weighted, ie threshold = -1
-                self.G.remove_edge(dyingEdge[0], dyingEdge[1])
-                riskEdges.remove(dyingEdge)
-                print ' '.join(["Edge removed:",str(dyingEdge[0]),str(dyingEdge[1])])
-                if not weightLossLimit:
-                    limit-=1
-            
-            if weightLossLimit:
-                limit -= loss
-                
-            # redefine at risk edges
-            if reDefineEdges or spread:
-                riskEdges = nx.edges(self.G, nodeList)
-
-        
-        
-        ## Update adjacency matrix to reflect changes
-        #self.reconstructAdjMat()
-        
-        print "Number of toxic nodes: "+str(len(nodeList))
-        
-        return nodeList
-        
-    def degenerateNew(self, weightloss=0.1, edgesRemovedLimit=1, weightLossLimit=None, riskNodes=None, riskEdges=None, spread=False):
+        As this is returns a ratio between nodes and edges, it doesn't matter
+        whether the graph is directed (ie an asymmetric association matrix)
         '''
-        LEGACY CODE - FOR REMOVAL        
-        remove random edges from connections of the riskNodes set, or from the riskEdges set. This occurs either until edgesRemovedLimit
-        number of edges have been removed (use this for a thresholded weighted graph), or until the weight loss
-        limit has been reached (for a weighted graph). For a binary graph, weight loss should be set
-        to 1.
+        lenNodes = float(len(self.G.nodes()))
+        maxEdges = float(lenNodes) * (lenNodes-1)
         
-        The spread option recruits connected nodes of degenerating edges to the toxic nodes list.
-        
-        By default this function will enact a random attack model.
-        
-        What is the role of riskNodes??
-        '''  
-        
-        # generate list of at-risk nodes
-        nodeList = []
-        if riskNodes:
-            nodeList = [v for v in riskNodes]
-        else:
-            # if no toxic nodes defined, select a random node
-            if nodeList==[]:
-                nodeList = [random.choice(self.G.nodes())]
-#                nodeList = nodeList + self.G.neighbors(nodeList[0])
-#                nodeList = self.G.nodes()
+        lenEdges = len(self.adjMat.flatten()[self.adjMat.flatten()>threshold])
 
-        # generate list of at risk edges                    
-        if not(riskEdges):
-            riskEdges = nx.edges(self.G, nodeList)
-            print('new risk edges', len(riskEdges))
+        pc = lenEdges / maxEdges
+        return(pc)
 
-        # set limit in terms of total weight lost or number of edges removed
-        if weightLossLimit:
-            limit = weightLossLimit        
-        else:
-            limit = edgesRemovedLimit
-
-        # recording
-        deadEdgesRec = [[]]
-            
-        # iterate number of steps
-        while limit>0:
-            print(len(nodeList), 'nodes left')
-            if not riskEdges:
-                # find spatially closest nodes if no edges exist
-                # is it necessary to do this for all nodes?? - waste of computing power,
-                # choose node first, then calculated spatially nearest of a single node
-                newNode = self.findSpatiallyNearest(nodeList) # ugh? why for all nodes??
-                if newNode:
-                    print "Found spatially nearest node"
-                    nodeList.append(newNode)
-                    riskEdges = nx.edges(self.G, nodeList)
-                else:
-                    print "No further edges to degenerate"
-                    break
-            # choose at risk edge to degenerate from    
-            # not sure a random choice is suitable here, should be weighted by the edge weight??
-            dyingEdge = random.choice(riskEdges)
-            print("edge selected ", dyingEdge)
-                        
-            # remove specified weight from edge
-            w = self.G[dyingEdge[0]][dyingEdge[1]]['weight']            
-            # get amount to remove
-            if weightloss == 0:
-                loss = w
-            elif w>0:
-                loss = weightloss                
-            else:
-                # seems a bit weird to have a negative case!!
-                loss = -weightloss                
-            # remove amount from edge
-            new_w = max(w - loss, 0.)
-            tBool = new_w<self.threshold
-            self.G[dyingEdge[0]][dyingEdge[1]]['weight'] = new_w
-            print("old and new weights", w, new_w)
-            
-            # add nodes to toxic list if the spread option is selected
-            if spread:
-                for node in dyingEdge:
-                    if not (node in nodeList):
-                        nodeList.append(node)
-                        
-            # remove edge if below the graph threshold
-            if tBool & (self.threshold != -1):      # checks that the graph isn't fully connected and weighted, ie threshold = -1)                
-                self.G.remove_edges_from([dyingEdge])
-                riskEdges.pop(riskEdges.index(dyingEdge))
-                print ("Edge removed: " + str(dyingEdge[0]) + ' ' + str(dyingEdge[1]) )
-                
-                # recording
-                deadEdgesRec.append([dyingEdge])
-        
-            # iterate
-            if weightLossLimit:
-                limit -= loss
-            else:
-                limit = limit -1
-                
-            # redefine at risk edges
-            # not very efficient, this line
-            print(len(riskEdges))
-#            riskEdges = nx.edges(self.G, nodeList)
-
-        # Update adjacency matrix to reflect changes
-        self.reconstructAdjMat()
-        
-        print "Number of toxic nodes: "+str(len(nodeList))
-        
-        return nodeList, deadEdgesRec
-        
-
-
-    def contiguousspread(self, edgeloss, largestconnectedcomp=False, startNodes = None):
-        ''' degenerate nodes in a continuous fashion. Doesn't currently include spreadratio '''
-
-        # make sure nodes have the linkedNodes attribute
-        try:
-            self.G.node[0]['linkedNodes']
-        except:
-            self.findLinkedNodes()
-            
-        # make sure all nodes have degenerating attribute
-        try:
-            self.G.node[0]['degenerating']
-        except:
-            for n in range(len(self.G.nodes())):
-                self.G.node[n]['degenerating']=False 
-        
-        # start with a random node or set of nodes
-        if not(startNodes):
-            # start with one random node if none chosen
-            toxicNodes = [random.randint(len(self.G.nodes))]
-        else:
-            # otherwise use user provided nodes
-            toxicNodes = startNodes
-        # make all toxic nodes degenerating
-        for t in toxicNodes:
-            self.G.node[t]['degenerating'] = True
-                
-        # put at-risk nodes into a list
-        riskNodes = []
-        for t in toxicNodes:
-            l = self.G.node[t]['linkedNodes']
-            newl = []
-            # check the new indices aren't already toxic
-            for a in l:
-                if a in toxicNodes:
-                    continue
-                if self.G.node[a]['degenerating']:
-                    continue
-#                if not(a in toxicNodes)&(not(self.G.node[a]['degenerating'])):
-                newl.append(a)
-
-            riskNodes = riskNodes + newl
-
-
-        
-        # iterate number of steps
-        toxicNodeRecord = [toxicNodes[:]]
-        for count in range(edgeloss):
-            # find at risk nodes
-            ind = random.randint(0, len(riskNodes)-1)
-            deadNode = riskNodes.pop(ind) # get the index of the node to be removed and remove from list
-            # remove all instances from list
-            while deadNode in riskNodes:
-                riskNodes.remove(deadNode)
-            
-            # add to toxic list    
-            toxicNodes.append(deadNode)
-            # make it degenerate
-            self.G.node[deadNode]['degenerating'] = True
-            print('deadNode', deadNode)
-            
-            
-            # add the new at-risk nodes
-            l = self.G.node[deadNode]['linkedNodes']
-            newl = []
-            # check the new indices aren't already toxic
-            for a in l:
-                if a in toxicNodes:
-                    continue
-                if self.G.node[a]['degenerating']:
-                    continue
-                newl.append(a)
-                
-            riskNodes = riskNodes + newl
-            
-            toxicNodeRecord.append(toxicNodes[:])
-            
-            # check that there are any more nodes at risk
-            if len(riskNodes)==0:
-                break
-            
-#            print(toxicNodes)
-            
-        # Update adjacency matrix to reflect changes
-        self.reconstructAdjMat()
-            
-        return toxicNodes, toxicNodeRecord              
-            
         
     def percentConnected(self):
         '''
@@ -1688,16 +1498,10 @@ class brainObj:
         
         return self.percentConnections
         
-    def thresholdToPercentage(self, threshold):
-        '''
-        Functional to convert a threshold to a percentage connectivity.
         
-        As this is returns a ratio between nodes and edges, it doesn't matter
-        whether the graph is directed (ie an asymmetric association matrix)
-        '''
-        lenNodes = float(len(self.G.nodes()))
-        maxEdges = float(lenNodes) * (lenNodes-1)
-        
+    def largestConnComp(self):
+        self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
+
 # legacy code to be removed
 #    def checkrobustness(self, conVal, step):
 #        ''' Robustness is a measure that starts with a fully connected graph, \
@@ -1720,11 +1524,7 @@ class brainObj:
 #        return conVal+ (2*step)
 #
 #        
-        sn = str(num)
-        lenzeros = length - len(sn)
-        sn = lenzeros*'0' + sn
-
-    def robustness(self, iterLen=200, N=50):
+    def robustness(self, iterLen=500, N=50):
         ''' a function to calculate robustness based on "Error and attack
         tolerance of complex networks" Albert et al Nature 2000 406:378-382
         
@@ -1735,6 +1535,9 @@ class brainObj:
         
         N = size of the sliding window for smoothing the gradient
         iterLen = number of iterations
+        
+        Note, this function is relatively slow compared to other metrics due to
+        the multiple iterations.
         
         '''
         fList = np.zeros(iterLen)
@@ -1786,387 +1589,114 @@ class brainObj:
                 except:
                     pass
     
+    
     def assignbctResult(self, bctRes):
         ''' translate a maybrain connectome into a bct compatible format ''' 
         out = dict(zip(self.G.nodes(), bctRes))
         return(out) 
 
-class plotObj():
-    ''' classes that plot various aspects of a brain object '''
     ##### miscellaneous functions
 
 
     
-    def __init__(self):
+    def strnum(num, length=5):
+        ''' convert a number into a string of a given length'''
         
-        # initialise mayavi figure
-        self.startMayavi()  
+        sn = str(num)
+        lenzeros = length - len(sn)
+        sn = lenzeros*'0' + sn
         
-        self.nodesf = 0.5 # scale factor for nodes
-        
-        
-    def startMayavi(self):
-        ''' initialise the Mayavi figure for plotting '''        
-        
-        # start the engine
-        from mayavi.api import Engine
-        self.engine = Engine()
-        self.engine.start()
-        
-        # create a Mayavi figure
-        self.mfig = mlab.figure(bgcolor = (1,1,1), fgcolor = (0,0,0), engine = self.engine, size=(1500, 1500))
-        
-        # holders for plot objects
-        self.brainNodePlots = {}
-        self.brainEdgePlots = {}
-        self.skullPlots = {}
-        self.isosurfacePlots = {}
+        return sn        
 
-        # autolabel for plots
-        self.labelNo = 0         
-        
-           
-    def nodeToList(self, brain, nodeList=None, edgeList=None):
-        ''' convert nodes and edges to list of coordinates '''
-        if not nodeList:
-            nodeList=brain.G.nodes()
-        if not edgeList:
-            edgeList=brain.G.edges()
-        # get node coordinates into lists        
-        nodesX = []
-        nodesY = []
-        nodesZ = []
-        
-        for n in nodeList:
-            nodesX.append(brain.G.node[n]["xyz"][0])
-            nodesY.append(brain.G.node[n]["xyz"][1])
-            nodesZ.append(brain.G.node[n]["xyz"][2])
-        
-        # get edge coordinates and vectors into lists
-        edgesCx = []
-        edgesCy = []
-        edgesCz = []
-        edgesVx = []
-        edgesVy = []
-        edgesVz = []
-        
-        for e in edgeList:
-            c, v = self.getCoords(brain, e)
-            edgesCx.append(c[0])
-            edgesCy.append(c[1])
-            edgesCz.append(c[2])
-            
-            edgesVx.append(v[0])
-            edgesVy.append(v[1])
-            edgesVz.append(v[2])
-            
-            
-        
-        return nodesX, nodesY, nodesZ, edgesCx, edgesCy, edgesCz, edgesVx, edgesVy, edgesVz
-        
 
-    def getNodesList(self, brain, nodeList=None, edgeList=None):
-        ''' convert nodes and edges to list of coordinates '''
-        if not nodeList:
-            nodeList=brain.G.nodes()
-        # get node coordinates into lists        
-        nodesX = []
-        nodesY = []
-        nodesZ = []
+class highlightObj():
+    ''' object to hold information to highlight a subsection of a brainObj '''
+    
+    def __init__(self, nodes = [], edges = []):
+        ''' Points refer to the indices of node coordinates in the brain object to which it
+        is related. Edges is a set of pairs of coordinates of the same brain object '''
         
-        for n in nodeList:
-            nodesX.append(brain.G.node[n]["xyz"][0])
-            nodesY.append(brain.G.node[n]["xyz"][1])
-            nodesZ.append(brain.G.node[n]["xyz"][2])
+#        self._mode = 'pe' # p, e or pe for points only, edges only or points and edges
+        self.nodeIndices = nodes # indices of points used from a brain object
+        self.edgeIndices = edges # list of ordered pairs of edges
+        self.colour = (0.5, 0.5, 0.5)
+        self.opacity = 1.0
+        self.edgeOpacity = None
+       
+        
+    def getEdgeCoordsToPlot(self, brain):
+        ''' turn list of edges into lists of coordinates - note that the second set of coordinates are the 
+        vector from the first to the second points of the edge '''
+        
+        # initialise outputs
+        x1 = []
+        x2 = []
+        y1 = []
+        y2 = []
+        z1 = []
+        z2 = []
+        s = []
                 
-        return nodesX, nodesY, nodesZ
-
-
-    def getEdgesList(self, brain, edgeList=None):
-        ''' and edges to list of coordinates '''
-        if not edgeList:
-            edgeList=brain.G.edges()
-        
-        # get edge coordinates and vectors into lists
-        edgesCx = []
-        edgesCy = []
-        edgesCz = []
-        edgesVx = []
-        edgesVy = []
-        edgesVz = []
-        
-        for e in edgeList:
-            c, v = self.getCoords(brain, e)
-            edgesCx.append(c[0])
-            edgesCy.append(c[1])
-            edgesCz.append(c[2])
+        for e in self.edgeIndices:
+            # get coordinates of edge indices
+            p1 = brain.G.node[e[0]]['xyz']
+            p2 = brain.G.node[e[1]]['xyz']    
             
-            edgesVx.append(v[0])
-            edgesVy.append(v[1])
-            edgesVz.append(v[2])
+            x1.append(p1[0])
+            x2.append(p2[0]-p1[0]) 
             
+            y1.append(p1[1])
+            y2.append(p2[1]-p1[1])
             
-        
-        return edgesCx, edgesCy, edgesCz, edgesVx, edgesVy, edgesVz
-
-
-    
-    def plotBrain(self, brain, label = None, nodes = None, edges = None, col = (0, 0, 0), opacity = 1.):
-        ''' plot the nodes and edges using Mayavi '''
-        
-        # sort out keywords
-        if not nodes:
-            nodeList = brain.G.nodes()
-        else:
-            nodeList = nodes
-        if not edges:
-            edgeList = brain.G.edges()
-        else:
-            edgeList = edges
+            z1.append(p1[2])
+            z2.append(p2[2]-p1[2])
             
-        if not(label):
-            label = self.getAutoLabel()
+            s.append(brain.G.edge[e[0]][e[1]]['weight'])
             
-        # turn nodes into lists for plotting
-        xn, yn, zn, xe, ye, ze, xv, yv, zv = self.nodeToList(brain, nodeList=nodeList, edgeList=edgeList)
-        
-        # plot nodes
-        s = mlab.points3d(xn, yn, zn, scale_factor = self.nodesf, color = col, opacity = opacity)
-        self.brainNodePlots[label] = s
-        
-        # plot edges
-        t = mlab.quiver3d(xe, ye, ze, xv, yv, zv, line_width = 1., mode = '2ddash', scale_mode = 'vector', scale_factor = 1., color = col, opacity = opacity)
-        self.brainEdgePlots[label] = t
-        
-    def plotManyLines(xe, ye, ze, xv, yv, zv, widths = None, color = None, opacity = None):
-        ''' plot many lines with mayavi '''
-        
-        # make the connections
-        
-        # plot a scatter plot ??
-        
-        # plot the lines
-        
-        return 1
-        
+        return x1, y1, z1, x2, y2, z2, s
         
     
+    def getCoords(self, brain):
+        ''' turn indices of points into coordinates '''
 
-    def plotBrainNodes(self, brain, nodes = None, col = (0.5, 0.5, 0.5), opacity = 1., label=None, sizeList=None):
-        ''' plot the nodes and edges using Mayavi 
-        The size list is a list of sizes for each node.        
-        '''
+        x = []
+        y = []
+        z = []        
         
-        # sort out keywords
-        if not nodes:
-            nodeList = brain.G.nodes()
-        else:
-            nodeList = nodes
+        for p in self.nodeIndices:
+            pc = brain.G.node[p]['xyz']
+            # pc = brain.G.node[p[1]]['xyz']
+            x.append(pc[0])
+            y.append(pc[1])
+            z.append(pc[2])
             
-        if not(label):
-            label = self.getAutoLabel()            
-            
-        # turn nodes into lists for plotting
-        xn, yn, zn = self.getNodesList(brain, nodeList=nodeList)
+        return x, y, z
         
-        # plot nodes
-        if sizeList:
-            try:
-                float(sizeList)
-                sizeList = np.repeat(sizeList, len(nodeList))
-            except:
-                pass
-            s = mlab.points3d(xn, yn, zn, sizeList, scale_factor = self.nodesf, color = col, opacity = opacity)
-
-        else:
-            s = mlab.points3d(xn, yn, zn, scale_factor = self.nodesf, color = col, opacity = opacity)
-        self.brainNodePlots[label] = s
-
-
-    def plotBrainEdges(self, brain, label = None, edges = None, col = (0, 0, 0), opacity = 1.):
-        ''' plot the nodes and edges using Mayavi '''
-        
-        # sort out keywords
-        if not edges:
-            edgeList = brain.G.edges()
-        else:
-            edgeList = edges
-            
-        if not(label):
-            label = self.getAutoLabel()            
-            
-        # turn nodes into lists for plotting
-        xe, ye, ze, xv, yv, zv = self.getEdgesList(brain, edgeList=edgeList)
-                
-        # plot edges
-        t = mlab.quiver3d(xe, ye, ze, xv, yv, zv, line_width = 1., mode = '2ddash', scale_mode = 'vector', scale_factor = 1., color = col, opacity = opacity)
-        self.brainEdgePlots[label] = t
-                       
-                       
-    def plotSubset(self, brain, nodeIndices, edgeIndices, col):
-        ''' plot a subset of nodes and edges. Nodes are plotted with colour 'col', a tuple of 3 numbers between 0 and 1, e.g. (0, 0.4, 0.6) '''
-        
-        nodeSubset = []
-        edgeSubset = []
-        
-        for ind in nodeIndices:
-            nodeSubset.append(brain.G.nodes()[ind])
-        for ind in edgeIndices:
-            edgeSubset.append(brain.G.edges()[ind])
-            
-        self.plotBrain(nodes = nodeSubset, edges = edgeSubset, col = col)
-        
-            
-    def getCoords(self, brain, edge):
-        ''' get coordinates from nodes and return a coordinate and a vector '''
-        
-        c1 = brain.G.node[edge[0]]["xyz"]
-        c2 = brain.G.node[edge[1]]["xyz"]
-        
-        diff = [c2[0]-c1[0], c2[1]-c1[1], c2[2]-c1[2]]    
-        
-        return c1, diff           
     
-    
-    def plotSkull(self, brain, label = None, contourVals = [], opacity = 0.1, cmap='Spectral'):
-        ''' plot the skull using Mayavi '''
+    def hlPrint(self, brain):
+        ''' print the contents of the highlight object '''
         
-        if not(label):
-            label = self.getAutoLabel()        
+        # introduction
+        print('# ================ #')
+        print('\n'+'highlight information:')
+        # colour
+        print('colour', self.colour)
+        # opacity
+        print('opacity', self.opacity) 
+        # edge opacity
+        print('edge opacity', self.edgeOpacity)
         
-        if contourVals == []:            
-            s = mlab.contour3d(brain.skull, opacity = opacity, colormap=cmap)
-        else:
-            s = mlab.contour3d(brain.skull, opacity = opacity, contours = contourVals, colormap=cmap)
+        # nodes
+        print('\n nodes')
+        for n in self.nodeIndices:
+            print(str(n), brain.G.node[n]['xyz'])
             
-        # get the object for editing
-        self.skullPlots[label] = s
-        
-        
-    def plotIsosurface(self, brain, label = None, contourVals = [], opacity = 0.1, cmap='autumn'):
-        ''' plot an isosurface using Mayavi, almost the same as skull plotting '''
-        
-        if not(label):
-            label = self.getAutoLabel()        
-        
-        if contourVals == []:            
-            s = mlab.contour3d(brain.iso, opacity = opacity, colormap=cmap)
-        else:
-            s = mlab.contour3d(brain.iso, opacity = opacity, contours = contourVals, colormap=cmap)
+        # edges
+        print('\n edges')
+        for e in self.edgeIndices:
+            print(str(e), brain.G.node[e[0]]['xyz'], brain.G.node[e[1]]['xyz'])
             
-        # get the object for editing
-        self.isosurfacePlots[label] = s
+        print('\n # ================ # \n')
         
-    def plotParcels(self, brain, label = None, contourVals = [], opacity = 0.5, cmap='autumn'):
-        ''' plot an isosurface using Mayavi, almost the same as skull plotting '''
-        
-        if not(label):
-            label = self.getAutoLabel()        
-        
-        if contourVals == []:            
-            s = mlab.contour3d(brain.parcels, opacity = opacity, colormap=cmap)
-        else:
-            s = mlab.contour3d(brain.parcels, opacity = opacity, contours = contourVals, colormap=cmap)
-            
-        # get the object for editing
-        self.isosurfacePlots[label] = s
-            
-    def changePlotProperty(self, plotType, prop, plotLabel, value = 0.):
-        ''' change a specified property prop of a plot of type plotType, index is used if multiple plots of
-            the same type have been made. Value is used by some properties.
-            
-            Allowed plotTypes: skull, brainNode, brainEdge
-            Allowed props: opacity, visibility, colour
-            
-            This is basically a shortcut to mayavi visualisation functions            
-            
-        '''
-        
-
-        try:            
-            # get plot
-            if plotType == 'skull':
-                plot = self.skullPlots[plotLabel]
-            elif plotType == 'brainNode':
-                plot = self.brainNodePlots[plotLabel]
-            elif plotType == 'brainEdge':
-                plot = self.brainEdgePlots[plotLabel]
-            else:
-                print 'plotType not recognised'
-                return
-        except:
-            # quietly go back if the selected plot doesn't exist
-            return
-        
-        # change plot opacity
-        if prop == 'opacity':
-            try:
-                plot.actor.property.opacity = value
-            except:
-                print('opacity value not recognised, should be a float', value)
-        
-        # toggle plot visibility
-        elif prop == 'visibility':
-            if type(value)!=bool:
-                if plot.actor.actor.visibility:
-                    plot.actor.actor.visibility = False
-                else:
-                    plot.actor.actor.visibility = True  
-                
-            else:
-                plot.actor.actor.visibility = value
-        # change plot colour
-        elif prop == 'colour':
-            try:
-                plot.actor.property.color = value            
-            except:
-                print('colour not recognised, should be a triple of values between 0 and 1', value)
-                
-        else:
-            print('property not recognised')
-            
-        
-    def getPlotProperty(self, plotType, prop, plotLabel):
-        ''' return the value of a given property for a given plot ''' 
-        
-        # get plot
-        if plotType == 'skull':
-            plot = self.skullPlots[plotLabel]
-        elif plotType == 'brainNode':
-            plot = self.brainNodePlots[plotLabel]
-        elif plotType == 'brainEdge':
-            plot = self.brainEdgePlots[plotLabel]
-        else:
-            print('plotType not recognised')
-            return
-            
-        if prop == 'opacity':
-            value = plot.actor.property.opacity
-        elif prop == 'visibility':
-            value =  plot.actor.actor.visibility
-        elif prop == 'colour':
-            value = plot.actor.property.color
-        else:
-            print('property not recognised')
-            return
-            
-        return value
-        
-
-    def getAutoLabel(self):
-        ''' generate an automatic label for a plot object if none given '''
-        
-        # get index of label
-        num = str(self.labelNo)
-        num = '0' * (4-len(num)) + num
-        
-        # make label and print
-        label = 'plot ' + num
-        print('automatically generated label: '+ label)
-        
-        # iterate label index
-        self.labelNo = self.labelNo + 1
-        
-        return label
-    
+       
         
