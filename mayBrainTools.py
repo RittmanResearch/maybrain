@@ -843,91 +843,92 @@ class brainObj:
         
         return nodeList
 
-    def contiguousspread(self, edgeloss, startNodes = None):
-        ''' degenerate nodes in a continuous fashion. Doesn't currently include spreadratio '''
-
-        # make sure nodes have the linkedNodes attribute
-        try:
-            self.G.node[0]['linkedNodes']
-        except:
-            self.findLinkedNodes()
-            
-        # make sure all nodes have degenerating attribute
-        try:
-            self.G.node[0]['degenerating']
-        except:
-            for n in range(len(self.G.nodes())):
-                self.G.node[n]['degenerating']=False 
-        
-        # start with a random node or set of nodes
-        if not(startNodes):
-            # start with one random node if none chosen
-            toxicNodes = [random.randint(0, len(self.G.nodes()))]
-        else:
-            # otherwise use user provided nodes
-            toxicNodes = startNodes
-        # make all toxic nodes degenerating
-        for t in toxicNodes:
-            self.G.node[t]['degenerating'] = True
-                
-        # put at-risk nodes into a list
-        riskNodes = []
-        for t in toxicNodes:
-            l = self.G.node[t]['linkedNodes']
-            newl = []
-            # check the new indices aren't already toxic
-            for a in l:
-                if a in toxicNodes:
-                    continue
-                if self.G.node[a]['degenerating']:
-                    continue
-#                if not(a in toxicNodes)&(not(self.G.node[a]['degenerating'])):
-                newl.append(a)
-
-            riskNodes = riskNodes + newl
-
-        # iterate number of steps
-        toxicNodeRecord = [toxicNodes[:]]
-        for count in range(edgeloss):
-            # find at risk nodes
-            ind = random.randint(0, len(riskNodes)-1)
-            deadNode = riskNodes.pop(ind) # get the index of the node to be removed and remove from list
-            # remove all instances from list
-            while deadNode in riskNodes:
-                riskNodes.remove(deadNode)
-            
-            # add to toxic list    
-            toxicNodes.append(deadNode)
-            # make it degenerate
-            self.G.node[deadNode]['degenerating'] = True
-            print('deadNode', deadNode)
-            
-            
-            # add the new at-risk nodes
-            l = self.G.node[deadNode]['linkedNodes']
-            newl = []
-            # check the new indices aren't already toxic
-            for a in l:
-                if a in toxicNodes:
-                    continue
-                if self.G.node[a]['degenerating']:
-                    continue
-                newl.append(a)
-                
-            riskNodes = riskNodes + newl
-            
-            toxicNodeRecord.append(toxicNodes[:])
-            
-            # check that there are any more nodes at risk
-            if len(riskNodes)==0:
-                break
-            
-#            print(toxicNodes)
-            
-        # Update adjacency matrix to reflect changes
-        self.reconstructAdjMat()
-            
-        return toxicNodes, toxicNodeRecord              
+# legacy code for removal
+#    def contiguousspread(self, edgeloss, startNodes = None):
+#        ''' degenerate nodes in a continuous fashion. Doesn't currently include spreadratio '''
+#
+#        # make sure nodes have the linkedNodes attribute
+#        try:
+#            self.G.node[0]['linkedNodes']
+#        except:
+#            self.findLinkedNodes()
+#            
+#        # make sure all nodes have degenerating attribute
+#        try:
+#            self.G.node[0]['degenerating']
+#        except:
+#            for n in range(len(self.G.nodes())):
+#                self.G.node[n]['degenerating']=False 
+#        
+#        # start with a random node or set of nodes
+#        if not(startNodes):
+#            # start with one random node if none chosen
+#            toxicNodes = [random.randint(0, len(self.G.nodes()))]
+#        else:
+#            # otherwise use user provided nodes
+#            toxicNodes = startNodes
+#        # make all toxic nodes degenerating
+#        for t in toxicNodes:
+#            self.G.node[t]['degenerating'] = True
+#                
+#        # put at-risk nodes into a list
+#        riskNodes = []
+#        for t in toxicNodes:
+#            l = self.G.node[t]['linkedNodes']
+#            newl = []
+#            # check the new indices aren't already toxic
+#            for a in l:
+#                if a in toxicNodes:
+#                    continue
+#                if self.G.node[a]['degenerating']:
+#                    continue
+##                if not(a in toxicNodes)&(not(self.G.node[a]['degenerating'])):
+#                newl.append(a)
+#
+#            riskNodes = riskNodes + newl
+#
+#        # iterate number of steps
+#        toxicNodeRecord = [toxicNodes[:]]
+#        for count in range(edgeloss):
+#            # find at risk nodes
+#            ind = random.randint(0, len(riskNodes)-1)
+#            deadNode = riskNodes.pop(ind) # get the index of the node to be removed and remove from list
+#            # remove all instances from list
+#            while deadNode in riskNodes:
+#                riskNodes.remove(deadNode)
+#            
+#            # add to toxic list    
+#            toxicNodes.append(deadNode)
+#            # make it degenerate
+#            self.G.node[deadNode]['degenerating'] = True
+#            print('deadNode', deadNode)
+#            
+#            
+#            # add the new at-risk nodes
+#            l = self.G.node[deadNode]['linkedNodes']
+#            newl = []
+#            # check the new indices aren't already toxic
+#            for a in l:
+#                if a in toxicNodes:
+#                    continue
+#                if self.G.node[a]['degenerating']:
+#                    continue
+#                newl.append(a)
+#                
+#            riskNodes = riskNodes + newl
+#            
+#            toxicNodeRecord.append(toxicNodes[:])
+#            
+#            # check that there are any more nodes at risk
+#            if len(riskNodes)==0:
+#                break
+#            
+##            print(toxicNodes)
+#            
+#        # Update adjacency matrix to reflect changes
+#        self.reconstructAdjMat()
+#            
+#        return toxicNodes, toxicNodeRecord              
 
     ### other modifying functions
     def randomiseGraph(self, largestconnectedcomp = False):
