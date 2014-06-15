@@ -41,7 +41,6 @@ class brainObj:
         # create an empty graph
         self.G = None # networkX object is now created by created by importSpatialInfo
         self.directed = False # is this a directed graph or not?
-        self.iter = None #!! not sure where this is used. It is often defined, but never actually used!
         
         # initialise global variables
         self.adjMat = None # adjacency matrix, containing weighting of edges. Should be square.
@@ -51,7 +50,7 @@ class brainObj:
         self.hubs = []
         self.lengthEdgesRemoved = None
         self.bigconnG = None
-        #!! following two added in merge
+
         self.dyingEdges = {}
         self.nodesRemoved = None
         
@@ -74,7 +73,6 @@ class brainObj:
 
     ### edges and nodes
 
-    #!! readAdjFile removed           
     def importAdjFile(self, fname, delimiter = None):
         ''' get the adjacency data from a file and return as an array '''
         
@@ -106,7 +104,6 @@ class brainObj:
         # set adjacency matrix
         self.adjMat = np.array(lines)
 
-    #!! After much deliberation, this function was kept from the master, but renamed
     def importSpatialInfo(self, fname, delimiter=None, convertMNI=False, newGraph=True):
         ''' add 3D coordinate information for each node from a given file
             note that the graph object is recreated here by default
@@ -147,7 +144,6 @@ class brainObj:
 
             nodeCount+=1
                         
-    #!! in merge importProperties taken from dev2
     def importProperties(self, filename):
         ''' add properties from a file. first lines should contain the property 
             name and the following lines tabulated node indices and property value e.g.:
@@ -238,15 +234,14 @@ class brainObj:
         
     ### supplementary structures
 
-    #!! rename skull to template
-    def importSkull(self, fname):
-        ''' Import a file for skull info using nbbabel
+    #!! rename skull to template. Renamed to Background
+    def importBackground(self, fname):
+        ''' Import a file for background template using nbbabel
             gives a 3D array with data range 0 to 255 for test data
             could be 4d??
             defines an nibabel object, plus ndarrays with data and header info in
         
         '''        
-        
         self.nbskull = nb.load(fname)
         self.skull = nbskull.get_data()
         self.skullHeader = nbskull.get_header()        
@@ -262,7 +257,6 @@ class brainObj:
         self.iso = self.nbiso.get_data()
         self.isoHeader = self.nbiso.get_header()
         
-    #!! in merge, parcels taken from master branch
     def parcels(self, nodeList):
         """
         Plots 3D parcels specified in the nodeList. This function assumes the 
@@ -299,8 +293,7 @@ class brainObj:
 
     ### adjacency matrix and edge thresholding
 
-    #!! need to create minimum spanning tree option??
-    #!! doPrint option removed in merge
+    #!! need to create minimum spanning tree option?? - yes!
     def applyThreshold(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False):
         ''' Treshold the adjacency matrix to determine which nodes are linked by edges. There are 
             three options:
@@ -432,8 +425,12 @@ class brainObj:
 
     #!! added from master is this in the right place?? 
     def localThresholding(self, totalEdges=None, edgePC=None):
-        #!! Add docstring to explain function
-        ''' '''
+        '''
+        Applies a local threshold by adding connections based on local degree
+        rule from a nearest neighbour degree graph and built on a minimum
+        spanning tree. See Alexander-Bloch et al 2010
+        (http://www.pubmedcentral.nih.gov/articlerender.fcgi?artid=2965020&tool=pmcentrez&rendertype=abstract)
+        '''
         nodecount = len(self.G.nodes())
         
         # get the number of edges to link
@@ -488,7 +485,7 @@ class brainObj:
             
             k+=1
         
-        #!! are you sure you want to redefine G here??
+        # redefine the graph as the MST with added edges
         self.G = T
         
         
@@ -803,8 +800,6 @@ class brainObj:
         
         return nodeList
 
-    #!! degenerateNew function removed
-
     def contiguousspread(self, edgeloss, largestconnectedcomp=False, startNodes = None):
         ''' degenerate nodes in a continuous fashion. Doesn't currently include spreadratio '''
 
@@ -890,33 +885,12 @@ class brainObj:
         self.reconstructAdjMat()
             
         return toxicNodes, toxicNodeRecord              
-            
-    #!! neuronsusceptibility removed            
-
-
-    #!! added from master branch. Which other function uses this one? Can it be removed (randomly, or otherwise?)            
-    def randomremove(self,edgeloss):
-        if not self.iter:
-            self.iter=0
-        try:
-            edges_to_remove = random.sample(self.G.edges(), edgeloss)
-            self.G.remove_edges_from(edges_to_remove)
-            
-        except ValueError:
-            print "No further edges left"
-            
-        self.iter += 1  
 
     ### other modifying functions
-
-    #!! added direct from master branch        
     def randomiseGraph(self, largestconnectedcomp = False):
         self.G = nx.gnm_random_graph(len(self.G.nodes()), len(self.G.edges()))
         if largestconnectedcomp:
             self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
-
-
-        
    
     # =============================================================
     
@@ -924,10 +898,8 @@ class brainObj:
 
     ### Minimum spanning tree functions
 
-    #!! This and following functions added during merge. Need explanation.
     def NNG(self, k):
-        ''' '''
-        #!! docstring missing
+        ''' Creates nearest neighbour degree graph '''
         G = nx.Graph()
         nodes = range(len(self.adjMat[0]))
         
@@ -1190,128 +1162,126 @@ class brainObj:
                 self.G.node[l[1]]['linkedNodes'] = [l[0]]     
 
                 
-    #!! new function from master
     def weightToDistance(self):
-        #!! docstring added
         ''' convert weights to a positive distance '''
         for edge in self.G.edges():
                 self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
                 
         
     ### hubs
-
-    def hubIdentifier(self, weighted=False, assign=False, recalc=True):
-        """ 
-        define hubs by generating a hub score, based on the sum of normalised scores for:
-            betweenness centrality
-            closeness centrality
-            degree
-        
-        hubs are defined as nodes 2 standard deviations above the mean hub score
-        
-        defines self.hubs
-        
-        if assign is true, then each node's dictionary is assigned a hub score
-        
-        Changelog 7/12/12:
-            - added possibility of weighted measures
-        """
-        
-        self.hubs = []
-        
-        #    get centrality measures
-        #!! got an error because reCalc wasn't a string, should it be??
-        if reCalc or not 'hubscore' in self.G.node[0].keys():
-            if weighted:
-                self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='distance').values()))
-                
-                self.weightToDistance()
-                self.closenessCentrality = np.array((centrality.closeness_centrality(self.G, distance="distance").values()))
-                self.degrees = np.array((nx.degree(self.G, weight='weight').values()))
-                          
-            else:
-                self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G).values()))
-                self.closenessCentrality = np.array((centrality.closeness_centrality(self.G).values()))
-                self.degrees = np.array((nx.degree(self.G).values()))
-            
-            # normalise values to mean 0, sd 1
-            self.betweenessCentrality -= np.mean(self.betweenessCentrality)
-            self.closenessCentrality -=  np.mean(self.closenessCentrality)        
-            self.degrees -= np.mean(self.degrees)
-            
-            self.betweenessCentrality /= np.std(self.betweenessCentrality)
-            self.closenessCentrality /=  np.std(self.closenessCentrality)        
-            self.degrees /= np.std(self.degrees)
-
-        hubScores = map(self.hubHelper, range(len(self.G.nodes())))
-        
-        for n,node in enumerate(self.G.nodes()):
-                self.G.node[node]['hubscore'] = hubScores[n]
-        else:
-            hubScores = [ self.G.node[v]['hubscore'] for v in self.G.nodes() ]
-            
-        # find 2 standard deviations above mean hub score
-        #!! sdT not defined
-        upperLimit = np.mean(np.array(hubScores)) + sdT*np.std(np.array(hubScores))
-    
-        # identify nodes as hubs if 2 standard deviations above hub score
-        self.hubs = [n for n in self.G.nodes() if self.G.node[n]['hubscore'] > upperLimit ]
-
-                
-    def psuedohubIdentifier(self):
-        """ 
-        define hubs by generating a hub score, based on the sum of normalised scores for:
-            betweenness centrality
-            closeness centrality
-            degree
-            
-        hubs are the two 5% connected nodes
-        """
-        self.hubs = []
-        # get degree
-        degrees = nx.degree(self.G)
-        sum_degrees = np.sum(degrees.values())
-        
-    #    get centrality measures
-        betweenessCentrality = centrality.betweenness_centrality(self.G)
-        sum_betweenness = np.sum(betweenessCentrality.values())
-        
-        closenessCentrality = centrality.closeness_centrality(self.G)
-        sum_closeness = np.sum(closenessCentrality.values())
-        
-    #   calculate the length of 5% of nodes
-        numHubs = len(self.G.nodes()) * 0.05
-        if numHubs < 1:
-            numHubs = 1
-            
-    #    combine normalised measures for each node to generate a hub score
-        hubScores = {}
-        for node in self.G.nodes():
-            self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
-            
-    #   Check if hub scores is more than those previously collected, and if so replace it in the list of hubs            
-            if len(hubScores.keys()) < numHubs:
-                hubScores[node] = self.G.node[node]['hubScore']
-                
-            else:
-                minhubScore = np.min(hubScores.values())
-                if self.G.node[node]['hubScore'] > minhubScore:
-                    minKeyList = [v for v in hubScores.keys() if hubScores[v] == minhubScore]
-                    for key in minKeyList:
-                        del(hubScores[key])
-                    
-                    hubScores[node] = self.G.node[node]['hubScore']
-                    
-    
-    #   identify nodes as hubs if 2 standard deviations above hub score
-        for node in hubScores.keys():
-            self.hubs.append(node)
-       
-       
-    def hubHelper(self, node):
-        #!! docstring missing
-        hubscore = self.betweenessCentrality[node] + self.closenessCentrality[node] + self.degrees[node]
-        return(hubscore)
+# legacy code to be removed
+#    def hubIdentifier(self, weighted=False, assign=False, recalc=True):
+#        """ 
+#        define hubs by generating a hub score, based on the sum of normalised scores for:
+#            betweenness centrality
+#            closeness centrality
+#            degree
+#        
+#        hubs are defined as nodes 2 standard deviations above the mean hub score
+#        
+#        defines self.hubs
+#        
+#        if assign is true, then each node's dictionary is assigned a hub score
+#        
+#        Changelog 7/12/12:
+#            - added possibility of weighted measures
+#        """
+#        
+#        self.hubs = []
+#        
+#        #    get centrality measures
+#        #!! got an error because reCalc wasn't a string, should it be??
+#        if reCalc or not 'hubscore' in self.G.node[0].keys():
+#            if weighted:
+#                self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='distance').values()))
+#                
+#                self.weightToDistance()
+#                self.closenessCentrality = np.array((centrality.closeness_centrality(self.G, distance="distance").values()))
+#                self.degrees = np.array((nx.degree(self.G, weight='weight').values()))
+#                          
+#            else:
+#                self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G).values()))
+#                self.closenessCentrality = np.array((centrality.closeness_centrality(self.G).values()))
+#                self.degrees = np.array((nx.degree(self.G).values()))
+#            
+#            # normalise values to mean 0, sd 1
+#            self.betweenessCentrality -= np.mean(self.betweenessCentrality)
+#            self.closenessCentrality -=  np.mean(self.closenessCentrality)        
+#            self.degrees -= np.mean(self.degrees)
+#            
+#            self.betweenessCentrality /= np.std(self.betweenessCentrality)
+#            self.closenessCentrality /=  np.std(self.closenessCentrality)        
+#            self.degrees /= np.std(self.degrees)
+#
+#        hubScores = map(self.hubHelper, range(len(self.G.nodes())))
+#        
+#        for n,node in enumerate(self.G.nodes()):
+#                self.G.node[node]['hubscore'] = hubScores[n]
+#        else:
+#            hubScores = [ self.G.node[v]['hubscore'] for v in self.G.nodes() ]
+#            
+#        # find 2 standard deviations above mean hub score
+#        #!! sdT not defined
+#        upperLimit = np.mean(np.array(hubScores)) + sdT*np.std(np.array(hubScores))
+#    
+#        # identify nodes as hubs if 2 standard deviations above hub score
+#        self.hubs = [n for n in self.G.nodes() if self.G.node[n]['hubscore'] > upperLimit ]
+#
+#                
+#    def psuedohubIdentifier(self):
+#        """ 
+#        define hubs by generating a hub score, based on the sum of normalised scores for:
+#            betweenness centrality
+#            closeness centrality
+#            degree
+#            
+#        hubs are the two 5% connected nodes
+#        """
+#        self.hubs = []
+#        # get degree
+#        degrees = nx.degree(self.G)
+#        sum_degrees = np.sum(degrees.values())
+#        
+#    #    get centrality measures
+#        betweenessCentrality = centrality.betweenness_centrality(self.G)
+#        sum_betweenness = np.sum(betweenessCentrality.values())
+#        
+#        closenessCentrality = centrality.closeness_centrality(self.G)
+#        sum_closeness = np.sum(closenessCentrality.values())
+#        
+#    #   calculate the length of 5% of nodes
+#        numHubs = len(self.G.nodes()) * 0.05
+#        if numHubs < 1:
+#            numHubs = 1
+#            
+#    #    combine normalised measures for each node to generate a hub score
+#        hubScores = {}
+#        for node in self.G.nodes():
+#            self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
+#            
+#    #   Check if hub scores is more than those previously collected, and if so replace it in the list of hubs            
+#            if len(hubScores.keys()) < numHubs:
+#                hubScores[node] = self.G.node[node]['hubScore']
+#                
+#            else:
+#                minhubScore = np.min(hubScores.values())
+#                if self.G.node[node]['hubScore'] > minhubScore:
+#                    minKeyList = [v for v in hubScores.keys() if hubScores[v] == minhubScore]
+#                    for key in minKeyList:
+#                        del(hubScores[key])
+#                    
+#                    hubScores[node] = self.G.node[node]['hubScore']
+#                    
+#    
+#    #   identify nodes as hubs if 2 standard deviations above hub score
+#        for node in hubScores.keys():
+#            self.hubs.append(node)
+#       
+#       
+#    def hubHelper(self, node):
+#        #!! docstring missing
+#        hubscore = self.betweenessCentrality[node] + self.closenessCentrality[node] + self.degrees[node]
+#        return(hubscore)
 
 
     ### other functions        
@@ -1323,7 +1293,6 @@ class brainObj:
         matlab to python code.
         
         The main modification is to allow NA values in the association matrix.
-        The code is being integrated in to maybrain: http://code.google.com/p/maybrain/
         
         The function only returns a hierarchical dictionary of matrices and
         modularities if hierarchy is True. Otherwise, labels are added to
@@ -1456,9 +1425,7 @@ class brainObj:
         # return hierarchy only if desired
         if hierarchy:
             return(Ci, Q)            
-            
-    #!! clusters function removed
-            
+                        
     def thresholdToPercentage(self, threshold):
         '''
         Functional to convert a threshold to a percentage connectivity.
@@ -1492,29 +1459,28 @@ class brainObj:
     def largestConnComp(self):
         self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
 
-                
-    def checkrobustness(self, conVal, step):
-        ''' Robustness is a measure that starts with a fully connected graph, \
-        then reduces the threshold incrementally until the graph breaks up in \
-        to more than one connected component. The robustness level is the \
-        threshold at which this occurs. '''
-
-        self.adjMatThresholding(edgePC = conVal)
-        conVal -= step
-        
-        sgLenStart = len(components.connected.connected_component_subgraphs(self.G))
-        #print "Starting sgLen: "+str(sgLenStart)
-        sgLen = sgLenStart
-
-        while(sgLen == sgLenStart and conVal > 0.):
-            self.adjMatThresholding(edgePC = conVal)
-            sgLen = len(components.connected.connected_component_subgraphs(self.G))  # identify largest connected component
-            conVal -= step
-            # print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
-        return conVal+ (2*step)
-
-        
-    #!! robustness function from master, checkrobustness removed
+# legacy code to be removed
+#    def checkrobustness(self, conVal, step):
+#        ''' Robustness is a measure that starts with a fully connected graph, \
+#        then reduces the threshold incrementally until the graph breaks up in \
+#        to more than one connected component. The robustness level is the \
+#        threshold at which this occurs. '''
+#
+#        self.adjMatThresholding(edgePC = conVal)
+#        conVal -= step
+#        
+#        sgLenStart = len(components.connected.connected_component_subgraphs(self.G))
+#        #print "Starting sgLen: "+str(sgLenStart)
+#        sgLen = sgLenStart
+#
+#        while(sgLen == sgLenStart and conVal > 0.):
+#            self.adjMatThresholding(edgePC = conVal)
+#            sgLen = len(components.connected.connected_component_subgraphs(self.G))  # identify largest connected component
+#            conVal -= step
+#            # print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
+#        return conVal+ (2*step)
+#
+#        
     def robustness(self, iterLen=500, N=50):
         ''' a function to calculate robustness based on "Error and attack
         tolerance of complex networks" Albert et al Nature 2000 406:378-382
