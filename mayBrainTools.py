@@ -82,7 +82,7 @@ class brainObj:
 
     ### edges and nodes
 
-    def importAdjFile(self, fname, delimiter = None):
+    def importAdjFile(self, fname, delimiter = None, NAval="nan", excludedNodes=None, delNanNodes=True):
         ''' get the adjacency data from a file and return as an array '''
         
         # open file
@@ -101,18 +101,40 @@ class brainObj:
         # get data and convert to lists of floats
         linesStr = reader[startLine:]
         lines = []
+        
         for l in linesStr:
             while l[-1] in ('\n', '\t'):
-                l = l[:-1]
-            lines.append(map(float, [v if v != "NA" else np.nan for v in split(l, sep=delimiter)]))                
-
+            	lines.append(map(float, [v if not NAval in v else np.nan for v in split(l, sep=delimiter)]))
 
         # close file                
         f.close()
 
-        # set adjacency matrix
-        self.adjMat = np.array(lines)
+        # create adjacency matrix as an array
+        self.adjMat = np.memmap("adjmat.mat",dtype="float32", shape=(len(lines), len(lines)), mode="w+")
+        self.adjMat[:] = array(lines)       # array of data
+        
+        # set excluded node connectivity values to nan
+        if excludedNodes:
+            for en in excludedNodes:
+                self.adjMat[:,en] = np.nan
+                self.adjMat[en,:] = np.nan
+        try:
+            fill_diagonal(self.adjMat, np.nan)
+        except: # needed for older version of numpy
+            for x in range(len(self.adjMat[0,:])):
+                self.adjMat[x,x] = np.nan
+                    
+        # check if it's diagonal
+        sh = shape(self.adjMat)
+        if sh[0]!=sh[1]:
+            print("Note Bene: adjacency matrix not square.")
+            print(sh)
 
+        # create directed graph if necessary
+        self.directed = directed
+        if directed:
+            self.G = nx.DiGraph()
+            
     def importSpatialInfo(self, fname, delimiter=None, convertMNI=False, newGraph=True):
         ''' add 3D coordinate information for each node from a given file
             note that the graph object is recreated here by default
@@ -302,7 +324,7 @@ class brainObj:
     ### adjacency matrix and edge thresholding
 
     #!! need to create minimum spanning tree option?? - yes!
-    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False):
+    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, directed = False, weighted=True, MST=True):
         ''' Treshold the adjacency matrix to determine which nodes are linked by edges. There are 
             three options:
             
@@ -398,7 +420,93 @@ class brainObj:
         # add new edges
         for ii in range(len(es[0])):
             self.G.add_edge(es[0][ii],es[1][ii], weight = self.adjMat[es[0][ii],es[1][ii]])
+    
+    
+    def readAdjFile(self, fname, threshold = None, edgePC = None, totalEdges = None, directed = False,
+                    delimiter=None, weighted=True, NAval="nan", thresholdtype="global", MST=True,
+                    excludedNodes=None, delNanNodes=True):
+        ''' load adjacency matrix with filename and threshold for edge definition 
+        Comment - I don't seem to be able to construct an unweighted directed graph, ie with edge number N(N-1) for an NxN adjacency matrix 
+        '''
         
+        print('loading data from ' + fname)
+
+        # open file
+        f = open(fname,"rb")
+        reader = f.readlines()        
+
+        # get line that data starts in 
+        startLine = 0
+        for line in reader:
+            if 'begins line' in str(line):
+                lstr = str(line)
+                whereLabel = lstr.find('begins line')
+                startLine = int(lstr[whereLabel + 12])-1
+                break
+                
+        # get data and convert to lists of floats
+        linesStr = reader[startLine:]
+        lines = []
+
+        for l in linesStr:
+            lines.append(map(float, [v if not NAval in v else np.nan for v in split(l, sep=delimiter)]))
+        nodecount = len(lines)                
+
+        # close file                
+        f.close()
+
+        # create adjacency matrix as an array
+        # would it be more memory efficient to save the adjacency matrix as a memory map?
+        self.adjMat = np.memmap("adjmat.mat",dtype="float32", shape=(len(lines), len(lines)), mode="w+")
+        self.adjMat[:] = array(lines)       # array of data
+        
+        # set excluded node connectivity values to nan
+        if excludedNodes:
+            for en in excludedNodes:
+                self.adjMat[:,en] = np.nan
+                self.adjMat[en,:] = np.nan
+        try:
+            fill_diagonal(self.adjMat, np.nan)
+        except: # needed for older version of numpy
+            for x in range(len(self.adjMat[0,:])):
+                self.adjMat[x,x] = np.nan
+                    
+        # check if it's diagonal
+        sh = shape(self.adjMat)
+        if sh[0]!=sh[1]:
+            print("Note Bene: adjacency matrix not square.")
+            print(sh)
+
+        # create directed graph if necessary
+        self.directed = directed
+        if directed:
+            self.G = nx.DiGraph()
+            
+        # create nodes on graph
+        self.G.add_nodes_from(range(nodecount))  # creates one node for every line in the adjacency matrix
+        
+        # removes nodes with no connectivity (nan values) in the adjacency matrix
+        if delNanNodes:
+            for node in self.G.nodes():
+                if np.all(np.isnan(self.adjMat[node,:])):
+                    self.G.remove_node(node)
+
+        # create edges by thresholding adjacency matrix
+        if MST:  # run just to get nodes in the graph and set up the adjacency matrix
+            self.adjMatThresholding(edgePC=None, totalEdges=None, MST=False)
+        
+        if(threshold or edgePC or totalEdges):
+            if thresholdtype=="global":
+                self.adjMatThresholding(edgePC, totalEdges, threshold, MST=MST)
+    
+            elif thresholdtype=="local":
+                self.localThresholding(totalEdges, edgePC)
+        else:
+            self.adjMatThresholding(MST=False)
+        
+        if not weighted:
+            self.binarise()
+
     def localThresholding(self, totalEdges=None, edgePC=None):
         '''
         Applies a local threshold by adding connections based on local degree
