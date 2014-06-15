@@ -53,10 +53,9 @@ class brainObj:
         
         # initialise global variables
         self.adjMat = None # adjacency matrix, containing weighting of edges. Should be square.
-        self.threshold = 0 # value of threshold for including edges
+        self.threshold = 0. # value of threshold for including edges
         
         # need to define the following, what do they do???
-        self.edgePC = 5 # an arbitrary value for percentage of edges to plot. #!! is this necessary?
         self.hubs = []
         self.lengthEdgesRemoved = None
         self.bigconnG = None
@@ -244,7 +243,6 @@ class brainObj:
         
     ### supplementary structures
 
-    #!! rename skull to template. Renamed to Background
     def importBackground(self, fname):
         ''' Import a file for background template using nbbabel
             gives a 3D array with data range 0 to 255 for test data
@@ -401,39 +399,6 @@ class brainObj:
         for ii in range(len(es[0])):
             self.G.add_edge(es[0][ii],es[1][ii], weight = self.adjMat[es[0][ii],es[1][ii]])
         
-
-    def reconstructAdjMat(self):
-        ''' redefine the adjacency matrix from the edges and weights '''
-        n = len(self.G.nodes())
-        adjMat = np.zeros([n,n])
-        
-        for e in self.G.edges():
-            try:
-                w = self.G.edge[e[0]][e[1]]['weight']
-                adjMat[e[0], e[1]] = w
-                adjMat[e[1], e[0]] = w
-            except:
-                #print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )
-                adjMat[e[0], e[1]] = np.nan
-
-        self.adjMat = adjMat
-        
-        return adjMat
-        
-    def updateAdjMat(self, edge):
-        ''' update the adjacency matrix for a single edge '''
-        
-        try:
-            w = self.G.edge[edge[0]][edge[1]]['weight']
-            self.adjMat[edge[0], edge[1]] = w
-            self.adjMat[edge[1], edge[0]] = w
-        except:
-            print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
-            self.adjMat[edge[0], edge[1]] = np.nan
-            self.adjMat[edge[1], edge[0]] = np.nan
-            
-
-    #!! added from master is this in the right place?? 
     def localThresholding(self, totalEdges=None, edgePC=None):
         '''
         Applies a local threshold by adding connections based on local degree
@@ -498,6 +463,38 @@ class brainObj:
         # redefine the graph as the MST with added edges
         self.G = T
         
+
+
+    def reconstructAdjMat(self):
+        ''' redefine the adjacency matrix from the edges and weights '''
+        n = len(self.G.nodes())
+        adjMat = np.zeros([n,n])
+        
+        for e in self.G.edges():
+            try:
+                w = self.G.edge[e[0]][e[1]]['weight']
+                adjMat[e[0], e[1]] = w
+                adjMat[e[1], e[0]] = w
+            except:
+                #print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )
+                adjMat[e[0], e[1]] = np.nan
+
+        self.adjMat = adjMat
+        
+        return adjMat
+        
+    def updateAdjMat(self, edge):
+        ''' update the adjacency matrix for a single edge '''
+        
+        try:
+            w = self.G.edge[edge[0]][edge[1]]['weight']
+            self.adjMat[edge[0], edge[1]] = w
+            self.adjMat[edge[1], edge[0]] = w
+        except:
+            print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
+            self.adjMat[edge[0], edge[1]] = np.nan
+            self.adjMat[edge[1], edge[0]] = np.nan
+            
         
     def binarise(self):
         '''
