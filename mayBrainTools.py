@@ -21,10 +21,16 @@ Change log:
     - Added a function to import isosurfaces, enabling the plotting function to be useful
     - Simplified the spatial positioning function
 
-"""
+To do:
+Move nibabel functions into another script
+Add in link to brain connectivity toolbox
+Date of conference: 3rd June
+change skull to background
+pysurfer??
 
-import os
-from shutil import move
+
+
+"""
 import networkx as nx
 import numpy as np
 from networkx.drawing import *
@@ -35,8 +41,7 @@ from numpy import shape, fill_diagonal, array, where, zeros, sqrt, sort, min, ma
 from mayavi import mlab
 from string import split
 import nibabel as nb
-from mayavi.core.ui.api import MlabSceneModel, SceneEditor
-from copy import deepcopy
+
 
 class brainObj:
     """
@@ -57,20 +62,22 @@ class brainObj:
         '''        
         
         # create an empty graph
-        self.G = nx.Graph()
+        self.G = nx.Graph() # create networkx object
         self.iter = None # not sure where this is used. It is often defined, but never actually used!
         
         # initialise global variables
         self.adjMat = None # adjacency matrix, containing weighting of edges.
-        self.threshold = 0
+        self.threshold = 0. # value of threshold for including edges
         
+
         self.dyingEdges = {}
         self.nodesRemoved = None
         self.bigconnG = None
         
-        self.nbskull = None
-        self.skull = None
-        self.skullHeader = None
+        # background info imported by nibabel
+        self.nbbackground = None # the nibabel object
+        self.background = None # coordinates of background
+        self.backgroundHeader = None # header of nibabel data
         
         self.nbiso = None
         self.iso = None
@@ -85,35 +92,64 @@ class brainObj:
         Comment - I don't seem to be able to construct an unweighted directed graph, ie with edge number N(N-1) for an NxN adjacency matrix 
         '''
         
-        print('loading data from ' + fname)
+    def importAdjFile(self, fname, delimiter = None, NAval="nan", excludedNodes=None, delNanNodes=True, directed=False):
 
         # open file
         f = open(fname,"rb")
-        reader = f.readlines()        
+        reader = f.readlines() 
 
-        # get line that data starts in 
+        # get line that data starts in, particularly useful for association matrices from brainwaver
         startLine = 0
         for line in reader:
             if 'begins line' in str(line):
                 lstr = str(line)
                 whereLabel = lstr.find('begins line')
                 startLine = int(lstr[whereLabel + 12])-1
+                reader = f.readlines() 
                 break
                 
         # get data and convert to lists of floats
         linesStr = reader[startLine:]
         lines = []
+        
         for l in linesStr:
             lines.append(map(float, [v if not NAval in v else np.nan for v in split(l, sep=delimiter)]))
-        nodecount = len(lines)                
 
         # close file                
         f.close()
 
         # create adjacency matrix as an array
-        # would it be more memory efficient to save the adjacency matrix as a memory map?
-        self.adjMat = np.memmap("adjmat.mat",dtype="float32", shape=(len(lines), len(lines)), mode="w+")
-        self.adjMat[:] = array(lines)       # array of data
+        self.adjMat = np.memmap("adjmat.mat",dtype="float64", shape=(len(lines), len(lines)), mode="w+")
+        self.adjMat[:] = np.array(lines)       # array of data
+        
+        # set excluded node connectivity values to nan
+        if excludedNodes:
+            for en in excludedNodes:
+                self.adjMat[:,en] = np.nan
+                self.adjMat[en,:] = np.nan
+        try:
+            fill_diagonal(self.adjMat, np.nan)
+        except: # needed for older version of numpy
+            for x in range(len(self.adjMat[0,:])):
+                self.adjMat[x,x] = np.nan
+                    
+        # check if it's diagonal
+        sh = np.shape(self.adjMat)
+        if sh[0]!=sh[1]:
+            print("Note Bene: adjacency matrix not square.")
+            print(sh)
+
+        # create directed graph if necessary
+        self.directed = directed
+        if directed:
+            self.G = nx.DiGraph()
+            
+        # convert networkx object to directed if specified
+            self.G = nx.Graph()
+
+        if self.directed:
+            # directional case
+            self.G = nx.DiGraph()
         
         # set excluded node connectivity values to nan
         if excludedNodes:
@@ -184,17 +220,13 @@ class brainObj:
         
         return(G)
         
-    def minimum_spanning_edges(self, weight='weight', data=True):
-        """Generate edges in a minimum spanning forest of an undirected 
-        weighted graph.
+    def importBackground(self, fname):
+        ''' Import a file for background template using nbbabel
     
         A minimum spanning tree is a subgraph of the graph (a tree)
-        with the minimum sum of edge weights.  A spanning forest is a
-        union of the spanning trees for each connected component of the graph.
-    
-        Parameters
-        ----------
-        G : NetworkX Graph
+        self.nbbackground = nb.load(fname)
+        self.background = nbbackground.get_data()
+        self.backgroundHeader = nbbackground.get_header()        
         
         weight : string
            Edge data key to use for weight (default 'weight').
@@ -202,7 +234,6 @@ class brainObj:
         data : bool, optional
            If True yield the edge data along with the edge.
            
-        Returns
         -------
         edges : iterator
            A generator that produces edges in the minimum spanning tree.
@@ -237,6 +268,22 @@ class brainObj:
         if self.G.is_directed():
             raise nx.NetworkXError(
                 "Mimimum spanning tree not defined for directed graphs.")
+    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, weighted=True, MST=False):
+        ''' Treshold the adjacency matrix to determine which nodes are linked by edges. There are 
+            three options:
+            
+            edgePC - a percentage of edges are taken
+            totalEdges - give a number for the total edges found
+            tVal - give a value for the threshold at which edges are chosen 
+            
+            rethreshold can be used if the threshold has already been applied '''
+
+        # create minimum spanning tree if specified
+        if MST:
+            # create minimum spanning tree
+            T = self.minimum_spanning_tree(self.G)
+
+        #### Determine threshold value
     
         subtrees = UnionFind()
         edges = sorted(self.G.edges(data=True),key=lambda t: t[2][weight], reverse=True)
@@ -250,46 +297,36 @@ class brainObj:
                 else:
                     yield (u,v)
                 subtrees.union(u,v)
+        if MST:
+            # recreate minimum spanning tree
+            self.G = T
+
                 
     def minimum_spanning_tree(self, weight='weight'):
         """Return a minimum spanning tree or forest of an undirected 
         weighted graph.
-    
+                node1 = es[0][ii]
+                node2 = es[1][ii]
         A minimum spanning tree is a subgraph of the graph (a tree) with
         the minimum sum of edge weights.
-    
-        If the graph is not connected a spanning forest is constructed.  A
-        spanning forest is a union of the spanning trees for each
-        connected component of the graph.
-    
-        Parameters
-        ----------
-        G : NetworkX Graph
-        
-        weight : string
            Edge data key to use for weight (default 'weight').
-    
-        Returns
         -------
         G : NetworkX Graph
            A minimum spanning tree or forest. 
-        
-        Examples
-        --------
         >>> G=nx.cycle_graph(4)
         >>> G.add_edge(0,3,weight=2) # assign weight 2 to edge 0-3
         >>> T=nx.minimum_spanning_tree(G)
         >>> print(sorted(T.edges(data=True)))
         [(0, 1, {}), (1, 2, {}), (2, 3, {})]
-    
-        Notes
-        -----
-        Uses Kruskal's algorithm.
-    
-        If the graph edges do not have a weight attribute a default weight of 1
-        will be used.
-        """
-        T=nx.Graph(self.minimum_spanning_edges(weight="weight", data=True))
+                
+                # check if edge doesn't already exist and weight isn't nan
+                if not(self.G.has_edge(node1, node2)) and not(np.isnan(self.adjMat[node1, node2])):
+                    self.G.add_edge(node1, node2, weight = self.adjMat[node1, node2])        
+                
+                    if MST:
+                        edgeCount = len(self.G.edges())
+                        if edgeCount >= edgeNum:
+                            break
         # Add isolated nodes
         if len(T)!=len(self.G):
             T.add_nodes_from([n for n,d in self.G.degree().items() if d==0])
@@ -298,8 +335,13 @@ class brainObj:
             T.node[n] = self.G.node[n].copy()
         T.graph = self.G.graph.copy()
         return T
-    
-    def localThresholding(self, totalEdges=None, edgePC=None, doPrint=False):
+            
+        '''
+        Applies a local threshold by adding connections based on local degree
+        rule from a nearest neighbour degree graph and built on a minimum
+        spanning tree. See Alexander-Bloch et al 2010
+        (http://www.pubmedcentral.nih.gov/articlerender.fcgi?artid=2965020&tool=pmcentrez&rendertype=abstract)
+        '''
         nodecount = len(self.G.nodes())
         
         # get the number of edges to link
@@ -355,9 +397,42 @@ class brainObj:
             
             k+=1
         
+        # redefine the graph as the MST with added edges
         self.G = T
 
-      
+
+
+    def reconstructAdjMat(self):
+        ''' redefine the adjacency matrix from the edges and weights '''
+        n = len(self.G.nodes())
+        adjMat = np.zeros([n,n])
+        
+        for e in self.G.edges():
+            try:
+                w = self.G.edge[e[0]][e[1]]['weight']
+                adjMat[e[0], e[1]] = w
+                adjMat[e[1], e[0]] = w
+            except:
+                #print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )
+                adjMat[e[0], e[1]] = np.nan
+
+        self.adjMat = adjMat
+        
+        return adjMat
+        
+    def updateAdjMat(self, edge):
+        ''' update the adjacency matrix for a single edge '''
+        
+        try:
+            w = self.G.edge[edge[0]][edge[1]]['weight']
+            self.adjMat[edge[0], edge[1]] = w
+            self.adjMat[edge[1], edge[0]] = w
+        except:
+            print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
+            self.adjMat[edge[0], edge[1]] = np.nan
+            self.adjMat[edge[1], edge[0]] = np.nan
+            
+        
 
     def readSpatialInfo(self, fname, delimiter=" ", convertMNI=False):
         ''' add 3D coordinate information for each node from a given file '''
@@ -679,11 +754,9 @@ class brainObj:
         
         '''
 
-        # initialise new brain
+    def contiguousspread(self, edgeloss, startNodes = None):
         subBrain = brainObj()
         subBrain.G.add_nodes_from(self.G.nodes(data=True))
-        
-        # get nodes from the current list
         acceptedEdges = []
 
         # sort cases for different values
@@ -705,6 +778,7 @@ class brainObj:
                 except:
                     continue
                 
+            toxicNodes = [random.randint(0, len(self.G.nodes()))]
         else:
             # make into a list if need be
             if not(type(value))==list:
@@ -771,26 +845,12 @@ class brainObj:
         newbrain.lengthEdgesRemoved = self.lengthEdgesRemoved
         newbrain.bigconnG = self.bigconnG
 
-        return newbrain
-
     def randomiseGraph(self, largestconnectedcomp = False):
         self.G = nx.gnm_random_graph(len(self.G.nodes()), len(self.G.edges()))
         if largestconnectedcomp:
             self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
-            
-    def randomremove(self,edgeloss):
-        if not self.iter:
-            self.iter=0
-        try:
-            edges_to_remove = random.sample(self.G.edges(), edgeloss)
-            self.G.remove_edges_from(edges_to_remove)
-            
-        except ValueError:
-            print "No further edges left"
-            
-        self.iter += 1
-        
-
+   
+        ''' Creates nearest neighbour degree graph '''
 
     ## =============================================================
     
@@ -956,6 +1016,119 @@ class brainObj:
         for edge in self.G.edges():
             self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
             
+# legacy code to be removed
+#    def hubIdentifier(self, weighted=False, assign=False, recalc=True):
+#        """ 
+#        define hubs by generating a hub score, based on the sum of normalised scores for:
+#            betweenness centrality
+#            closeness centrality
+#            degree
+#        
+#        hubs are defined as nodes 2 standard deviations above the mean hub score
+#        
+#        defines self.hubs
+#        
+#        if assign is true, then each node's dictionary is assigned a hub score
+#        
+#        Changelog 7/12/12:
+#            - added possibility of weighted measures
+#        """
+#        
+#        self.hubs = []
+#        
+#        #    get centrality measures
+#        #!! got an error because reCalc wasn't a string, should it be??
+#        if reCalc or not 'hubscore' in self.G.node[0].keys():
+#            if weighted:
+#                self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='distance').values()))
+#                
+#                self.weightToDistance()
+#                self.closenessCentrality = np.array((centrality.closeness_centrality(self.G, distance="distance").values()))
+#                self.degrees = np.array((nx.degree(self.G, weight='weight').values()))
+#                          
+#            else:
+#                self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G).values()))
+#                self.closenessCentrality = np.array((centrality.closeness_centrality(self.G).values()))
+#                self.degrees = np.array((nx.degree(self.G).values()))
+#            
+#            # normalise values to mean 0, sd 1
+#            self.betweenessCentrality -= np.mean(self.betweenessCentrality)
+#            self.closenessCentrality -=  np.mean(self.closenessCentrality)        
+#            self.degrees -= np.mean(self.degrees)
+#            
+#            self.betweenessCentrality /= np.std(self.betweenessCentrality)
+#            self.closenessCentrality /=  np.std(self.closenessCentrality)        
+#            self.degrees /= np.std(self.degrees)
+#
+#        hubScores = map(self.hubHelper, range(len(self.G.nodes())))
+#        
+#        for n,node in enumerate(self.G.nodes()):
+#                self.G.node[node]['hubscore'] = hubScores[n]
+#        else:
+#            hubScores = [ self.G.node[v]['hubscore'] for v in self.G.nodes() ]
+#            
+#        # find 2 standard deviations above mean hub score
+#        #!! sdT not defined
+#        upperLimit = np.mean(np.array(hubScores)) + sdT*np.std(np.array(hubScores))
+#    
+#        # identify nodes as hubs if 2 standard deviations above hub score
+#        self.hubs = [n for n in self.G.nodes() if self.G.node[n]['hubscore'] > upperLimit ]
+#
+#                
+#    def psuedohubIdentifier(self):
+#        """ 
+#        define hubs by generating a hub score, based on the sum of normalised scores for:
+#            betweenness centrality
+#            closeness centrality
+#            degree
+#            
+#        hubs are the two 5% connected nodes
+#        """
+#        self.hubs = []
+#        # get degree
+#        degrees = nx.degree(self.G)
+#        sum_degrees = np.sum(degrees.values())
+#        
+#    #    get centrality measures
+#        betweenessCentrality = centrality.betweenness_centrality(self.G)
+#        sum_betweenness = np.sum(betweenessCentrality.values())
+#        
+#        closenessCentrality = centrality.closeness_centrality(self.G)
+#        sum_closeness = np.sum(closenessCentrality.values())
+#        
+#    #   calculate the length of 5% of nodes
+#        numHubs = len(self.G.nodes()) * 0.05
+#        if numHubs < 1:
+#            numHubs = 1
+#            
+#    #    combine normalised measures for each node to generate a hub score
+#        hubScores = {}
+#        for node in self.G.nodes():
+#            self.G.node[node]['hubScore'] = betweenessCentrality[node]/sum_betweenness + closenessCentrality[node]/sum_closeness + degrees[node]/sum_degrees
+#            
+#    #   Check if hub scores is more than those previously collected, and if so replace it in the list of hubs            
+#            if len(hubScores.keys()) < numHubs:
+#                hubScores[node] = self.G.node[node]['hubScore']
+#                
+#            else:
+#                minhubScore = np.min(hubScores.values())
+#                if self.G.node[node]['hubScore'] > minhubScore:
+#                    minKeyList = [v for v in hubScores.keys() if hubScores[v] == minhubScore]
+#                    for key in minKeyList:
+#                        del(hubScores[key])
+#                    
+#                    hubScores[node] = self.G.node[node]['hubScore']
+#                    
+#    
+#    #   identify nodes as hubs if 2 standard deviations above hub score
+#        for node in hubScores.keys():
+#            self.hubs.append(node)
+#       
+#       
+#    def hubHelper(self, node):
+#        #!! docstring missing
+#        hubscore = self.betweenessCentrality[node] + self.closenessCentrality[node] + self.degrees[node]
+#        return(hubscore)
     def modularity(self, hierarchy=False, diagVal=0., nodesToExclude=None):
         '''
         Modularity function borrowed (after asking nicely!) from
@@ -963,7 +1136,6 @@ class brainObj:
         matlab to python code.
         
         The main modification is to allow NA values in the association matrix.
-        The code is being integrated in to maybrain: http://code.google.com/p/maybrain/
         
         The function only returns a hierarchical dictionary of matrices and
         modularities if hierarchy is True. Otherwise, labels are added to
@@ -1096,8 +1268,7 @@ class brainObj:
         # return hierarchy only if desired
         if hierarchy:
             return(Ci, Q)
-                
-    def clusters(self, drawpos=False):
+                        
         """
         LEGACY CODE - THIS FUNCTION HAS NEVER WORKED WELL AND WILL BE REMOVED SHORTLY
         Defines clusters using community detection algorithm and adjust layout for pretty presentations
@@ -1174,7 +1345,6 @@ class brainObj:
         
         Spread can either be False, or a number specifying the weight above which to add
         nodes within the list of at-risk nodes.
-        
         '''
         
         if toxicNodes:
@@ -1507,7 +1677,8 @@ class brainObj:
         
     def percentConnected(self):
         '''
-        This will only give the correct results 
+        This returns the percentage of the total number of possible connections
+        where an edge actually exists.
         '''
         if self.directed:
             totalConnections = len(self.G.nodes()*(len(self.G.nodes())-1))
@@ -1527,29 +1698,31 @@ class brainObj:
         lenNodes = float(len(self.G.nodes()))
         maxEdges = float(lenNodes) * (lenNodes-1)
         
-        lenEdges = len(self.adjMat.flatten()[self.adjMat.flatten()>threshold])
-
-        pc = lenEdges / maxEdges
-        return(pc)
-    
-    def binarise(self):
-        '''
-            removes weighting from edges 
-        '''
-        for edge in self.G.edges():
-            self.G.edge[edge[0]][edge[1]]['weight'] = 1
-        
-    def largestConnComp(self):
-        self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
-        
-    def strnum(self, num, length=5):
-        ''' convert a number into a string of a given length'''
-        
+# legacy code to be removed
+#    def checkrobustness(self, conVal, step):
+#        ''' Robustness is a measure that starts with a fully connected graph, \
+#        then reduces the threshold incrementally until the graph breaks up in \
+#        to more than one connected component. The robustness level is the \
+#        threshold at which this occurs. '''
+#
+#        self.adjMatThresholding(edgePC = conVal)
+#        conVal -= step
+#        
+#        sgLenStart = len(components.connected.connected_component_subgraphs(self.G))
+#        #print "Starting sgLen: "+str(sgLenStart)
+#        sgLen = sgLenStart
+#
+#        while(sgLen == sgLenStart and conVal > 0.):
+#            self.adjMatThresholding(edgePC = conVal)
+#            sgLen = len(components.connected.connected_component_subgraphs(self.G))  # identify largest connected component
+#            conVal -= step
+#            # print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
+#        return conVal+ (2*step)
+#
+#        
         sn = str(num)
         lenzeros = length - len(sn)
         sn = lenzeros*'0' + sn
-        
-        return sn
 
     def robustness(self, iterLen=200, N=50):
         ''' a function to calculate robustness based on "Error and attack
@@ -1594,6 +1767,7 @@ class brainObj:
             fList[i] = nr
         return(np.mean(fList) / len(self.G.nodes()))
         
+    ### brain connectivity toolbox
     def makebctmat(self):
         """
         Create a matrix for use with brain connectivity toolbox measures.
@@ -1613,12 +1787,15 @@ class brainObj:
                     pass
     
     def assignbctResult(self, bctRes):
+        ''' translate a maybrain connectome into a bct compatible format ''' 
         out = dict(zip(self.G.nodes(), bctRes))
-        return(out)
+        return(out) 
 
 class plotObj():
     ''' classes that plot various aspects of a brain object '''
-    
+    ##### miscellaneous functions
+
+
     
     def __init__(self):
         
