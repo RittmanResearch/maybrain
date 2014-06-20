@@ -113,11 +113,15 @@ class brainObj:
         self.adjMat = np.memmap("adjmat.mat",dtype="float64", shape=(len(lines), len(lines)), mode="w+")
         self.adjMat[:] = np.array(lines)       # array of data
         
+        # create nodes
+        self.G.add_nodes_from(range(self.adjMat.shape[0]))
+        
         # set excluded node connectivity values to nan
         if excludedNodes:
             for en in excludedNodes:
                 self.adjMat[:,en] = np.nan
                 self.adjMat[en,:] = np.nan
+                self.G.remove_node(en)
         try:
             fill_diagonal(self.adjMat, np.nan)
         except: # needed for older version of numpy
@@ -135,7 +139,7 @@ class brainObj:
         if directed:
             self.G = nx.DiGraph()
             
-    def importSpatialInfo(self, fname, delimiter=None, convertMNI=False, newGraph=True):
+    def importSpatialInfo(self, fname, delimiter=None, convertMNI=False, newGraph=False):
         ''' add 3D coordinate information for each node from a given file
             note that the graph object is recreated here by default
         '''
@@ -341,7 +345,7 @@ class brainObj:
 
         # get the number of edges to link
         if edgePC:
-            n = np.shape(self.adjMat)[0]
+            n = len(self.G.nodes())
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
             if self.directed:
                 edgeNum = int(round(edgePC/100. * n * (n-1) * 0.5))                
@@ -442,15 +446,18 @@ class brainObj:
         spanning tree. See Alexander-Bloch et al 2010
         (http://www.pubmedcentral.nih.gov/articlerender.fcgi?artid=2965020&tool=pmcentrez&rendertype=abstract)
         '''
-        nodecount = len(self.G.nodes())
-        
         # get the number of edges to link
-        if not edgePC == None:  # needs to be written this way in case edgePC is 0
-            # find threshold as a percentage of total possible edges
+        if edgePC:
+            n = len(self.G.nodes())
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
-            edgeNum = int(edgePC * nodecount * (nodecount-1) / 2) 
-            self.edgePC=edgePC
-            
+            if self.directed:
+                edgeNum = int(round(edgePC/100. * n * (n-1) * 0.5))                
+            else:
+                edgeNum = int(round(edgePC/100. * n * (n-1) ))
+
+            self.edgePC=edgePC # !! why  is this necessary?
+            print(edgeNum)
+                        
         elif totalEdges:
             # allow a fixed number of edges
             edgeNum = totalEdges
@@ -458,7 +465,7 @@ class brainObj:
             edgeNum = -1
 
         k=1 # number of degrees for NNG
-    
+        
         # create minimum spanning tree
         T = self.minimum_spanning_tree(self)
         lenEdges = len(T.edges())

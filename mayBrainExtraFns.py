@@ -154,27 +154,37 @@ def histograms(brain, outfilebase="brain"):
     # save the figure
     fig.savefig(outfilebase+"_histograms.png")
     
-def withinModuleDegree(brain, ci):
+def withinModuleDegree(G, ci, weight=None):
     """
     To calculate mean within module degree
     """
-    moduleList = [v for v in np.unique(ci.values())] # get module list
+    moduleList = [v for v in set(ci.values())] # get module list
     withinDegDict = {}  # output dictionary of modules and mean within module degree
-    for m in moduleList: # iterate through modules
-        eList = [e for e in brain.edges() if ci[e[0]]==m] # find edges exclusively within the module
-        eList = [e for e in eList if ci[e[1]]==m]
+    modDict = {m:[v for v in ci.keys() if ci[v]==m] for m in moduleList} # sort nodes in to modules
+    
+    for n in G.nodes():
+        m = ci[n] # iterate through modules
         
-        nMnodes = float(len([v for v in brain.nodes() if ci[v]==m]))
+        eList = G.edges([n])
+        eList = [e for e in eList if all([ci[e[0]]==m, ci[e[1]]==m])] # find edges exclusively within the module
         
-        wts = np.sum([brain.edge[e[0]][e[1]]['weight'] for e in eList])  # get weights/degree
-        withinDegDict[m] = wts/nMnodes  # mean of weight/degree
+        if weight:
+            wts = np.sum([float(G.edge[e[0]][e[1]]['weight']) for e in eList])  # get weights/degree
+        else:
+            wts = float(len(eList))
+        
+        if len(modDict[m]) > 1:
+            withinDegDict[n] = wts/(len(modDict[m])-1)  # mean of weight/degree, ie average degree within module
+        else:
+            withinDegDict[n] = 0.
+            
     return(withinDegDict)
     
 def writeResults(results, measure,
                  outfilebase="brain",
                  append=True,
                  edgePC=None,
-                 threshold=None):
+                 propDict=None):
     """ 
     Function to write out results    
     """
@@ -206,20 +216,23 @@ def writeResults(results, measure,
             headers = [measure]
         out = str(results)
 
-    # write headers
+     # write headers
+    if propDict:
+        propHeaders = propDict.keys()
+        propHeaders.sort()
+
     if writeHeadFlag:
         headers = ' '.join([str(v) for v in headers])
-        if edgePC:
-            headers = ' '.join(['edgePC', headers])
-        if threshold:
-            headers = ' '.join(['threshold', headers])
+        if propDict:
+            headers = ' '.join([' '.join(propHeaders), headers])
+            
         f.writelines(headers+'\n')
 
     # add on optional extras
-    if edgePC:
-        out = ' '.join([str(edgePC), out])
-    if threshold:
-        out = ' '.join([str(threshold), out])
+    if propDict:
+        outProps = ' '.join([str(propDict[v]) for v in propHeaders])
+        out = ' '.join([outProps, out])
+        
     f.writelines(out+'\n')
     f.close()
     
