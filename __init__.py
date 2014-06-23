@@ -9,7 +9,6 @@ Initialisation file for maybrain
 """
 
 from mayBrainTools import brainObj,highlightObj
-from mbplot import plotObj
 import writeFns
 import mayBrainExtraFns
 from recipes import loadFiles,loadAndThreshold,loadAndPlot

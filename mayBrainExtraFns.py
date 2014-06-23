@@ -8,11 +8,6 @@ Functions that used to be at the end of networkutils_bin_camb
 from os import path,rename
 import numpy as np
 import networkx as nx
-from networkx.algorithms import cluster
-from networkx.algorithms import centrality
-import random
-from networkx.algorithms import components
-from matplotlib import pyplot as plt
 from numpy import linalg as lg
 from numpy import fill_diagonal
 
@@ -115,6 +110,8 @@ def histograms(brain, outfilebase="brain"):
     Produces histograms of association matrix weights and edge lengths.
     Requires spatial information to have been loaded on to the graph.
     """
+    from matplotlib import pyplot as plt
+
     # define lengths for each edge
     for edge in brain.G.edges():
         brain.G.edge[edge[0]][edge[1]]['length'] = abs(lg.norm(np.array(brain.G.node[edge[0]]['xyz']) - np.array(brain.G.node[edge[1]]['xyz'])))

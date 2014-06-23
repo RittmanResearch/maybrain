@@ -9,7 +9,6 @@ A series of recipes for maybrain, intended to act as a quick start
 """
 
 from mayBrainTools import brainObj
-from mbplot import plotObj
 
 def loadFiles(adjname, coordname):
     ''' create a brain object and load adjacency matrix and coordinates. Returns a brain object. '''
@@ -35,7 +34,8 @@ def loadAndThreshold(adjname, coordname, threshold):
 def loadAndPlot(adjname, coordname, threshold, opacity = 1.0):
     ''' create a brain object from the given values, apply a threshold value
         then plot. Returns brain, plot. '''
-        
+    from mbplot import plotObj
+    
     # make brain object
     brain = brainObj()
     

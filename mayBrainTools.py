@@ -20,12 +20,10 @@ pysurfer??
 """
 import networkx as nx
 import numpy as np
-from networkx.drawing import *
-from networkx.algorithms import centrality
+#from networkx.drawing import *
 from networkx.algorithms import components
 import random
 from string import split
-import nibabel as nb
 
 #from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 
@@ -123,7 +121,7 @@ class brainObj:
                 self.adjMat[en,:] = np.nan
                 self.G.remove_node(en)
         try:
-            fill_diagonal(self.adjMat, np.nan)
+            np.fill_diagonal(self.adjMat, np.nan)
         except: # needed for older version of numpy
             for x in range(len(self.adjMat[0,:])):
                 self.adjMat[x,x] = np.nan
@@ -274,10 +272,12 @@ class brainObj:
             could be 4d??
             defines an nibabel object, plus ndarrays with data and header info in
         
-        '''        
+        '''
+        import nibabel as nb
+
         self.nbbackground = nb.load(fname)
-        self.background = nbbackground.get_data()
-        self.backgroundHeader = nbbackground.get_header()        
+        self.background = self.nbbackground.get_data()
+        self.backgroundHeader = self.nbbackground.get_header()        
                 
     def importISO(self, fname):
         ''' Import a file for isosurface info using nibabel
@@ -286,6 +286,8 @@ class brainObj:
             defines an nibabel object, plus ndarrays with data and header info in
         
         '''
+        import nibabel as nb
+        
         self.nbiso = nb.load(fname)
         self.iso = self.nbiso.get_data()
         self.isoHeader = self.nbiso.get_header()
@@ -314,6 +316,8 @@ class brainObj:
         This function saves the parcelList as a nifti file. It requires the
         brain.parcels function has been run first.
         """
+        import nibabel as nb
+        
         N = nb.Nifti1Image(self.parcelList, self.nbiso.get_affine(), header=self.isoHeader)
         nb.save(N, outname+'.nii')
                      
@@ -446,6 +450,7 @@ class brainObj:
         spanning tree. See Alexander-Bloch et al 2010
         (http://www.pubmedcentral.nih.gov/articlerender.fcgi?artid=2965020&tool=pmcentrez&rendertype=abstract)
         '''
+        self.applyThreshold()
         # get the number of edges to link
         if edgePC:
             n = len(self.G.nodes())
@@ -473,7 +478,7 @@ class brainObj:
             print "The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges."
         
         while lenEdges<edgeNum:
-            print "NNG degree: "+str(k)
+            #print "NNG degree: "+str(k)
             # create nearest neighbour graph
             nng = self.NNG(k)
             
@@ -636,7 +641,7 @@ class brainObj:
         h = highlightObj()
         
         h.edgeIndices = edgeInds
-        h.nodeIndices = coordsInds
+        h.nodeIndices = coordInds
         h.colour = col
         
         if not(label):
@@ -1215,8 +1220,9 @@ class brainObj:
                 
     def weightToDistance(self):
         ''' convert weights to a positive distance '''
+        maxWt = np.max([self.G.edge[v[0]][v[1]]['weight'] for v in self.G.edges()])
         for edge in self.G.edges():
-                self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
+                self.G.edge[edge[0]][edge[1]]["distance"] = maxWt+.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
                 
         
     ### hubs
@@ -1590,10 +1596,10 @@ class brainObj:
         """
         self.bctmat = np.zeros((len(self.G.nodes()),len(self.G.nodes())))
         nodeIndices = dict(zip(self.G.nodes(), range(len(self.G.nodes()))))
-        for nx,x in enumerate(self.G.nodes()):
+        for Nx,x in enumerate(self.G.nodes()):
             for y in self.G.edge[x].keys():
                 try:
-                    self.bctmat[nx,nodeIndices[y]] = self.G.edge[x][y]['weight']
+                    self.bctmat[Nx,nodeIndices[y]] = self.G.edge[x][y]['weight']
                 except:
                     pass
     

@@ -37,6 +37,7 @@ to do:
 #import os
 #os.environ['ETS_TOOLKIT'] = 'qt4'
 import maybrain as mb
+from maybrain import mbplot as mbp
 
 # To be able to use PySide or PyQt4 and not run in conflicts with traits,
 # we need to import QtGui and QtCore from pyface.qt
@@ -62,7 +63,7 @@ class mayBrainGUI(QtGui.QMainWindow):
 
         # set up function
         self.brains = {} # dictionary to hold brain objects
-        self.plot = mb.plotObj() # start plot object
+        self.plot = mbp.plotObj() # start plot object
         self.highlights = {} # dictionary of highlights, each entry contains [brainName, highlightName]
         
         # link up buttons and functions
