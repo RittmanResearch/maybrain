@@ -1591,10 +1591,10 @@ class brainObj:
         """
         self.bctmat = np.zeros((len(self.G.nodes()),len(self.G.nodes())))
         nodeIndices = dict(zip(self.G.nodes(), range(len(self.G.nodes()))))
-        for nx,x in enumerate(self.G.nodes()):
+        for Nx,x in enumerate(self.G.nodes()):
             for y in self.G.edge[x].keys():
                 try:
-                    self.bctmat[nx,nodeIndices[y]] = self.G.edge[x][y]['weight']
+                    self.bctmat[Nx,nodeIndices[y]] = self.G.edge[x][y]['weight']
                 except:
                     pass
     

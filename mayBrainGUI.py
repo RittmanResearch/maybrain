@@ -50,7 +50,6 @@ import sys
 import mayBrainUI as ui
 from os import path
 
-
 class mayBrainGUI(QtGui.QMainWindow):
     def __init__(self, parent=None):
         
@@ -63,7 +62,7 @@ class mayBrainGUI(QtGui.QMainWindow):
 
         # set up function
         self.brains = {} # dictionary to hold brain objects
-        self.plot = mb.mbplot.plotObj() # start plot object
+        self.plot = mb.plotObj() # start plot object
         self.highlights = {} # dictionary of highlights, each entry contains [brainName, highlightName]
         
         # link up buttons and functions
@@ -75,9 +74,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         # local variables
         self.lastFolder = None # last folder viewed by user
         self.brainName = ['brain', 0] # used to auto-create labels for brains if no user input given (currently only supports 1 brain)
-        
-        
-        
+                
     def connectSlots(self):
         ''' connect buttons and functions '''
 
@@ -567,9 +564,11 @@ class mayBrainGUI(QtGui.QMainWindow):
         
 if __name__ == "__main__":
     # using instance allows Mayavi to run alongside without any problems.
-    app = QtGui.QApplication.instance()
+    app = QtGui.QApplication([]) #.instance()
     ex = mayBrainGUI()
     ex.show()
+    app.exec_()
+
     sys.exit(app.exec_())
 
     
