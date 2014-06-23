@@ -276,8 +276,8 @@ class brainObj:
         
         '''        
         self.nbbackground = nb.load(fname)
-        self.background = nbbackground.get_data()
-        self.backgroundHeader = nbbackground.get_header()        
+        self.background = self.nbbackground.get_data()
+        self.backgroundHeader = self.nbbackground.get_header()        
                 
     def importISO(self, fname):
         ''' Import a file for isosurface info using nibabel
@@ -473,7 +473,7 @@ class brainObj:
             print "The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges."
         
         while lenEdges<edgeNum:
-            print "NNG degree: "+str(k)
+            #print "NNG degree: "+str(k)
             # create nearest neighbour graph
             nng = self.NNG(k)
             
@@ -1215,8 +1215,9 @@ class brainObj:
                 
     def weightToDistance(self):
         ''' convert weights to a positive distance '''
+        maxWt = np.max([self.G.edge[v[0]][v[1]]['weight'] for v in self.G.edges()])
         for edge in self.G.edges():
-                self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
+                self.G.edge[edge[0]][edge[1]]["distance"] = maxWt+.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
                 
         
     ### hubs

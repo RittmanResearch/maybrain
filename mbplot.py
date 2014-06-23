@@ -52,7 +52,7 @@ class plotObj():
         self.engine.start()
         
         # create a Mayavi figure
-        self.mfig = mlab.figure(bgcolor = (0, 0, 0), fgcolor = (1., 1., 1.), engine = self.engine, size=(1500, 1500))
+        self.mfig = mlab.figure(bgcolor = (1., 1., 1.), fgcolor = (0, 0, 0), engine = self.engine, size=(1500, 1500))
         
         # holders for plot objects
         self.brainNodePlots = {}
@@ -145,7 +145,7 @@ class plotObj():
         # plot all edges
         ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)
 
-        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (1., 1., 1.), opacity = opacity, label=label)  
+        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (0.,0.,0.), opacity = opacity, label=label)  
 
 
     def plotBrainHighlights(self, brain, highlights = [], labelPre = ''):    
@@ -217,7 +217,7 @@ class plotObj():
             
     #!! old version of plotbrain removed here
 
-    def plotBrainNodes(self, brain, nodes = None, col = (1, 1, 1), opacity = 1., label=None):
+    def plotBrainNodes(self, brain, nodes = None, col = (0.,0.,0.,), opacity = 1., label=None):
         ''' plot the nodes using Mayavi TO BE DEPRECATED'''
         
         # sort out keywords
