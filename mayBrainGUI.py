@@ -564,10 +564,10 @@ class mayBrainGUI(QtGui.QMainWindow):
         
 if __name__ == "__main__":
     # using instance allows Mayavi to run alongside without any problems.
-    app = QtGui.QApplication([]) #.instance()
+    app = QtGui.QApplication.instance()
     ex = mayBrainGUI()
     ex.show()
-    app.exec_()
+#    app.exec_()
 
     sys.exit(app.exec_())
 
