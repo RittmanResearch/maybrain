@@ -80,7 +80,7 @@ class brainObj:
 
     ### edges and nodes
 
-    def importAdjFile(self, fname, delimiter = None, NAval="nan", excludedNodes=None, delNanNodes=True, directed=False):
+    def importAdjFile(self, fname, delimiter = None, NAval="nan", excludedNodes=None, directed=False):
         ''' get the adjacency data from a file and return as an array '''
         
         # open file
@@ -172,7 +172,8 @@ class brainObj:
                 l[1] = 45 - (float(l[1])/2)
                 l[2] = 63 + (float(l[2])/2)
                 l[3] = 36 + (float(l[3])/2)
-            self.G.add_node(nodeCount, xyz=(float(l[1]),float(l[2]),float(l[3])), anatlabel=l[0])
+            if nodeCount in self.G.nodes():
+                self.G.add_node(nodeCount, xyz=(float(l[1]),float(l[2]),float(l[3])), anatlabel=l[0])
 
             nodeCount+=1
                         
@@ -551,7 +552,13 @@ class brainObj:
         for edge in self.G.edges():
             self.G.edge[edge[0]][edge[1]]['weight'] = 1        
 
-
+    def removeUnconnectedNodes(self):
+        '''
+            Remove any nodes with no connections
+        '''
+        nodeList =  [v for v in self.G.nodes() if self.G.degree(v)==0]
+        self.G.remove_nodes_from(nodeList)
+                
     ### making highlights
 
                 
