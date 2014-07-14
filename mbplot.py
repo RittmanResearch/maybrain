@@ -27,7 +27,7 @@ More details at http://code.google.com/p/maybrain/.
 
 
 from mayavi import mlab
-from numpy import array
+from numpy import array,repeat,max
 
 
 #!! plotObj taken from dev version. Legacy code removed    
@@ -124,16 +124,7 @@ class plotObj():
     def plotBrain(self, brain, opacity = 1.0, edgeOpacity = None, label = 'plot'):
         ''' plot all the coords, edges and highlights in a brain '''     
                
-        print('brainbase')
-        self.plotBrainBase(brain, opacity=opacity, edgeOpacity=edgeOpacity, label=label)
-        
-        print('brainhighlights')
-        self.plotBrainHighlights(brain)
-
-                
-    def plotBrainBase(self, brain, opacity = 1.0, edgeOpacity = None, label='plot'):
-        ''' plot all coordinates and edges in a brain '''
-
+        # sort out the edge opacity
         if not(edgeOpacity):
             edgeOpacity = opacity
 
@@ -141,11 +132,27 @@ class plotObj():
         coords = self.coordsToList(brain)
         self.plotCoords(coords, opacity = opacity, label=label)
         
+        # plot  edges
+        ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)    
+        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (1., 1., 1.), opacity = opacity, label=label)  
         
-        # plot all edges
-        ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)
-
-        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (0.,0.,0.), opacity = opacity, label=label)  
+        # plot the highlights
+        self.plotBrainHighlights(brain)
+        
+    def plotBrainCoords(self, brain, opacity = 1.0, label = 'coordplot', sizeList=None, col=(1,1,1), sf=None):
+        ''' plot all coordinates in a brain '''
+        
+        coords = self.coordsToList(brain)
+        self.plotCoords(coords, opacity = opacity, label=label, col=col, sizeList=sizeList, sf=sf)
+        
+        
+    def plotBrainEdges(self, brain, opacity = 1.0, label = 'edgeplot', col=(0., 0., 0.)):
+        ''' plot all edges within a brain 
+        #### Not working currently - plots in a different window ####        
+        ''' 
+        
+        ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)    
+        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = col, opacity = opacity, label=label)  
 
 
     def plotBrainHighlights(self, brain, highlights = [], labelPre = ''):    
@@ -181,12 +188,27 @@ class plotObj():
                 self.plotCoords((x,y,z), col = ho.colour, opacity = ho.opacity, label=label)        
         
         
-    def plotCoords(self, coords, col = (1,1,1), opacity = 1., label='plot'):
+    def plotCoords(self, coords, col = (1,1,1), opacity = 1., label='plot', sizeList=None, sf=None):
         ''' plot the coordinates of a brain object '''
-        
-        # note that scalar value is currently set to x
-        ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2], figure = self.mfig)
-        p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor = 0.1)
+        if sizeList==None:
+            # note that scalar value is currently set to x
+            ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
+                                                  figure = self.mfig)
+            sf = 1
+            
+        else:
+            try:
+                float(sizeList)
+                sizeList = repeat(sizeList, len(coords[0]))
+            except:
+                pass
+
+            if not sf:
+                sf = 100/max(sizeList)
+            ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
+                                                  sizeList, figure = self.mfig, scale_factor=sf)
+            
+        p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor = sf)
         
         self.brainNodePlots[label] = p
         print(label, p)
