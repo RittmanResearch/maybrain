@@ -139,10 +139,10 @@ class plotObj():
         # plot the highlights
         self.plotBrainHighlights(brain)
         
-    def plotBrainCoords(self, brain, opacity = 1.0, label = 'coordplot', sizeList=None, col=(1,1,1), sf=None):
+    def plotBrainCoords(self, brain, nodes="all", opacity = 1.0, label = 'coordplot', sizeList=None, col=(1,1,1), sf=None):
         ''' plot all coordinates in a brain '''
         
-        coords = self.coordsToList(brain)
+        coords = self.coordsToList(brain, nodeList=nodes)
         self.plotCoords(coords, opacity = opacity, label=label, col=col, sizeList=sizeList, sf=sf)
         
         
@@ -204,7 +204,7 @@ class plotObj():
                 pass
 
             if not sf:
-                sf = 100/max(sizeList)
+                sf = 25/max(sizeList)
             ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
                                                   sizeList, figure = self.mfig, scale_factor=sf)
             
@@ -279,9 +279,9 @@ class plotObj():
             label = self.getAutoLabel()        
         
         if contourVals == []:            
-            s = mlab.contour3d(brain.skull, opacity = opacity, colormap=cmap)
+            s = mlab.contour3d(brain.background, opacity = opacity, colormap=cmap)
         else:
-            s = mlab.contour3d(brain.skull, opacity = opacity, contours = contourVals, colormap=cmap)
+            s = mlab.contour3d(brain.background, opacity = opacity, contours = contourVals, colormap=cmap)
             
         # get the object for editing
         self.skullPlots[label] = s
