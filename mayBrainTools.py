@@ -460,11 +460,11 @@ class brainObj:
             n = len(self.G.nodes())
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
             if self.directed:
-                edgeNum = int(round(edgePC/100. * n * (n-1) * 0.5))                
+                edgeNum = int(round(edgePC/100. * n * (n-1) ))                
             else:
-                edgeNum = int(round(edgePC/100. * n * (n-1) ))
+                edgeNum = int(round(edgePC/100. * n * (n-1) * 0.5))
 
-            self.edgePC=edgePC # !! why  is this necessary?
+            self.edgePC=edgePC # !! why  is this necessary? -> just in case you forget and want to check!
             print(edgeNum)
                         
         elif totalEdges:
