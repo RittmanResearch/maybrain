@@ -444,7 +444,7 @@ class brainObj:
                         if edgeCount >= edgeNum:
                             break
             
-    def localThresholding(self, totalEdges=None, edgePC=None):
+    def localThresholding(self, totalEdges=None, edgePC=None, removeUnconnected=True):
         '''
         Applies a local threshold by adding connections based on local degree
         rule from a nearest neighbour degree graph and built on a minimum
@@ -452,6 +452,9 @@ class brainObj:
         (http://www.pubmedcentral.nih.gov/articlerender.fcgi?artid=2965020&tool=pmcentrez&rendertype=abstract)
         '''
         self.applyThreshold()
+        if removeUnconnected:
+            self.removeUnconnectedNodes()
+            
         # get the number of edges to link
         if edgePC:
             n = len(self.G.nodes())
