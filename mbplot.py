@@ -204,7 +204,8 @@ class plotObj():
                 pass
 
             if not sf:
-                sf = 25/max(sizeList)
+                sf = 25./max(sizeList)
+                print "sf is: "+str(sf) 
             ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
                                                   sizeList, figure = self.mfig, scale_factor=sf)
             
