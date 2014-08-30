@@ -27,7 +27,7 @@ More details at http://code.google.com/p/maybrain/.
 
 
 from mayavi import mlab
-from numpy import array,repeat,max
+from numpy import array,repeat,max,power
 
 
 #!! plotObj taken from dev version. Legacy code removed    
@@ -40,9 +40,6 @@ class plotObj():
         # initialise mayavi figure
         self.startMayavi()  
         
-        self.nodesf = 0.5 # scale factor for nodes
-        
-        
     def startMayavi(self):
         ''' initialise the Mayavi figure for plotting '''        
         
@@ -52,7 +49,10 @@ class plotObj():
         self.engine.start()
         
         # create a Mayavi figure
-        self.mfig = mlab.figure(bgcolor = (1., 1., 1.), fgcolor = (0, 0, 0), engine = self.engine, size=(1500, 1500))
+        self.mfig = mlab.figure(bgcolor = (1., 1., 1.),
+                                fgcolor = (0, 0, 0),
+                                engine = self.engine,
+                                size=(1500, 1500))
         
         # holders for plot objects
         self.brainNodePlots = {}
@@ -204,11 +204,11 @@ class plotObj():
                 pass
 
             if not sf:
-                sf = 25./max(sizeList)
-                print "sf is: "+str(sf) 
+                sf = 4./power(max(sizeList), 1/3)
+                print "sf calculated as: "+str(sf)
             ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
                                                   sizeList, figure = self.mfig, scale_factor=sf)
-            
+        
         p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor = sf)
         
         self.brainNodePlots[label] = p
@@ -238,28 +238,28 @@ class plotObj():
         self.brainEdgePlots[label] = v
 
             
-    #!! old version of plotbrain removed here
-
-    def plotBrainNodes(self, brain, nodes = None, col = (0.,0.,0.,), opacity = 1., label=None):
-        ''' plot the nodes using Mayavi TO BE DEPRECATED'''
-        
-        # sort out keywords
-        if not nodes:
-            nodeList = brain.G.nodes()
-        else:
-            nodeList = nodes
-            
-        if not(label):
-            label = self.getAutoLabel()            
-            
-        # turn nodes into lists for plotting
-        xn, yn, zn = self.getNodesList(brain, nodeList=nodeList)
-        
-        # plot nodes
-        s = mlab.points3d(xn, yn, zn, scale_factor = self.nodesf, color = col, opacity = opacity)
-        self.brainNodePlots[label] = s
-
-
+#    #!! old version of plotbrain removed here
+#
+#    def plotBrainNodes(self, brain, nodes = None, col = (0.,0.,0.,), opacity = 1., label=None):
+#        ''' plot the nodes using Mayavi TO BE DEPRECATED'''
+#        
+#        # sort out keywords
+#        if not nodes:
+#            nodeList = brain.G.nodes()
+#        else:
+#            nodeList = nodes
+#            
+#        if not(label):
+#            label = self.getAutoLabel()       
+#            
+#        # turn nodes into lists for plotting
+#        xn, yn, zn = self.getNodesList(brain, nodeList=nodeList)
+#        
+#        # plot nodes
+#        s = mlab.points3d(xn, yn, zn, scale_factor = self.nodesf, color = col, opacity = opacity)
+#        self.brainNodePlots[label] = s
+#
+#
     #!! old plotBrainEdges and plotSubset removed here       
             
     def getCoords(self, brain, edge):
