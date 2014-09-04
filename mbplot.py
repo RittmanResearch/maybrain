@@ -150,14 +150,16 @@ class plotObj():
         self.plotCoords(coords, opacity = opacity, label=label, col=col, sizeList=sizeList, sf=sf)
         
         
-    def plotBrainEdges(self, brain, opacity = 1.0, label = 'edgeplot', col=None, cm ='GnBu', lw=2.):
+    def plotBrainEdges(self, brain, opacity = 1.0, label = 'edgeplot', col=None, cm ='GnBu', lw=2., scalars=None):
         ''' plot all edges within a brain 
         lw = line width
         #### Not working currently - plots in a different window #### --Really, seems OK to me!
         ''' 
         
-        ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)    
-        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = col, cm=cm, opacity = opacity, label=label)  
+        ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)
+        if scalars:
+            s=scalars
+        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, lw=lw, col = col, cm=cm, opacity = opacity, label=label)  
 
 
     def plotBrainHighlights(self, brain, highlights = [], labelPre = ''):    

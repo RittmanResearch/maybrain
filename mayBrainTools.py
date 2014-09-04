@@ -358,7 +358,7 @@ class brainObj:
                 edgeNum = int(round(edgePC/100. * n * (n-1) ))
 
             self.edgePC=edgePC # !! why  is this necessary?
-            print(edgeNum)
+            print(str(edgeNum)+' edges')
             
         ## case 2: totalEdges - give a fixed number of edges
         elif totalEdges:
@@ -376,9 +376,7 @@ class brainObj:
             
             weights = self.adjMat.flatten()
             weights.sort()
-            tVal = weights[0]-0.1
-            print tVal
-        
+            tVal = weights[0]-0.1        
         
         ##### get threshold value
         if edgeNum>=0:
@@ -472,7 +470,7 @@ class brainObj:
                 edgeNum = int(round(edgePC/100. * n * (n-1) * 0.5))
 
             self.edgePC=edgePC # !! why  is this necessary? -> just in case you forget and want to check!
-            print(edgeNum)
+            print(str(edgeNum)+" edges")
                         
         elif totalEdges:
             # allow a fixed number of edges
@@ -518,6 +516,9 @@ class brainObj:
                     break
             
             k+=1
+            
+        # remove threshold applied by creation of unthresholded graph
+        self.threshold=None
         
         # redefine the graph as the MST with added edges
         self.G = T
