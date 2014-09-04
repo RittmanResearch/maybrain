@@ -330,7 +330,7 @@ class brainObj:
     ##### Functions to alter the brain
 
     ### adjacency matrix and edge thresholding
-    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False, weighted=True, MST=False):
+    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = None, rethreshold=False, MST=False):
         ''' Treshold the adjacency matrix to determine which nodes are linked by edges. There are 
             three options:
             
@@ -368,8 +368,16 @@ class brainObj:
                 edgeNum =  edgeNum * 2
 
         ## case 3: absolute threshold - show all edges with weighting above threshold
+        elif tVal:
+            edgeNum = -1
+        
         else:
             edgeNum = -1
+            
+            weights = self.adjMat.flatten()
+            weights.sort()
+            tVal = weights[0]-0.1
+            print tVal
         
         
         ##### get threshold value
@@ -403,7 +411,7 @@ class brainObj:
         boolMat = self.adjMat>=self.threshold
         try:
             np.fill_diagonal(boolMat, 0)
-        except:
+        except: # some old version of numpy don't have fill diagonal
             for x in range(len(boolMat[0,:])):
                 boolMat[x,x] = 0
                 
@@ -421,7 +429,6 @@ class brainObj:
             es = (newes1, newes2)                   
         
         # add edges to networkx
-
         if MST:
             # recreate minimum spanning tree
             self.G = T

@@ -35,12 +35,12 @@ class plotObj():
     ''' classes that plot various aspects of a brain object '''
     
     
-    def __init__(self):
+    def __init__(self, bg=None):
         
         # initialise mayavi figure
-        self.startMayavi()  
+        self.startMayavi(bg)
         
-    def startMayavi(self):
+    def startMayavi(self,bg):
         ''' initialise the Mayavi figure for plotting '''        
         
         # start the engine
@@ -48,8 +48,11 @@ class plotObj():
         self.engine = Engine()
         self.engine.start()
         
+        if not bg:
+            bg=(1., 1., 1.)
+        
         # create a Mayavi figure
-        self.mfig = mlab.figure(bgcolor = (1., 1., 1.),
+        self.mfig = mlab.figure(bgcolor = bg,
                                 fgcolor = (0, 0, 0),
                                 engine = self.engine,
                                 size=(1500, 1500))
@@ -64,14 +67,14 @@ class plotObj():
         self.labelNo = 0         
         
         
-    def coordsToList(self, brain, nodeList='all'):
+    def coordsToList(self, brain, nodeList=None):
         ''' get coordinates from lists in the brain object, possibly using only
         the indices given by nodeList and edgeList '''
         
         # output
         coords = []
         # get nodes from networkx object
-        for x in range(len(brain.G.nodes())):
+        for x in brain.G.nodes():
             # put into list
             coords.append(brain.G.node[x]['xyz'])
                     
@@ -79,7 +82,7 @@ class plotObj():
         coords = array(coords)        
         
         # select some rows if necessary
-        if nodeList!='all':
+        if nodeList:
             coords = coords[nodeList,:]
         
         # return x, y and z coordinates
@@ -119,6 +122,7 @@ class plotObj():
             s.append(e[2]['weight'])
         
         return x1, y1, z1, x2, y2, z2, s
+
         
 
     def plotBrain(self, brain, opacity = 1.0, edgeOpacity = None, label = 'plot'):
@@ -146,13 +150,14 @@ class plotObj():
         self.plotCoords(coords, opacity = opacity, label=label, col=col, sizeList=sizeList, sf=sf)
         
         
-    def plotBrainEdges(self, brain, opacity = 1.0, label = 'edgeplot', col=(0., 0., 0.)):
+    def plotBrainEdges(self, brain, opacity = 1.0, label = 'edgeplot', col=None, cm ='GnBu', lw=2.):
         ''' plot all edges within a brain 
-        #### Not working currently - plots in a different window ####        
+        lw = line width
+        #### Not working currently - plots in a different window #### --Really, seems OK to me!
         ''' 
         
         ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)    
-        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = col, opacity = opacity, label=label)  
+        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = col, cm=cm, opacity = opacity, label=label)  
 
 
     def plotBrainHighlights(self, brain, highlights = [], labelPre = ''):    
@@ -215,24 +220,25 @@ class plotObj():
         print(label, p)
         
         
-    def plotEdges(self, ex1, ey1, ez1, ux, uy, uz, s, col = None, opacity = 1., label='plot'):
+    def plotEdges(self, ex1, ey1, ez1, ux, uy, uz, s, lw=2., col = None, opacity = 1., cm = 'GnBu', label='plot'):
         ''' plot some edges
         
             ec has the order [x0, x1, y0, y1, z0, z1]
-            s is the scalars
+            s is the scalars - used to determine the node colour
+            cm = 'GnBu'  colormap for plotting scalars
             col is a triple of numbers in the interval (0,1), or None
+            lw is the line width
+            
             
         '''
         
         plotmode = '2ddash' # could be modified later
-        cm = 'GnBu' # colormap for plotting
         
         # add data to mayavi
 #        edata = mlab.pipeline.vector_scatter(ex1, ey1, ez1, ux, uy, yz, scalars = s, figure = self.mfig)
-        
         # plot
-        v = mlab.quiver3d(ex1, ey1, ez1, ux, uy, uz, scalars = s, line_width=1., opacity=opacity, mode = plotmode, color = col, scale_factor = 1., scale_mode = 'vector', colormap = cm)
-        if not(col):
+        v = mlab.quiver3d(ex1, ey1, ez1, ux, uy, uz, scalars = s, line_width=lw, opacity=opacity, mode = plotmode, color = col, scale_factor = 1., scale_mode = 'vector', colormap = cm)
+        if not col:
             v.glyph.color_mode = 'color_by_scalar'
             
         self.brainEdgePlots[label] = v
