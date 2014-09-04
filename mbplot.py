@@ -138,12 +138,12 @@ class plotObj():
         
         # plot  edges
         ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)    
-        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (1., 1., 1.), opacity = opacity, label=label)  
+        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (0.,0.,0.), opacity = opacity, label=label)  
         
         # plot the highlights
         self.plotBrainHighlights(brain)
         
-    def plotBrainCoords(self, brain, nodes="all", opacity = 1.0, label = 'coordplot', sizeList=None, col=(1,1,1), sf=None):
+    def plotBrainCoords(self, brain, nodes=None, opacity = 1.0, label = 'coordplot', sizeList=None, col=(0.,0.,0.), sf=None):
         ''' plot all coordinates in a brain '''
         
         coords = self.coordsToList(brain, nodeList=nodes)
@@ -193,13 +193,13 @@ class plotObj():
                 self.plotCoords((x,y,z), col = ho.colour, opacity = ho.opacity, label=label)        
         
         
-    def plotCoords(self, coords, col = (1,1,1), opacity = 1., label='plot', sizeList=None, sf=None):
+    def plotCoords(self, coords, col = (1.,1.,1.), opacity = 1., label='plot', sizeList=None, sf=None):
         ''' plot the coordinates of a brain object '''
         if sizeList==None:
             # note that scalar value is currently set to x
             ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
                                                   figure = self.mfig)
-            sf = 1
+            sf = 1.
             
         else:
             try:
