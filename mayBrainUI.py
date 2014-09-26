@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'C:\Users\martin\Dropbox\Transfer\maybrain\mayBrain.ui'
+# Form implementation generated from reading ui file 'maybrain.ui'
 #
-# Created: Mon Feb 10 12:35:50 2014
+# Created: Thu Aug 28 07:19:09 2014
 #      by: PyQt4 UI code generator 4.9.6
 #
 # WARNING! All changes made in this file will be lost!
@@ -88,11 +88,17 @@ class Ui_Maybrain(object):
         self.skullPlot.setGeometry(QtCore.QRect(720, 100, 71, 24))
         self.skullPlot.setObjectName(_fromUtf8("skullPlot"))
         self.thresholdValue = QtGui.QLineEdit(self.groupBox)
-        self.thresholdValue.setGeometry(QtCore.QRect(720, 40, 51, 23))
+        self.thresholdValue.setGeometry(QtCore.QRect(720, 40, 71, 23))
         self.thresholdValue.setObjectName(_fromUtf8("thresholdValue"))
         self.thresholdLabel = QtGui.QLabel(self.groupBox)
-        self.thresholdLabel.setGeometry(QtCore.QRect(650, 40, 71, 16))
+        self.thresholdLabel.setGeometry(QtCore.QRect(650, 20, 71, 16))
         self.thresholdLabel.setObjectName(_fromUtf8("thresholdLabel"))
+        self.tholdDropdown = QtGui.QComboBox(self.groupBox)
+        self.tholdDropdown.setGeometry(QtCore.QRect(650, 40, 61, 22))
+        self.tholdDropdown.setObjectName(_fromUtf8("tholdDropdown"))
+        self.tholdDropdown.addItem(_fromUtf8(""))
+        self.tholdDropdown.addItem(_fromUtf8(""))
+        self.tholdDropdown.addItem(_fromUtf8(""))
         self.hlBox = QtGui.QGroupBox(self.tab)
         self.hlBox.setGeometry(QtCore.QRect(10, 160, 821, 291))
         self.hlBox.setObjectName(_fromUtf8("hlBox"))
@@ -109,7 +115,7 @@ class Ui_Maybrain(object):
         self.subPlotNameLabel.setGeometry(QtCore.QRect(380, 190, 101, 16))
         self.subPlotNameLabel.setObjectName(_fromUtf8("subPlotNameLabel"))
         self.propsFilename = QtGui.QLineEdit(self.hlBox)
-        self.propsFilename.setGeometry(QtCore.QRect(150, 60, 451, 23))
+        self.propsFilename.setGeometry(QtCore.QRect(150, 60, 381, 23))
         self.propsFilename.setObjectName(_fromUtf8("propsFilename"))
         self.propsLabel = QtGui.QLabel(self.hlBox)
         self.propsLabel.setGeometry(QtCore.QRect(20, 60, 121, 16))
@@ -212,6 +218,14 @@ class Ui_Maybrain(object):
         self.hlBrainSelect.setGeometry(QtCore.QRect(480, 140, 101, 24))
         self.hlBrainSelect.setObjectName(_fromUtf8("hlBrainSelect"))
         self.hlBrainSelect.addItem(_fromUtf8(""))
+        self.propNodesOrEdgesBox_2 = QtGui.QComboBox(self.hlBox)
+        self.propNodesOrEdgesBox_2.setGeometry(QtCore.QRect(540, 60, 71, 24))
+        self.propNodesOrEdgesBox_2.setObjectName(_fromUtf8("propNodesOrEdgesBox_2"))
+        self.propNodesOrEdgesBox_2.addItem(_fromUtf8(""))
+        self.propNodesOrEdgesBox_2.addItem(_fromUtf8(""))
+        self.propNodesOrEdgesLabel_2 = QtGui.QLabel(self.hlBox)
+        self.propNodesOrEdgesLabel_2.setGeometry(QtCore.QRect(540, 40, 61, 16))
+        self.propNodesOrEdgesLabel_2.setObjectName(_fromUtf8("propNodesOrEdgesLabel_2"))
         self.tabWidget.addTab(self.tab, _fromUtf8(""))
         self.tab_2 = QtGui.QWidget()
         self.tab_2.setObjectName(_fromUtf8("tab_2"))
@@ -325,6 +339,9 @@ class Ui_Maybrain(object):
         self.skullPlot.setText(_translate("Maybrain", "Plot", None))
         self.thresholdValue.setText(_translate("Maybrain", "0", None))
         self.thresholdLabel.setText(_translate("Maybrain", "Threshold", None))
+        self.tholdDropdown.setItemText(0, _translate("Maybrain", "Value", None))
+        self.tholdDropdown.setItemText(1, _translate("Maybrain", "%", None))
+        self.tholdDropdown.setItemText(2, _translate("Maybrain", "# edges", None))
         self.hlBox.setTitle(_translate("Maybrain", "Add properties and highlights", None))
         self.hlPropLabel.setText(_translate("Maybrain", "Property", None))
         self.hlValueLabel.setText(_translate("Maybrain", "Value", None))
@@ -363,6 +380,9 @@ class Ui_Maybrain(object):
         self.hlOpacityValue.setText(_translate("Maybrain", "0.00", None))
         self.hlBrainSelectName.setText(_translate("Maybrain", "Apply to", None))
         self.hlBrainSelect.setItemText(0, _translate("Maybrain", "select brain", None))
+        self.propNodesOrEdgesBox_2.setItemText(0, _translate("Maybrain", "nodes", None))
+        self.propNodesOrEdgesBox_2.setItemText(1, _translate("Maybrain", "edges", None))
+        self.propNodesOrEdgesLabel_2.setText(_translate("Maybrain", "Apply to", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), _translate("Maybrain", "General settings", None))
         self.plotTree.headerItem().setText(0, _translate("Maybrain", "Plot type", None))
         self.plotTree.headerItem().setText(1, _translate("Maybrain", "Plot name", None))
@@ -378,8 +398,8 @@ class Ui_Maybrain(object):
         self.textBrowser.setHtml(_translate("Maybrain", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'Ubuntu\'; font-size:9pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"># Python code to repeat what you\'ve just done with the buttons</p></body></html>", None))
+"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8.25pt; font-weight:400; font-style:normal;\">\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'Ubuntu\'; font-size:9pt;\"># Python code to repeat what you\'ve just done with the buttons</span></p></body></html>", None))
         self.pushButton.setText(_translate("Maybrain", "save to file", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.log), _translate("Maybrain", "Log", None))
         self.menuFile.setTitle(_translate("Maybrain", "File", None))
