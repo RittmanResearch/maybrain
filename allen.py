@@ -257,7 +257,8 @@ class multiSubj:
             self.subjList = subjList
         else:
             self.subjList = [v for v in glob("17823*") if path.isdir(v)]
-            
+        
+        print self.subjList
         self.fName = "SampleAnnot.csv"
         self.maFile = "MicroarrayExpression.csv"
         
@@ -266,6 +267,7 @@ class multiSubj:
         
         self.headers={}
         for subj in self.subjList:
+            print "Importing data from "+subj
             # import probe data
             f = open(path.join(subj, self.fName), "rb")        
             reader = csv.DictReader(f, delimiter=",", quotechar='"')
@@ -276,6 +278,7 @@ class multiSubj:
                 if not self.a.G.has_node(n):
                     self.a.G.add_node(n)
                     self.a.G.node[n] = l
+                    print "Adding node "+str(n)
                 self.headers[subj].append(l["structure_id"])
             f.close()
             
