@@ -1,0 +1,5 @@
+v0.2.2, xx-09-2014 -- Minor release
+
+* Structure changed so that package is more pythonic
+* Names of some files changed: maybrain prefix removed; tools renamed to brainObjs 
+  (for want of a better alternative)
