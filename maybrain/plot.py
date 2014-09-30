@@ -74,6 +74,7 @@ class plotObj():
         if nodeList=='all':
             nodeList = brain.G.nodes()
         
+        print(nodeList)
         for x in nodeList:
             # put into list
             try:
@@ -88,7 +89,7 @@ class plotObj():
         return coords[:,0], coords[:,1], coords[:,2]
         
         
-    def edgesToList(self, brain, edgeList = 'all'):
+    def edgesToList(self, brain):
         ''' Turn the edges of a brain into coordinates '''
                 
         # intialise output
@@ -124,7 +125,7 @@ class plotObj():
         
 
     def plotBrain(self, brain, opacity = 1.0, edgeOpacity = None, label = 'plot',\
-                  nodes = 'all', edgeList = 'all', plotCoords=True, plotEdges=True, plotHighlights=True):
+                  nodes = 'all', plotCoords=True, plotEdges=True, plotHighlights=True):
         ''' plot all the coords, edges and highlights in a brain '''     
                
         # sort out the edge opacity
@@ -138,7 +139,7 @@ class plotObj():
         
         # plot  edges
         if plotEdges:
-            ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain, edgeList = edgeList)    
+            ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)    
             self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (1., 1., 1.), opacity = opacity, label=label)  
         
         # plot the highlights
@@ -148,7 +149,7 @@ class plotObj():
     def plotBrainCoords(self, brain, opacity = 1.0, label = 'coordplot', nodes = 'all'):
         ''' plot all coordinates in a brain '''
         
-        coords = self.coordsToList(brain, nodeList= 'nodes')
+        coords = self.coordsToList(brain, nodeList= nodes)
         self.plotCoords(coords, opacity = opacity, label=label)
         
         
