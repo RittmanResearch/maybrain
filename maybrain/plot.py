@@ -71,22 +71,24 @@ class plotObj():
         # output
         coords = []
         # get nodes from networkx object
-        for x in range(len(brain.G.nodes())):
+        if nodeList=='all':
+            nodeList = brain.G.nodes()
+        
+        for x in nodeList:
             # put into list
-            coords.append(brain.G.node[x]['xyz'])
+            try:
+                coords.append(brain.G.node[x]['xyz'])
+            except:
+                print("tried to access invalid nodes in coordsToList")
                     
         # make into array for easy output                    
         coords = array(coords)        
-        
-        # select some rows if necessary
-        if nodeList!='all':
-            coords = coords[nodeList,:]
-        
+                
         # return x, y and z coordinates
-        return coords[:, 0], coords[:, 1], coords[:, 2]
+        return coords[:,0], coords[:,1], coords[:,2]
         
         
-    def edgesToList(self, brain):
+    def edgesToList(self, brain, edgeList = 'all'):
         ''' Turn the edges of a brain into coordinates '''
                 
         # intialise output
@@ -121,7 +123,8 @@ class plotObj():
         return x1, y1, z1, x2, y2, z2, s
         
 
-    def plotBrain(self, brain, opacity = 1.0, edgeOpacity = None, label = 'plot', plotCoords=True, plotEdges=True, plotHighlights=True):
+    def plotBrain(self, brain, opacity = 1.0, edgeOpacity = None, label = 'plot',\
+                  nodes = 'all', edgeList = 'all', plotCoords=True, plotEdges=True, plotHighlights=True):
         ''' plot all the coords, edges and highlights in a brain '''     
                
         # sort out the edge opacity
@@ -130,22 +133,22 @@ class plotObj():
 
         # plot coords
         if plotCoords:
-            coords = self.coordsToList(brain)
+            coords = self.coordsToList(brain, nodeList=nodeList)
             self.plotCoords(coords, opacity = opacity, label=label)
         
         # plot  edges
         if plotEdges:
-            ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)    
+            ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain, edgeList = edgeList)    
             self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (1., 1., 1.), opacity = opacity, label=label)  
         
         # plot the highlights
         if plotHighlights:
             self.plotBrainHighlights(brain)
         
-    def plotBrainCoords(self, brain, opacity = 1.0, label = 'coordplot'):
+    def plotBrainCoords(self, brain, opacity = 1.0, label = 'coordplot', nodes = 'all'):
         ''' plot all coordinates in a brain '''
         
-        coords = self.coordsToList(brain)
+        coords = self.coordsToList(brain, nodeList= 'nodes')
         self.plotCoords(coords, opacity = opacity, label=label)
         
         
@@ -221,31 +224,7 @@ class plotObj():
             v.glyph.color_mode = 'color_by_scalar'
             
         self.brainEdgePlots[label] = v
-
-            
-    #!! old version of plotbrain removed here
-
-    def plotBrainNodes(self, brain, nodes = None, col = (1, 1, 1), opacity = 1., label=None):
-        ''' plot the nodes using Mayavi TO BE DEPRECATED'''
         
-        # sort out keywords
-        if not nodes:
-            nodeList = brain.G.nodes()
-        else:
-            nodeList = nodes
-            
-        if not(label):
-            label = self.getAutoLabel()            
-            
-        # turn nodes into lists for plotting
-        xn, yn, zn = self.getNodesList(brain, nodeList=nodeList)
-        
-        # plot nodes
-        s = mlab.points3d(xn, yn, zn, scale_factor = self.nodesf, color = col, opacity = opacity)
-        self.brainNodePlots[label] = s
-
-
-    #!! old plotBrainEdges and plotSubset removed here       
             
     def getCoords(self, brain, edge):
         ''' get coordinates from nodes and return a coordinate and a vector '''
