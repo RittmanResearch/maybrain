@@ -74,13 +74,12 @@ class plotObj():
         if nodeList=='all':
             nodeList = brain.G.nodes()
         
-        print(nodeList)
         for x in nodeList:
             # put into list
             try:
                 coords.append(brain.G.node[x]['xyz'])
             except:
-                print("tried to access invalid nodes in coordsToList")
+                print("tried to access invalid nodes in coordsToList", x)
                     
         # make into array for easy output                    
         coords = array(coords)        
@@ -134,7 +133,7 @@ class plotObj():
 
         # plot coords
         if plotCoords:
-            coords = self.coordsToList(brain, nodeList=nodeList)
+            coords = self.coordsToList(brain, nodeList=nodes)
             self.plotCoords(coords, opacity = opacity, label=label)
         
         # plot  edges
@@ -382,3 +381,8 @@ class plotObj():
     def show(self):
         ''' show the mayavi plot '''
         mlab.show()
+        
+        
+    def clear(self):
+        ''' clear the current plot '''
+        mlab.clf()
