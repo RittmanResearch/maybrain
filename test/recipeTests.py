@@ -6,9 +6,9 @@ Some unit tests for Maybrain recipes - loading of data
 """
 
 # add the local path to python executable path
+import sys
 try:
-    import sys
-    sys.path.append("/home/galileo/Dropbox/Share/maybrain/august 2014 dev/dev2-2")
+    sys.path.append("/home/galileo/Documents/programming/maybrain/maybrain")
 except:
     pass
 
