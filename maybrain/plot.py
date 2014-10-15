@@ -27,7 +27,7 @@ More details at http://code.google.com/p/maybrain/.
 
 
 from mayavi import mlab
-from numpy import array
+from numpy import array,repeat,power
 
 
 #!! plotObj taken from dev version. Legacy code removed    
@@ -52,7 +52,7 @@ class plotObj():
         self.engine.start()
         
         # create a Mayavi figure
-        self.mfig = mlab.figure(bgcolor = (0, 0, 0), fgcolor = (1., 1., 1.), engine = self.engine, size=(1500, 1500))
+        self.mfig = mlab.figure(bgcolor = (1., 1., 1.,), fgcolor = (0., 0., 0.), engine = self.engine, size=(1500, 1500))
         
         # holders for plot objects
         self.brainNodePlots = {}
@@ -145,18 +145,18 @@ class plotObj():
         if plotHighlights:
             self.plotBrainHighlights(brain)
         
-    def plotBrainCoords(self, brain, opacity = 1.0, label = 'coordplot', nodes = 'all'):
+    def plotBrainCoords(self, brain, opacity = 1.0, label = 'coordplot', nodes = 'all', col=(0,0,0), sizeList=None, sf=None):
         ''' plot all coordinates in a brain '''
         
         coords = self.coordsToList(brain, nodeList= nodes)
-        self.plotCoords(coords, opacity = opacity, label=label)
+        self.plotCoords(coords, opacity = opacity, label=label, col=col, sizeList=sizeList, sf=sf)
         
         
-    def plotBrainEdges(self, brain, opacity = 1.0, label = 'edgeplot'):
+    def plotBrainEdges(self, brain, opacity = 1.0, label = 'edgeplot', col=(1., 1., 1.)):
         ''' plot all edges within a brain ''' 
         
         ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)    
-        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (1., 1., 1.), opacity = opacity, label=label)  
+        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = col, opacity = opacity, label=label)  
 
 
     def plotBrainHighlights(self, brain, highlights = [], labelPre = ''):    
@@ -192,18 +192,35 @@ class plotObj():
                 self.plotCoords((x,y,z), col = ho.colour, opacity = ho.opacity, label=label)        
         
         
-    def plotCoords(self, coords, col = (1,1,1), opacity = 1., label='plot'):
+    def plotCoords(self, coords, col = (0,0,0), opacity = 1., label='plot', sizeList=None, sf=None):
         ''' plot the coordinates of a brain object '''
         
         # note that scalar value is currently set to x
-        ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2], figure = self.mfig)
-        p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor = 0.1)
+        if sizeList==None:
+            # note that scalar value is currently set to x
+            ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
+                                                  figure = self.mfig)
+            sf = 4.
+        else:
+            try:
+                float(sizeList)
+                sizeList = repeat(sizeList, len(coords[0]))
+            except:
+                pass
+            if not sf:
+                sf = 4./power(max(sizeList), 1/3)
+                
+            print "sf calculated as: "+str(sf)
+            ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
+                                                  sizeList, figure = self.mfig, scale_factor=sf)
+        
+        p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor = sf)
         
         self.brainNodePlots[label] = p
         print(label, p)
         
         
-    def plotEdges(self, ex1, ey1, ez1, ux, uy, uz, s, col = None, opacity = 1., label='plot'):
+    def plotEdges(self, ex1, ey1, ez1, ux, uy, uz, s, col = (0,0,0), opacity = 1., label='plot'):
         ''' plot some edges
         
             ec has the order [x0, x1, y0, y1, z0, z1]
@@ -237,16 +254,16 @@ class plotObj():
         return c1, diff           
     
     
-    def plotSkull(self, brain, label = None, contourVals = [], opacity = 0.1, cmap='Spectral'):
+    def plotBackground(self, brain, label = None, contourVals = [3000,9000], opacity = 0.1, cmap='Spectral'):
         ''' plot the skull using Mayavi '''
         
         if not(label):
             label = self.getAutoLabel()        
         
         if contourVals == []:            
-            s = mlab.contour3d(brain.skull, opacity = opacity, colormap=cmap)
+            s = mlab.contour3d(brain.background, opacity = opacity, colormap=cmap)
         else:
-            s = mlab.contour3d(brain.skull, opacity = opacity, contours = contourVals, colormap=cmap)
+            s = mlab.contour3d(brain.background, opacity = opacity, contours = contourVals, colormap=cmap)
             
         # get the object for editing
         self.skullPlots[label] = s

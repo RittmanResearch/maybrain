@@ -48,9 +48,7 @@ class brainObj:
         '''        
         
         # create an empty graph
-        self.G = None # networkX object is now created by created by importSpatialInfo
         self.directed = False # is this a directed graph or not?
-        self.iter = None #!! not sure where this is used. It is often defined, but never actually used!
         
         # initialise global variables
         self.adjMat = None # adjacency matrix, containing weighting of edges. Should be square.
@@ -77,6 +75,14 @@ class brainObj:
         
         self.labelNo = 0 # index for autolabeling of highlights
         self.highlights = {} # highlights items consist of a list contating a name, a highlight object and a colour
+
+        # create a new networkX graph object
+        if self.directed:
+            # directional case
+            self.G = nx.DiGraph()
+        else:
+            # non-directional case
+            self.G = nx.Graph()
 
     ## ================================================
 
@@ -117,20 +123,10 @@ class brainObj:
         self.adjMat = np.array(lines)
 
     #!! After much deliberation, this function was kept from the master, but renamed
-    def importSpatialInfo(self, fname, delimiter=None, convertMNI=False, newGraph=True):
+    def importSpatialInfo(self, fname, delimiter=None, convertMNI=False):
         ''' add 3D coordinate information for each node from a given file
             note that the graph object is recreated here by default
         '''
-        
-        # create a new networkX graph object
-        if newGraph:
-            if self.directed:
-                # directional case
-                self.G = nx.DiGraph()
-            else:
-                # non-directional case
-                self.G = nx.Graph()
-        
         # open file
         try:
             f = open(fname,"rb")
@@ -258,8 +254,8 @@ class brainObj:
         '''        
         
         self.nbbackground = nb.load(fname)
-        self.background = nbbackground.get_data()
-        self.backgroundHeader = nbbackground.get_header()        
+        self.background = self.nbbackground.get_data()
+        self.backgroundHeader = self.nbbackground.get_header()        
                 
     def importISO(self, fname):
         ''' Import a file for isosurface info using nibabel
@@ -442,8 +438,10 @@ class brainObj:
 
     #!! added from master is this in the right place?? 
     def localThresholding(self, totalEdges=None, edgePC=None):
-        #!! Add docstring to explain function
-        ''' '''
+        '''
+        Threshold the association matrix by building from the minimum spanning
+        tree and adding successive N-nearest neighbour degree graphs.        
+        '''
         nodecount = len(self.G.nodes())
         
         # get the number of edges to link
