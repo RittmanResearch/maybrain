@@ -8,7 +8,7 @@ GUI for Maybrain
 # add the local path to python executable path
 import sys
 try:
-    sys.path.append("/home/galileo/Dropbox/Share/maybrain/august 2014 dev/dev2-2")
+    sys.path.append('/home/galileo/Documents/programming/maybrain/maybrain/')
 except:
     pass
 
@@ -19,6 +19,7 @@ import mayBrainUI as ui
 from os import path
 
 app = QtGui.QApplication.instance()
+
 
 class mayBrainGUI(QtGui.QMainWindow):
     def __init__(self, parent=None):
@@ -538,9 +539,13 @@ def runGui():
     
     ex = mayBrainGUI()
     ex.show()
-    sys.exit(app.exec_())
+
+    
+    return ex
+    
 
 
 if __name__ == "__main__":
 
     runGui()
+    sys.exit(app.exec_())

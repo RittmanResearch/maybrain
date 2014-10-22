@@ -14,7 +14,7 @@ Created on Tue Sep 23 07:19:08 2014
 
 import unittest
 #import maybrain as mb
-import mayBrainGUI as gui
+import GUI as gui
 import sys
 from pyface.qt import QtGui, QtCore
 
@@ -35,7 +35,10 @@ class TestSequenceFunctions(unittest.TestCase):
         ''' test inputting of basic data '''
         
         # enter filenames
-        self.app.close()
+        self.app.ui.adjFilename.setText(self.fnameAdj)
+        self.app.ui.spatialFilename.setText(self.fnameCo)        
+        
+#        gui.app.quit()
         
         
         # load files
@@ -51,7 +54,7 @@ class TestSequenceFunctions(unittest.TestCase):
         ''' test the ability to highlight some part of a brain '''
         
         # load files (as in test_loadData)
-        a=1
+        gui.app.quit()
         
         # set higlighting properties
         
