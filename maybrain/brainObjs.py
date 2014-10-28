@@ -41,14 +41,14 @@ class brainObj:
         
     """
     
-    def __init__(self):
+    def __init__(self, directed=False):
         ''' 
         Initialise the brain model.
     
         '''        
         
         # create an empty graph
-        self.directed = False # is this a directed graph or not?
+        self.directed = directed # is this a directed graph or not?
         
         # initialise global variables
         self.adjMat = None # adjacency matrix, containing weighting of edges. Should be square.
@@ -91,7 +91,7 @@ class brainObj:
     ### edges and nodes
 
     #!! readAdjFile removed           
-    def importAdjFile(self, fname, delimiter = None):
+    def importAdjFile(self, fname, delimiter = None, exclnodes=[]):
         ''' get the adjacency data from a file and return as an array '''
         
         # open file
@@ -113,14 +113,16 @@ class brainObj:
         for l in linesStr:
             while l[-1] in ('\n', '\t'):
                 l = l[:-1]
-            lines.append(map(float, [v if v != "NA" else np.nan for v in split(l, sep=delimiter)]))                
-
+            lines.append(map(float, [v if v != "NA" else np.nan for v in split(l, sep=delimiter)]))
 
         # close file                
         f.close()
 
         # set adjacency matrix
         self.adjMat = np.array(lines)
+        
+        # add nodes
+        self.G.add_nodes_from([v for v in range(len(lines)) if not v in exclnodes])
 
     #!! After much deliberation, this function was kept from the master, but renamed
     def importSpatialInfo(self, fname, delimiter=None, convertMNI=False):
@@ -318,20 +320,21 @@ class brainObj:
             rethreshold can be used if the threshold has already been applied --- NOT CURRENTLY A LIVE OPTION'''
 
         #### Determine threshold value
+        weights = self.adjMat.flatten()
         
         ## case 1: edgePC - percent of edges are shown
-
         # get the number of edges to link
         if edgePC:
-            n = np.shape(self.adjMat)[0]
+            nEdges = len([v for v in weights if not v=="nan"])
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
-            if self.directed:
-                edgeNum = int(round(edgePC/100. * n * (n-1) * 0.5))                
-            else:
-                edgeNum = int(round(edgePC/100. * n * (n-1) ))
+            edgeNum = int(edgePC/100. * nEdges)
+            print edgeNum
+            
+            # correct for diagonal if graph is undirected
+            if not self.directed:
+                edgeNum -= len(self.G.nodes())
 
             self.edgePC=edgePC # !! why  is this necessary?
-            print(edgeNum)
             
         ## case 2: totalEdges - give a fixed number of edges
         elif totalEdges:
@@ -344,19 +347,15 @@ class brainObj:
         else:
             edgeNum = -1
         
-        
         ##### get threshold value
         if edgeNum>=0:
             # cases 1 and 2 from above - get threshold value for given number of edges
 #            if rethreshold:
 #                weights = [self.G[v[0]][v[1]]['weight'] for v in self.G.edges()]
 #            else:
-            weights = self.adjMat.flatten()
             weights.sort()
             while (str(weights[-1]) == 'nan'):
                 weights = weights[:-1]
-#            weights = [v for v in self.adjMat.flatten() if not str(v)=="nan"]
-#            weights.sort()
 
             # case where all edges are included
             if edgeNum > len(weights):
@@ -442,13 +441,26 @@ class brainObj:
         Threshold the association matrix by building from the minimum spanning
         tree and adding successive N-nearest neighbour degree graphs.        
         '''
-        nodecount = len(self.G.nodes())
-        
         # get the number of edges to link
         if not edgePC == None:  # needs to be written this way in case edgePC is 0
             # find threshold as a percentage of total possible edges
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
-            edgeNum = int(edgePC * nodecount * (nodecount-1) / 2) 
+            weights = self.adjMat.flatten()
+            weights.sort()
+            while (str(weights[-1]) == 'nan'):
+                weights = weights[:-1]
+            nEdges = len(weights)
+            # note this works for undirected graphs because it is applied to the whole adjacency matrix
+            if self.directed:
+                edgeNum = int(edgePC/100. * nEdges)
+            else:
+                edgeNum = int(edgePC/100. * nEdges * 0.5)
+                
+            # correct for diagonal if graph is undirected
+            if not self.directed:
+                edgeNum -= len(self.G.nodes())
+            print edgeNum
+
             self.edgePC=edgePC
             
         elif totalEdges:
