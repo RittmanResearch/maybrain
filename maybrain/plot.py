@@ -197,10 +197,10 @@ class plotObj():
         
         # note that scalar value is currently set to x
         if sizeList==None:
+            sf = 4.
             # note that scalar value is currently set to x
             ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
-                                                  figure = self.mfig)
-            sf = 4.
+                                                  figure = self.mfig, scale_factor=sf)
         else:
             try:
                 float(sizeList)
