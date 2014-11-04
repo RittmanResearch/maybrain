@@ -334,17 +334,27 @@ class brainObj:
         
         ## case 1: edgePC - percent of edges are shown
         # get the number of edges to link
-        if edgePC:
-            nEdges = len([v for v in weights if not v=="nan"])
+        if not edgePC == None:  # needs to be written this way in case edgePC is 0
+            # find threshold as a percentage of total possible edges
+            # note this works for undirected graphs because it is applied to the whole adjacency matrix
+            weights = self.adjMat.flatten()
+            weights.sort()
+            while (str(weights[-1]) == 'nan'):
+                weights = weights[:-1]
+            nEdges = len(weights)
+            
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
             edgeNum = int(edgePC/100. * nEdges)
-            print edgeNum
-            
+                
             # correct for diagonal if graph is undirected
             if not self.directed:
-                edgeNum -= len(self.G.nodes())
-
-            self.edgePC=edgePC # !! why  is this necessary?
+                edgeNum -= len([self.adjMat[x,x] for x in range(len(self.adjMat[0,:])) if not np.isnan(self.adjMat[x,x])])
+                            
+            print edgeNum
+            if not(self.directed):
+                edgeNum =  edgeNum * 2
+                
+            self.edgePC=edgePC
             
         ## case 2: totalEdges - give a fixed number of edges
         elif totalEdges:
@@ -381,6 +391,7 @@ class brainObj:
         else:
             self.threshold  = tVal
         
+        print self.threshold
             
         ##### carry out thresholding on adjacency matrix
         boolMat = self.adjMat>=self.threshold
@@ -397,12 +408,11 @@ class brainObj:
             newes1 = []
             newes2 = []
             for ii in range(len(es[1])):
-                if es[0][ii]<=es[1][ii]:
+                if es[0][ii]<es[1][ii]:
                     newes1.append(es[0][ii])
                     newes2.append(es[1][ii])
                     
             es = (newes1, newes2)                   
-        
         # add edges to networkx
 
         # could improve the next few lines by spotting when you're only adding edges            
@@ -463,15 +473,13 @@ class brainObj:
             while (str(weights[-1]) == 'nan'):
                 weights = weights[:-1]
             nEdges = len(weights)
+            
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
-            if self.directed:
-                edgeNum = int(edgePC/100. * nEdges)
-            else:
-                edgeNum = int(edgePC/100. * nEdges * 0.5)
+            edgeNum = int(edgePC/100. * nEdges)
                 
             # correct for diagonal if graph is undirected
             if not self.directed:
-                edgeNum -= len(self.G.nodes())
+                edgeNum -= len([self.adjMat[x,x] for x in range(len(self.adjMat[0,:])) if not np.isnan(self.adjMat[x,x])])
             print edgeNum
 
             self.edgePC=edgePC
