@@ -25,7 +25,6 @@ from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
 from string import split
-import nibabel as nb
 
 #from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 
@@ -93,6 +92,7 @@ class brainObj:
     #!! readAdjFile removed           
     def importAdjFile(self, fname, delimiter = None, exclnodes=[]):
         ''' get the adjacency data from a file and return as an array '''
+        self.exclnodes=exclnodes
         
         # open file
         f = open(fname,"rb")
@@ -124,6 +124,12 @@ class brainObj:
         # add nodes
         self.G.add_nodes_from([v for v in range(len(lines)) if not v in exclnodes])
 
+        # update adjacency matrix to null values of excluded nodes
+        if exclnodes:
+            for en in exclnodes:
+                self.adjMat[:,en]=np.nan
+                self.adjMat[en,:]=np.nan
+
     #!! After much deliberation, this function was kept from the master, but renamed
     def importSpatialInfo(self, fname, delimiter=None, convertMNI=False):
         ''' add 3D coordinate information for each node from a given file
@@ -151,7 +157,10 @@ class brainObj:
                 l[1] = 45 - (float(l[1])/2)
                 l[2] = 63 + (float(l[2])/2)
                 l[3] = 36 + (float(l[3])/2)
-            self.G.add_node(nodeCount, xyz=(float(l[1]),float(l[2]),float(l[3])), anatlabel=l[0])
+
+            if nodeCount in self.G.nodes():
+                self.G.node[nodeCount]["xyz"]=(float(l[1]),float(l[2]),float(l[3]))
+                self.G.node[nodeCount]["anatlabel"]=l[0]
 
             nodeCount+=1
                         
@@ -248,6 +257,7 @@ class brainObj:
 
     #!! rename background to template
     def importBackground(self, fname):
+        import nibabel as nb
         ''' Import a file for background info using nbbabel
             gives a 3D array with data range 0 to 255 for test data
             could be 4d??
@@ -436,11 +446,14 @@ class brainObj:
             
 
     #!! added from master is this in the right place?? 
-    def localThresholding(self, totalEdges=None, edgePC=None):
+    def localThresholding(self, totalEdges=None, edgePC=None, removeUnconnected=True):
         '''
         Threshold the association matrix by building from the minimum spanning
         tree and adding successive N-nearest neighbour degree graphs.        
         '''
+        self.applyThreshold()
+        if removeUnconnected:
+            self.removeUnconnectedNodes()
         # get the number of edges to link
         if not edgePC == None:  # needs to be written this way in case edgePC is 0
             # find threshold as a percentage of total possible edges
@@ -473,6 +486,7 @@ class brainObj:
     
         # create minimum spanning tree
         T = self.minimum_spanning_tree(self)
+        print nx.is_connected(T)
         lenEdges = len(T.edges())
         if lenEdges > edgeNum:
             print "The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges."
@@ -519,6 +533,12 @@ class brainObj:
         for edge in self.G.edges():
             self.G.edge[edge[0]][edge[1]]['weight'] = 1        
 
+    def removeUnconnectedNodes(self):
+        '''
+         Remove nodes with no connections
+        '''
+        nodeList = [v for v in self.G.nodes() if self.G.degree(v)==0]
+        self.G.remove_nodes_from(nodeList)
 
     ### making highlights
 

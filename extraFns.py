@@ -12,9 +12,7 @@ from networkx.algorithms import cluster
 from networkx.algorithms import centrality
 import random
 from networkx.algorithms import components
-from matplotlib import pyplot as plt
 from numpy import linalg as lg
-from numpy import fill_diagonal
 
 def efficiencyfunc(node, G, weight=None):
     pls = nx.shortest_path_length(G, source=node, weight=weight)
@@ -111,6 +109,8 @@ def edgeLengths(G, nodeWise=False):
         return(el)
         
 def histograms(brain, outfilebase="brain"):
+    from matplotlib import pyplot as plt
+    from numpy import fill_diagonal
     """ 
     Produces histograms of association matrix weights and edge lengths.
     Requires spatial information to have been loaded on to the graph.
@@ -171,6 +171,62 @@ def withinModuleDegree(brain, ci):
     return(withinDegDict)
     
 def writeResults(results, measure,
+                 outfilebase="brain",
+                 append=True,
+                 propDict=None):
+    """ 
+    Function to write out results    
+    """
+    outFile = outfilebase+measure+'.txt'
+    if not path.exists(outFile) or not append:
+        if path.exists(outFile):
+            rename(outFile, outFile+'.old')
+        f = open(outFile, "w")
+        writeHeadFlag=True
+
+    else:
+        f = open(outFile, "a")
+        writeHeadFlag=False
+    
+    # check to see what form the results take
+    if isinstance(results, (dict)):
+        headers = [v for v in results.keys()]
+        headers.sort()
+
+        out = ' '.join([ str(results[v]) if v in results.keys() else 'NA' for v in headers] )
+        
+    elif isinstance(results, (list)):
+        if writeHeadFlag:
+            headers = ' '.join([str(v) for v in range(len(results))])
+        out = ' '.join([str(v) for v in results])
+    
+    else:
+        if writeHeadFlag:
+            headers = [measure]
+        out = str(results)
+
+    # write headers
+    if propDict:
+        propHeaders = propDict.keys()
+        propHeaders.sort()
+
+    if writeHeadFlag:
+        headers = ' '.join([str(v) for v in headers])
+        if propDict:
+            headers = ' '.join([' '.join(propHeaders), headers])
+            
+        f.writelines(headers+'\n')
+
+    # add on optional extras
+    if propDict:
+        outProps = ' '.join([str(propDict[v]) for v in propHeaders])
+        out = ' '.join([outProps, out])
+        
+    f.writelines(out+'\n')
+    f.close()
+    
+#### deprecated function ###
+def writeResultsOld(results, measure,
                  outfilebase="brain",
                  append=True,
                  edgePC=None,
