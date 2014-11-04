@@ -35,9 +35,9 @@ To avoid having to import mayavi you can use, e.g.
 #write = writeFns.writeFns()
 
 # imports to avoid having to import submodules each time
-from recipes import *
+#from recipes import *
 from brainObjs import brainObj
-from plot import plotObj
+#from plot import plotObj
 from extraFns import *
 
 #import plot
