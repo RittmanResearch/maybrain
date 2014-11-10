@@ -47,6 +47,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         # local variables
         self.lastFolder = None # last folder viewed by user
         self.brainName = ['brain', 0] # used to auto-create labels for brains if no user input given (currently only supports 1 brain)
+        self.logBool = True # use logging (set to false after testing)
             
         
     def connectSlots(self):
@@ -160,7 +161,18 @@ class mayBrainGUI(QtGui.QMainWindow):
             pass
         QtCore.QObject.connect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
         self.ui.adjPlot.setEnabled(True)
-     
+        
+        # logging
+        if self.logBool:
+            if brainUsedBool:
+                line = 'br = self.brains['+brName+']\n' + \
+                'br.inputAdjFile('+adj+')\n'+\
+                'br.inputSpatialInfo('+coords+')\n'+\
+                'br.applythreshold(tVal='+thold+')'
+            else:
+                line ='brain = mb.loadAndThreshold(' + adj + ', '+coords+','+thold + ')'
+            
+            self.logging(line)
         
     def loadSkull(self):
         ''' load a skull file '''
@@ -170,16 +182,24 @@ class mayBrainGUI(QtGui.QMainWindow):
         brainName, brUsedBool = self.findBrainName()
     
         # create brain object if it doesn't exist
-        if not(brUsedBool):
+        if brUsedBool:
+            br = self.brains[brainName]
+        else:
             br = mb.brainObj()
             self.brains[brainName] = br
-        else:
-            br = self.brains[brainName]
+            
         # read in file
         br.importSkull(f)
         
         # enable plot button
         self.ui.skullPlot.setEnabled(True)
+        
+        # logging
+        if self.logBool:
+            # simplify somewhat
+            line = 'brain.importSkull('+f'+)'
+
+            self.logging(line)
         
 
     ## =============================================
@@ -206,6 +226,10 @@ class mayBrainGUI(QtGui.QMainWindow):
         # change plot button to replot
         QtCore.QObject.disconnect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
         QtCore.QObject.connect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
+    
+        # logging
+        if self.logBool:
+            
     
     
     def rePlotBrain(self):
@@ -532,12 +556,33 @@ class mayBrainGUI(QtGui.QMainWindow):
         # set slider value
         self.ui.blueSlider.setValue(int(b*100.))
                 
+    
+    def logging(self, command, extra = ''):
+        ''' write to logging interface 
+
+        the log file assumes you're only dealing with one brain object as it currently stands.        
+        
+        '''
+        
+        
+        # write the script: command(v1, v2, v3) 
+#        lineOut = command + '('
+#        for v in variables:
+#            lineOut = lineOut + ','
+#        lineOut = lineOut[:-1]
+#        lineOut = lineOut + ')'
+        
+        # display in logging area
+        self.ui.logText.setText(lineOut)
+        
+        print(llineOut)
+        
 
         
 def runGui():
     # using instance allows Mayavi to run alongside without any problems.
     
-    ex = mayBrainGUI()
+    ex = mayBrainGUI()#
     ex.show()
 
     
