@@ -319,7 +319,7 @@ class brainObj:
 
     #!! need to create minimum spanning tree option??
     #!! doPrint option removed in merge
-    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False):
+    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = None, rethreshold=False):
         ''' Treshold the adjacency matrix to determine which nodes are linked by edges. There are 
             three options:
             
@@ -388,8 +388,14 @@ class brainObj:
 #                threshold = weights[-edgeNum]
 #            except IndexError:
 #                threhsold = weights[0]
+        
+        # case 3 - absolute threshold
+        elif tVal:
+            self.threshold = tVal
+        
+        # case 4 - weighted graph, no threshold specified
         else:
-            self.threshold  = tVal
+            self.threshold  = np.min(weights[~np.isnan(weights)])
         
         print self.threshold
             
@@ -1242,8 +1248,19 @@ class brainObj:
     def weightToDistance(self):
         #!! docstring added
         ''' convert weights to a positive distance '''
+        edgeList = [self.G.edge[v[0]][v[1]]['weight'] for v in self.G.edges() ]
+        
+        # get the maximum edge value, plus any negative correction required
+        # and a small correction to keep the values above zero
+        eMin = np.min(edgeList)
+        eMax = np.max(edgeList)
+        if eMin<0:
+            neMax = eMax-eMin + 0.00001
+        else:
+            neMax = eMax + 0.00001
+        
         for edge in self.G.edges():
-                self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
+                self.G.edge[edge[0]][edge[1]]["distance"] = neMax - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
                 
         
     ### hubs
