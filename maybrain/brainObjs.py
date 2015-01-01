@@ -1252,15 +1252,10 @@ class brainObj:
         
         # get the maximum edge value, plus any negative correction required
         # and a small correction to keep the values above zero
-        eMin = np.min(edgeList)
-        eMax = np.max(edgeList)
-        if eMin<0:
-            neMax = eMax-eMin + 0.00001
-        else:
-            neMax = eMax + 0.00001
+        eMax = np.max(edgeList) + 0.00001
         
         for edge in self.G.edges():
-                self.G.edge[edge[0]][edge[1]]["distance"] = neMax - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
+                self.G.edge[edge[0]][edge[1]]["distance"] = eMax - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
                 
         
     ### hubs
