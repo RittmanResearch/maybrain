@@ -1252,7 +1252,9 @@ class brainObj:
         
         # get the maximum edge value, plus any negative correction required
         # and a small correction to keep the values above zero
-        eMax = np.max(edgeList) + 0.00001
+        # the correction is the inverse of the number of nodes - designed to keep
+        # calculations of efficiency sensible
+        eMax = np.max(edgeList) + 1/float(len(self.G.nodes()))
         
         for edge in self.G.edges():
                 self.G.edge[edge[0]][edge[1]]["distance"] = eMax - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
