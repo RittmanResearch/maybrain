@@ -276,6 +276,7 @@ class brainObj:
             defines an nibabel object, plus ndarrays with data and header info in
         
         '''
+        import nibabel as nb
         self.nbiso = nb.load(fname)
         self.iso = self.nbiso.get_data()
         self.isoHeader = self.nbiso.get_header()
@@ -305,6 +306,7 @@ class brainObj:
         This function saves the parcelList as a nifti file. It requires the
         brain.parcels function has been run first.
         """
+        import nibabel as nb
         N = nb.Nifti1Image(self.parcelList, self.nbiso.get_affine(), header=self.isoHeader)
         nb.save(N, outname+'.nii')
                      

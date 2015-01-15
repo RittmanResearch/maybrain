@@ -165,12 +165,12 @@ def withinModuleDegree(G, ci, weight=None):
     """
     To calculate mean within module degree
     """
-    moduleList = [v for v in set(ci.values())] # get module list
-    withinDegDict = {}  # output dictionary of modules and mean within module degree
-    modDict = {m:[v for v in ci.keys() if ci[v]==m] for m in moduleList} # sort nodes in to modules
+#    moduleList = [v for v in set(ci.values())] # get module list
+    withinDegDict = {}  # output dictionary of nodes and mean within module degree
+#    modDict = {m:[v for v in ci.keys() if ci[v]==m] for m in moduleList} # sort nodes in to modules
     
     for n in G.nodes():
-        m = ci[n] # iterate through modules
+        m = ci[n] # select module
         
         eList = G.edges([n])
         eList = [e for e in eList if all([ci[e[0]]==m, ci[e[1]]==m])] # find edges exclusively within the module
@@ -180,10 +180,12 @@ def withinModuleDegree(G, ci, weight=None):
         else:
             wts = float(len(eList))
         
-        if len(modDict[m]) > 1:
-            withinDegDict[n] = wts/(len(modDict[m])-1)  # mean of weight/degree, ie average degree within module
-        else:
-            withinDegDict[n] = 0.
+        withinDegDict[n] = wts
+        
+#        if len(modDict[m]) > 1:
+#            withinDegDict[n] = wts/(len(modDict[m])-1)  # mean of weight/degree, ie average degree within module
+#        else:
+#            withinDegDict[n] = 0.
             
     return(withinDegDict)
     
