@@ -90,7 +90,7 @@ class brainObj:
     ### edges and nodes
 
     #!! readAdjFile removed           
-    def importAdjFile(self, fname, delimiter = None, exclnodes=[]):
+    def importAdjFile(self, fname, delimiter = None, exclnodes=[], naVals=["NA"]):
         ''' get the adjacency data from a file and return as an array '''
         self.exclnodes=exclnodes
         
@@ -113,7 +113,7 @@ class brainObj:
         for l in linesStr:
             while l[-1] in ('\n', '\t'):
                 l = l[:-1]
-            lines.append(map(float, [v if v != "NA" else np.nan for v in split(l, sep=delimiter)]))
+            lines.append(map(float, [v if v not in naVals else np.nan for v in split(l, sep=delimiter)]))
 
         # close file                
         f.close()
