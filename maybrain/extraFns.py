@@ -177,6 +177,7 @@ def withinModuleDegree(G, ci, weight=None):
         
         if weight:
             wts = np.sum([float(G.edge[e[0]][e[1]]['weight']) for e in eList])  # get weights/degree
+            wts = wts/float(len(eList))
         else:
             wts = float(len(eList))
         
