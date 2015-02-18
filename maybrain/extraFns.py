@@ -8,10 +8,9 @@ Functions that used to be at the end of networkutils_bin_camb
 from os import path,rename
 import numpy as np
 import networkx as nx
-from networkx.algorithms import cluster
-from networkx.algorithms import centrality
+from networkx.algorithms import cluster, centrality, components
+from networkx import configuration_model
 import random
-from networkx.algorithms import components
 from numpy import linalg as lg
 
 def efficiencyfunc(node, G, weight=None):
@@ -105,7 +104,7 @@ def nodalefficiency(G, nodes=None):
   
 def edgeLengths(G, nodeWise=False):
     el =  dict(zip(G.edges(),
-                            [ np.absolute(np.linalg.norm(np.array(G.node[edge[0]]['xyz']) - np.array(G.node[edge[1]]['xyz']))) for edge in G.edges()]))
+                   [ np.absolute(np.linalg.norm(np.array(G.node[edge[0]]['xyz']) - np.array(G.node[edge[1]]['xyz']))) for edge in G.edges()]))
     
     if nodeWise:
         eln = {}
@@ -299,3 +298,55 @@ def writeResultsOld(results, measure,
     f.writelines(out+'\n')
     f.close()
     
+def normalise(G, func, n=500, retNorm=True, inVal=None):
+    """
+    This function normalises the function G by generating a series of n random
+    graphs and averaging the results. If retNorm is specified, the normalised 
+    value is returned, else a list of n values for a random graph are returned.
+    """
+    vals = []
+    for i in range(n):
+        rand = configuration_model(G.degree().values())
+        try:
+            vals.append(func(rand)) # collect values using the function
+        except KeyError: # exception raised if the spatial information is missing
+            nx.set_node_attributes(rand, 'xyz', {rn:G.node[v]['xyz'] for rn,v in enumerate(G.nodes())})
+            vals.append(func(rand)) # collect values using the function
+
+    if retNorm: # return the normalised values
+        if not inVal:
+            inVal = func(G)
+        return(inVal/np.mean(vals))
+        
+    else: # return a list of the values from the random graph
+        return(vals)
+        
+def normaliseNodeWise(G, func, n=500, retNorm=True, inVal=None):
+    """
+    This function normalises the function G by generating a series of n random
+    graphs and averaging the results. If retNorm is specified, the normalised 
+    value is returned, else a list of n values for a random graph are returned.
+    """
+    nodesDict = {v:[] for v in G.nodes()}
+    for i in range(n):
+        rand = configuration_model(G.degree().values())
+        rand = nx.Graph(rand) # convert to simple graph from multigraph
+        try:
+            res = func(rand) # collect values using the function
+        except KeyError: # exception raised if the spatial information is missing
+            print "Adding spatial info"
+            nx.set_node_attributes(rand, 'xyz', {rn:G.node[v]['xyz'] for rn,v in enumerate(G.nodes())}) # copy across spatial information
+            res = func(rand) # collect values using the function
+            
+        for x,node in enumerate(nodesDict):
+            nodesDict[node].append(res[x])
+
+    if retNorm: # return the normalised values
+        if not inVal:
+            inVal = func(G)
+        for node in nodesDict:
+            nodesDict[node] = inVal[node]/np.mean(nodesDict[node])
+        return(nodesDict)
+        
+    else: # return a list of the values from the random graph
+        return(nodesDict)

@@ -46,9 +46,9 @@ class allenBrain:
        
         # set up brain with graph properties
         self.c = mbo.brainObj()
-        self.c.readAdjFile(assocMat, delimiter=delim,
-                           excludedNodes=nodesToExclude)
-        self.c.readSpatialInfo("parcel_500_xyz.txt")
+        self.c.importAdjFile(assocMat, delimiter=delim,
+                             exclnodes=nodesToExclude)
+        self.c.importSpatialInfo(spatialFile)
    
     def comparison(self):
         # set up dictionary to link nodes from probe data and graph
@@ -109,9 +109,9 @@ class allenBrain:
         self.a.importSkull("/usr/share/data/fsl-mni152-templates/MNI152_T1_2mm_brain.nii.gz")
         p = mbo.plotObj()
         p.plotSkull(self.a, contourVals = [3000,9000])
-        p.plotBrainNodes(self.c, nodes =  self.c.G.nodes(),
+        p.plotBrainCoords(self.c, nodes =  self.c.G.nodes(),
                                      col=(1,0,0), sizeList=5)
-        p.plotBrainNodes(self.a, nodes = self.a.G.nodes(),
+        p.plotBrainCoord(self.a, nodes = self.a.G.nodes(),
                                      col=(0,0,1), sizeList=5)
         self.saveFig()
                                      
@@ -254,8 +254,8 @@ class allenBrain:
         return([v for v in x])
 
 class multiSubj:
-    def __init__(self, assocMat, nodesToExclude=None, delim=" ",
-                 subjList=None, spatialFile="parcel_500_xyz.txt"):
+    def __init__(self, assocMat, nodesToExclude=[], delim=" ",
+                 subjList=None, spatialFile="parcel_500.txt"):
         if subjList:
             self.subjList = subjList
         else:
@@ -292,7 +292,7 @@ class multiSubj:
        
         # set up brain with graph properties
         self.c = mbo.brainObj()
-        self.c.importAdjFile(assocMat, delimiter=delim)
+        self.c.importAdjFile(assocMat, delimiter=delim, exclnodes=nodesToExclude)
         self.c.importSpatialInfo(spatialFile)
    
     def comparison(self):

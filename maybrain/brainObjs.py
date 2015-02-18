@@ -1597,7 +1597,7 @@ class brainObj:
         '''
         fList = np.zeros(iterLen)
         for i in range(iterLen):
-            a = nx.components.connected.connected_component_subgraphs(self.G)[0]
+            a = sorted(nx.connected.connected_component_subgraphs(self.G), key=len, reverse=True)[0]
             nList = [v for v in self.G.nodes()]
             random.shuffle(nList)
             nList = nList[:-1]
@@ -1610,7 +1610,7 @@ class brainObj:
                 if n in a.nodes():
                     a.remove_node(n)
                     if not nx.is_connected(a): # only recalculate if the further fragmentation
-                        a = nx.components.connected.connected_component_subgraphs(a)[0]
+                        a =sorted(nx.connected.connected_component_subgraphs(a), key=len, reverse=True)[0]
                         S = len(a.nodes())
                     else:
                         S-=1
