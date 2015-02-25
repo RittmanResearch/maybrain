@@ -10,6 +10,7 @@ import numpy as np
 import networkx as nx
 from networkx.algorithms import cluster, centrality, components
 from networkx import configuration_model
+from networkx import connected_component_subgraphs as ccs
 import random
 from numpy import linalg as lg
 
@@ -298,7 +299,7 @@ def writeResultsOld(results, measure,
     f.writelines(out+'\n')
     f.close()
     
-def normalise(G, func, n=500, retNorm=True, inVal=None):
+def normalise(G, func, n=500, retNorm=True, inVal=None, printLCC=False):
     """
     This function normalises the function G by generating a series of n random
     graphs and averaging the results. If retNorm is specified, the normalised 
@@ -307,6 +308,11 @@ def normalise(G, func, n=500, retNorm=True, inVal=None):
     vals = []
     for i in range(n):
         rand = configuration_model(G.degree().values())
+        if nx.components.number_connected_components(rand)>1:
+            graphList = ccs(rand)
+            rand = graphList.next()
+            if printLCC:
+                print "Selecting largest connected components of "+str(len(rand.nodes()))+" nodes"
         try:
             vals.append(func(rand)) # collect values using the function
         except KeyError: # exception raised if the spatial information is missing
@@ -331,6 +337,9 @@ def normaliseNodeWise(G, func, n=500, retNorm=True, inVal=None):
     for i in range(n):
         rand = configuration_model(G.degree().values())
         rand = nx.Graph(rand) # convert to simple graph from multigraph
+        nodeList = [v for v in rand.nodes() if rand.degree(v)==0]
+        rand.remove_nodes_from(nodeList)
+        
         try:
             res = func(rand) # collect values using the function
         except KeyError: # exception raised if the spatial information is missing
@@ -350,3 +359,53 @@ def normaliseNodeWise(G, func, n=500, retNorm=True, inVal=None):
         
     else: # return a list of the values from the random graph
         return(nodesDict)
+
+def extractCoordinates(template, outFile="ROI_xyz.txt"):
+    import nibabel as nb
+    import csv
+    
+    # load image
+    f = nb.load(template)
+    fData = f.get_data()
+    
+    # extract voxel coordinates
+    I,J,K=fData.shape
+    coords = np.zeros((I, J, K, 3))
+    coords[...,0] = np.arange(I)[:,np.newaxis,np.newaxis]
+    coords[...,1] = np.arange(J)[np.newaxis,:,np.newaxis]
+    coords[...,2] = np.arange(K)[np.newaxis,np.newaxis,:]
+    
+    # convert voxel coordinates to mm values using affine values
+    M = f.affine[:3,:3]
+    abc = f.affine[:3,3]
+    
+    for x in range(len(coords[:,0,0,0])):
+        for y in range(len(coords[0,:,0,0])):
+            for z in range(len(coords[0,0,:,0])):
+                coords[x,y,z,:] = M.dot(coords[x,y,z,:]) + abc
+                
+    # get unique values in the mask
+    valList = np.unique(fData)
+    valList = valList[valList!=0]
+    
+    out = open(outFile, "w")
+    writer = csv.DictWriter(out,
+                            fieldnames = ["Node", "x", "y", "z"],
+                            delimiter=" "
+                            )
+    for v in valList:
+        tempArr = np.zeros((I, J, K, 3), dtype=bool)
+        tfArray = fData==v
+        tempArr[...,0] = tfArray
+        tempArr[...,1] = tfArray
+        tempArr[...,2] = tfArray
+        
+        tempArr = coords[tempArr]
+        tempArr = np.mean(tempArr.reshape([tempArr.shape[0]/3,3]),axis=0)
+        outList = [str(int(v))]
+        outList.extend(["{:.2f}".format(x) for x in tempArr])
+        outDict = dict(zip(writer.fieldnames,
+                           outList))
+        writer.writerow(outDict)
+        
+    out.close()
