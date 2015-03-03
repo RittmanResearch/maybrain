@@ -1576,54 +1576,6 @@ class brainObj:
             conVal -= step
             # print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
         return conVal+ (2*step)
-
-        
-    #!! robustness function from master, checkrobustness removed
-    def robustness(self, iterLen=500, N=50):
-        ''' a function to calculate robustness based on "Error and attack
-        tolerance of complex networks" Albert et al Nature 2000 406:378-382
-        
-        The function calculates the rate of change in the size of the largest
-        connected component (S) as nodes are randomly removed. The process runs
-        iteratively and takes a mean. The gradient of S is smoothed to provide
-        a more accurate measure by a sliding window.
-        
-        N = size of the sliding window for smoothing the gradient
-        iterLen = number of iterations
-        
-        Note, this function is relatively slow compared to other metrics due to
-        the multiple iterations.
-        
-        '''
-        fList = np.zeros(iterLen)
-        for i in range(iterLen):
-            a = sorted(nx.connected.connected_component_subgraphs(self.G), key=len, reverse=True)[0]
-            nList = [v for v in self.G.nodes()]
-            random.shuffle(nList)
-            nList = nList[:-1]
-            mat = np.zeros((len(nList)))
-            count = 0
-            S = len(a.nodes())
-            
-            while nList and S>1:
-                n = nList.pop()
-                if n in a.nodes():
-                    a.remove_node(n)
-                    if not nx.is_connected(a): # only recalculate if the further fragmentation
-                        a =sorted(nx.connected.connected_component_subgraphs(a), key=len, reverse=True)[0]
-                        S = len(a.nodes())
-                    else:
-                        S-=1
-                mat[count] = S            
-                count+=1
-            
-            g = np.gradient(mat)
-            runMean = np.convolve(g, np.ones((N,))/N)[(N-1):]
-            diffs = np.diff(runMean)
-            nr = np.argmin(diffs)
-            
-            fList[i] = nr
-        return(np.mean(fList) / len(self.G.nodes()))
         
     ### brain connectivity toolbox
     def makebctmat(self):
@@ -1637,14 +1589,13 @@ class brainObj:
         """
         self.bctmat = np.zeros((len(self.G.nodes()),len(self.G.nodes())))
         nodeIndices = dict(zip(self.G.nodes(), range(len(self.G.nodes()))))
-        for nx,x in enumerate(self.G.nodes()):
+        for nn,x in enumerate(self.G.nodes()):
             for y in self.G.edge[x].keys():
                 try:
-                    self.bctmat[nx,nodeIndices[y]] = self.G.edge[x][y]['weight']
+                    self.bctmat[nn,nodeIndices[y]] = self.G.edge[x][y]['weight']
                 except:
                     pass
-    
-    
+        
     def assignbctResult(self, bctRes):
         ''' translate a maybrain connectome into a bct compatible format ''' 
         out = dict(zip(self.G.nodes(), bctRes))
