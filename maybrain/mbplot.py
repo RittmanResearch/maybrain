@@ -73,17 +73,22 @@ class plotObj():
         
         # output
         coords = []
-        # get nodes from networkx object
-        for x in brain.G.nodes():
-            # put into list
-            coords.append(brain.G.node[x]['xyz'])
-                    
-        # make into array for easy output                    
-        coords = array(coords)        
         
         # select some rows if necessary
+        if not nodeList:
+            nodeList = brain.G.nodes()        
+        
         if nodeList:
-            coords = coords[nodeList,:]
+            coords = [brain.G.node[x]['xyz'] for x in nodeList]
+            
+#        # get nodes from networkx object
+#        else:
+#            for x in brain.G.nodes():
+#                # put into list
+#                coords.append(brain.G.node[x]['xyz'])
+                    
+        # make into array for easy output                    
+        coords = array(coords)                
         
         # return x, y and z coordinates
         return coords[:, 0], coords[:, 1], coords[:, 2]

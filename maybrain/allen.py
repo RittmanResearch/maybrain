@@ -16,7 +16,7 @@ from glob import glob
 
 class allenBrain:
     def __init__(self, allenSubj, assocMat, delim=",",
-                 spatialFile="parcel_500_xyz.txt", nodesToExclude=None):
+                 spatialFile="parcel_500.txt", nodesToExclude=None):
        
         self.subj = allenSubj
         self.fName = "SampleAnnot.csv"
@@ -132,9 +132,6 @@ class allenBrain:
             for p in probeList:
                 probeNumbers.extend([v for v in self.probeDict.keys() if any([p in self.probeDict[v][1], p in self.probeDict[v][0]])])
             print " ".join(["Probe numbers:", ' '.join(probeNumbers)])
-       
-        else:
-            probeNumbers = None
        
         self.outFile = path.join(self.subj, self.gm+'.txt')
         if path.exists(self.outFile):
