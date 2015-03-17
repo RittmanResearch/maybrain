@@ -145,11 +145,12 @@ class plotObj():
         # plot the highlights
         self.plotBrainHighlights(brain)
         
-    def plotBrainCoords(self, brain, nodes=None, opacity = 1.0, label = 'coordplot', sizeList=None, col=(0.,0.,0.), sf=None):
+    def plotBrainCoords(self, brain, nodes=None, opacity = 1.0, label = 'coordplot', sizeList=None, col=(0.,0.,0.),
+                        sf=None, sfRange=None):
         ''' plot all coordinates in a brain '''
         
         coords = self.coordsToList(brain, nodeList=nodes)
-        self.plotCoords(coords, opacity = opacity, label=label, col=col, sizeList=sizeList, sf=sf)
+        self.plotCoords(coords, opacity = opacity, label=label, col=col, sizeList=sizeList, sf=sf, sfRange=sfRange)
         
         
     def plotBrainEdges(self, brain, opacity = 1.0, label = 'edgeplot', col=None, cm ='GnBu', lw=2., scalars=None):
@@ -197,7 +198,7 @@ class plotObj():
                 self.plotCoords((x,y,z), col = ho.colour, opacity = ho.opacity, label=label)        
         
         
-    def plotCoords(self, coords, col = (1.,1.,1.), opacity = 1., label='plot', sizeList=None, sf=None, absoluteScaling=True):
+    def plotCoords(self, coords, col = (1.,1.,1.), opacity = 1., label='plot', sizeList=None, sf=1., sfRange=None):
         ''' plot the coordinates of a brain object
             "absoluteScaling" is an option to use and absolute rather than a relative scaling, particularly useful for multiple plots
            
@@ -206,7 +207,7 @@ class plotObj():
             # note that scalar value is currently set to 1.
             ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
                                                   figure = self.mfig)
-            sf = None
+            sf = 1.
             
         else:
             try:
@@ -219,23 +220,16 @@ class plotObj():
                 sf = 5./power(max(sizeList), 1/3)
                 print "sf calculated as: "+str(sf)
                 
-            # apply absolute scaling
-            if absoluteScaling and sf:
-                print "Using asbsolute scaling"
-                sizeList = [float(v)*sf for v in sizeList]
-                sf = 1.
-            
-            if sf:
-                ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
-                                                      sizeList, figure = self.mfig, scale_factor=sf)
-            else:
-                ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
+            ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
                                                       sizeList, figure = self.mfig)
-        sf = 1. ### needs changing!!!
-        if sf:
-            p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity)
-        else:
-            p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor=sf)
+             
+        p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor=sf,
+                                scale_mode="scalar")
+        
+        if sfRange:
+            print "Adjusting glyph range"
+            p.glyph.glyph.range = array(sfRange)
+
         
         self.brainNodePlots[label] = p
         print(label, p)

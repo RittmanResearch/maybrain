@@ -15,6 +15,14 @@ from matplotlib import pyplot as plt
 from glob import glob
 
 class allenBrain:
+    """
+    Class the includes two brain objects of the maybrain class brainObj, firstly
+    a graph of the Allen institute brain data for the subject 'allenSubj' and
+    secondly an association matrix (eg fMRI data) given by 'assocMat'.
+    
+    If the specified spatial file is in mm coordinates rather than MNI, then change
+    MNIcoords to False.
+    """
     def __init__(self, allenSubj, assocMat, delim=",",
                  spatialFile="parcel_500.txt", nodesToExclude=[], MNIcoords=True):
        
@@ -58,6 +66,11 @@ class allenBrain:
         self.c.importSpatialInfo(spatialFile)
    
     def comparison(self):
+        """
+        This function finds node pairs in the Allen brain atlas data and the 
+        imaging association matrix by checking bi-directionally whether two nodes
+        are the closest to each other.
+        """
         # set up dictionary to link nodes from probe data and graph
         nodeDictMRIs = {}
        
@@ -113,6 +126,10 @@ class allenBrain:
                 self.a.G.remove_node(node)
                    
     def doPlot(self):
+        """
+        This plots the pairwise sets of nodes, with the Allen data in red and 
+        the imaging data in blue (or is it green?)
+        """
         self.a.importSkull("/usr/share/data/fsl-mni152-templates/MNI152_T1_2mm_brain.nii.gz")
         p = mbo.plotObj()
         p.plotSkull(self.a, contourVals = [3000,9000])
@@ -125,7 +142,12 @@ class allenBrain:
     def probeData(self, propDict, graphMetric="gm", nodeList=None, plot=False,
                   probeList=[], probeNumbers=[], sigVal=1.0, T=False):
         '''
-       
+        Imports data for a specified probe in probeNumbers, or gene in probeList
+        eg MAPT. Then performs correlation with a graph metric specified as a
+        node-wise dictionary in propDict (eg the output of G.degree()).
+        
+        The sigVal is only used for plotting, ie only nodes showing a correlation between
+        the specified graph metric and probe values will be shown
         '''
         self.gm=graphMetric
         self.sigVal=sigVal
