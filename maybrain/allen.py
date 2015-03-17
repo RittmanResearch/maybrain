@@ -16,7 +16,7 @@ from glob import glob
 
 class allenBrain:
     def __init__(self, allenSubj, assocMat, delim=",",
-                 spatialFile="parcel_500.txt", nodesToExclude=None):
+                 spatialFile="parcel_500.txt", nodesToExclude=[], MNIcoords=True):
        
         self.subj = allenSubj
         self.fName = "SampleAnnot.csv"
@@ -36,13 +36,20 @@ class allenBrain:
             self.a.G.node[n] = l
             self.headers.append(l["structure_id"])
         f.close()
-       
-        # convert location data for Allen brain from MNI space
-        for n in self.a.G.nodes():
-            x = 45 - (float(self.a.G.node[n]['mni_x'])/2)
-            y = 63 + (float(self.a.G.node[n]['mni_y'])/2)
-            z = 36 + (float(self.a.G.node[n]['mni_z'])/2)
-            self.a.G.node[n]['xyz'] = (x,y,z)
+        
+        if not MNIcoords:
+            # convert location data for Allen brain from MNI space
+            for n in self.a.G.nodes():
+                x = 45 - (float(self.a.G.node[n]['mni_x'])/2)
+                y = 63 + (float(self.a.G.node[n]['mni_y'])/2)
+                z = 36 + (float(self.a.G.node[n]['mni_z'])/2)
+                self.a.G.node[n]['xyz'] = (x,y,z)
+        else:
+            for n in self.a.G.nodes():
+                x = float(self.a.G.node[n]['mni_x'])
+                y = float(self.a.G.node[n]['mni_y'])
+                z = float(self.a.G.node[n]['mni_z'])
+                self.a.G.node[n]['xyz'] = (x,y,z)
        
         # set up brain with graph properties
         self.c = mbo.brainObj()
@@ -86,7 +93,7 @@ class allenBrain:
                     dOwn = (n,d)
             nodeDictAllen[node] = {"allen":dOwn, "MRIs":dOther}
        
-        nodePairs = []
+        self.nodePairs = []
         for node in nodeDictMRIs.keys():
             # check if no other MRI nodes closer
             if nodeDictMRIs[node]['allen'][1] < nodeDictMRIs[node]['MRIs'][1]:
@@ -95,7 +102,7 @@ class allenBrain:
                 if nodeDictAllen[n]['MRIs'][0] == node:
                     self.c.G.node[node]['pair'] = n
                     self.a.G.node[n]['pair'] = node
-                    nodePairs.append((node,n))
+                    self.nodePairs.append((node,n))
                 else:
                     self.c.G.remove_node(node)
             else:
@@ -252,7 +259,7 @@ class allenBrain:
 
 class multiSubj:
     def __init__(self, assocMat, nodesToExclude=[], delim=" ",
-                 subjList=None, spatialFile="parcel_500.txt"):
+                 subjList=None, spatialFile="parcel_500.txt", MNIcoords=True):
         if subjList:
             self.subjList = subjList
         else:
@@ -280,12 +287,13 @@ class multiSubj:
                 self.headers[subj].append(l["structure_id"])
             f.close()
            
-            # convert location data for Allen brain from MNI space
-            for n in self.a.G.nodes():
-                x = 45 - (float(self.a.G.node[n]['mni_x'])/2)
-                y = 63 + (float(self.a.G.node[n]['mni_y'])/2)
-                z = 36 + (float(self.a.G.node[n]['mni_z'])/2)
-                self.a.G.node[n]['xyz'] = (x,y,z)
+            if MNIcoords:
+                # convert location data for Allen brain from MNI space
+                for n in self.a.G.nodes():
+                    x = 45 - (float(self.a.G.node[n]['mni_x'])/2)
+                    y = 63 + (float(self.a.G.node[n]['mni_y'])/2)
+                    z = 36 + (float(self.a.G.node[n]['mni_z'])/2)
+                    self.a.G.node[n]['xyz'] = (x,y,z)
        
         # set up brain with graph properties
         self.c = mbo.brainObj()
@@ -328,7 +336,7 @@ class multiSubj:
                     dOwn = (n,d)
             nodeDictAllen[node] = {"allen":dOwn, "MRIs":dOther}
        
-        nodePairs = []
+        self.nodePairs = []
         for node in nodeDictMRIs.keys():
             # check if no other MRI nodes closer
             if nodeDictMRIs[node]['allen'][1] < nodeDictMRIs[node]['MRIs'][1]:
@@ -337,7 +345,7 @@ class multiSubj:
                 if nodeDictAllen[n]['MRIs'][0] == node:
                     self.c.G.node[node]['pair'] = n
                     self.a.G.node[n]['pair'] = node
-                    nodePairs.append((node,n))
+                    self.nodePairs.append((node,n))
                 else:
                     self.c.G.remove_node(node)
             else:

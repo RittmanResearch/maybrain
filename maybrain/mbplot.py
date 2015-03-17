@@ -71,15 +71,13 @@ class plotObj():
         ''' get coordinates from lists in the brain object, possibly using only
         the indices given by nodeList and edgeList '''
         
-        # output
-        coords = []
-        
         # select some rows if necessary
         if not nodeList:
             nodeList = brain.G.nodes()        
         
-        if nodeList:
-            coords = [brain.G.node[x]['xyz'] for x in nodeList]
+        # get coordinates
+        # make into array for easy output                    
+        coords = array([brain.G.node[x]['xyz'] for x in nodeList])
             
 #        # get nodes from networkx object
 #        else:
@@ -87,8 +85,7 @@ class plotObj():
 #                # put into list
 #                coords.append(brain.G.node[x]['xyz'])
                     
-        # make into array for easy output                    
-        coords = array(coords)                
+#        coords = array(coords)                
         
         # return x, y and z coordinates
         return coords[:, 0], coords[:, 1], coords[:, 2]
@@ -200,13 +197,16 @@ class plotObj():
                 self.plotCoords((x,y,z), col = ho.colour, opacity = ho.opacity, label=label)        
         
         
-    def plotCoords(self, coords, col = (1.,1.,1.), opacity = 1., label='plot', sizeList=None, sf=None):
-        ''' plot the coordinates of a brain object '''
+    def plotCoords(self, coords, col = (1.,1.,1.), opacity = 1., label='plot', sizeList=None, sf=None, absoluteScaling=True):
+        ''' plot the coordinates of a brain object
+            "absoluteScaling" is an option to use and absolute rather than a relative scaling, particularly useful for multiple plots
+           
+        '''
         if sizeList==None:
-            # note that scalar value is currently set to x
+            # note that scalar value is currently set to 1.
             ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
                                                   figure = self.mfig)
-            sf = 1.
+            sf = None
             
         else:
             try:
@@ -218,10 +218,24 @@ class plotObj():
             if not sf:
                 sf = 5./power(max(sizeList), 1/3)
                 print "sf calculated as: "+str(sf)
-            ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
-                                                  sizeList, figure = self.mfig, scale_factor=sf)
-        
-        p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor = sf)
+                
+            # apply absolute scaling
+            if absoluteScaling and sf:
+                print "Using asbsolute scaling"
+                sizeList = [float(v)*sf for v in sizeList]
+                sf = 1.
+            
+            if sf:
+                ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
+                                                      sizeList, figure = self.mfig, scale_factor=sf)
+            else:
+                ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
+                                                      sizeList, figure = self.mfig)
+        sf = 1. ### needs changing!!!
+        if sf:
+            p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity)
+        else:
+            p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor=sf)
         
         self.brainNodePlots[label] = p
         print(label, p)
