@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed Mar 11 21:59:59 2015
-This module deals with the braineac gene expression data.
+This module deals with the braineac gene expression data available from http://www.braineac.org/
+
+It also requires an AAL atlas and AAL regions of interest file (contact me on tr332@medschl.cam.ac.uk if you need either of these)
 @author: tim
 """
 
@@ -20,8 +22,16 @@ from glob import glob
 import rpy2.robjects as ro
 
 class braineac:
-    def __init__(self,AALrois="ROI_MNI_V4.txt", braineacDir = "/home/tim/Documents/braineac"):
-        
+    """
+    A class the defines a braineac object. This reads braineac data and defines
+    regions based on their definitions in the AAL atlas. It can then extract data
+    from a maybrain produced set of metrics and aggregate node-wise measures over
+    the braineac regions.
+    
+    Don't forget to set the path to your braineac diretory (braineacDir) which
+    should contain the downloaded braineac data.
+    """
+    def __init__(self,AALrois="ROI_MNI_V4.txt", braineacDir = "~/Documents/braineac"):
         # get dictionary of nodes ready
         f = open(AALrois, "r")
         lines = f.readlines()
@@ -78,8 +88,10 @@ class braineac:
 
     def comparison(self, assMat, delim=" ", spatialFile="parcel_500.txt", parcellation="parcels/parcel_500.nii",
                    outFile="braineacNodes.txt", midLine=44.5):
-        # now let's match up the imaging data to the braineac data        
-        # create a brain obect and import an association matrix
+        """
+        now let's match up the imaging data to the braineac data        
+        to create a brain object and import an association matrix.
+        """
         self.a = mbo.brainObj()
         self.a.importAdjFile(assMat, delimiter=delim)
         
@@ -137,7 +149,7 @@ class braineac:
 
     def braineacData(self, probeList, naVal="NA"):
         """ 
-        Get braineac data
+        Get braineac data for the specified list of probes.
         """
         self.b = mbo.brainObj()
         nodeList = [v for v in self.regValDict.keys()]
