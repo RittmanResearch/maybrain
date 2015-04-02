@@ -1123,7 +1123,7 @@ class brainObj:
 
     ### basic proximities
    
-    def findSpatiallyNearest(self, nodeList):
+    def findSpatiallyNearest(self, nodeList, contra=False, midline=44.5):
         # find the spatially closest node as no topologically close nodes exist
         print "Finding spatially closest node"
         if isinstance(nodeList, list):
@@ -1135,9 +1135,18 @@ class brainObj:
         nodes = [v for v in nodes if not v in nodeList]
 
         shortestnode = (None, None)
+        
+        # get the contralaterally closest node if desired
+        pos=self.G.node[duffNode]['xyz']
+        if contra:
+            if pos[0] < midline:
+                pos[0] = midline + (midline - pos[0])
+            else:
+                pos[0] = midline + (pos[0] - midline)
+            
         for node in nodes:
             try:
-                distance = np.linalg.norm(np.array(self.G.node[duffNode]['xyz'] - np.array(self.G.node[node]['xyz'])))
+                distance = np.linalg.norm(np.array(pos - np.array(self.G.node[node]['xyz'])))
             except:
                 print "Finding the spatially nearest node requires x,y,z values"
                 
@@ -1376,6 +1385,34 @@ class brainObj:
         #!! docstring missing
         hubscore = self.betweenessCentrality[node] + self.closenessCentrality[node] + self.degrees[node]
         return(hubscore)
+    
+    def copyHemisphere(self, hSphere="L", midline=44.5):
+        """
+        This copies all the nodes and attributes from one hemisphere to the other, deleting any pre-existing
+        data on the contralateral side. Particularly useful when you only have data from a single 
+        hemisphere available.        
+        """
+        if hSphere=="L":
+            for node in self.G.nodes():
+                if self.G.node[node]['xyz'][0] < midline:
+                    self.G.add_node(str(node)+"R")
+                    self.G.node[str(node)+"R"] = self.G.node[node]
+                    pos = self.G.node[node]['xyz']
+                    pos = (midline + (midline + pos[0]), pos[1], pos[2])
+                    self.G.node[str(node)+"R"]['xyz'] = pos
+                else:
+                    self.G.remove_node(node)
+                    
+        elif hSphere=="R":
+            for node in self.G.nodes():
+                if self.G.node[node]['xyz'][0] > midline:
+                    self.G.add_node(str(node)+"R")
+                    self.G.node[str(node)+"R"] = self.G.node[node]
+                    pos = self.G.node[node]['xyz']
+                    pos = (midline + (midline + pos[0]), pos[1], pos[2])
+                    self.G.node[str(node)+"R"]['xyz'] = pos
+                else:
+                    self.G.remove_node(node)
 
 
     ### other functions        
