@@ -316,7 +316,13 @@ class multiSubj:
                     y = 63 + (float(self.a.G.node[n]['mni_y'])/2)
                     z = 36 + (float(self.a.G.node[n]['mni_z'])/2)
                     self.a.G.node[n]['xyz'] = (x,y,z)
-       
+            else:
+                for n in self.a.G.nodes():
+                    x = float(self.a.G.node[n]['mni_x'])
+                    y = float(self.a.G.node[n]['mni_y'])
+                    z = float(self.a.G.node[n]['mni_z'])
+                    self.a.G.node[n]['xyz'] = (x,y,z)
+                    
         # set up brain with graph properties
         self.c = mbo.brainObj()
         self.c.importAdjFile(assocMat, delimiter=delim, exclnodes=nodesToExclude)
@@ -375,6 +381,30 @@ class multiSubj:
        
         for node in self.a.G.nodes():
             if not 'pair' in self.a.G.node[node].keys():
+                self.a.G.remove_node(node)
+
+    def comparisonAveraged(self):
+        """
+        This function should generate sets of nodes in the imaging data associated
+        with single nodes in the Allen data, ie all the closes imaging data nodes will
+        be associated with any specific Allen node.
+        """
+        for n in self.a.G.nodes():
+            self.a.G.node[n]['pairNodes'] = []
+        
+        # iterate through imaging nodes to find closes Allen node
+        for node in self.c.G.nodes():
+            dOther = (None, 999.) # dummy length of 999
+       
+            for n in self.a.G.nodes():
+                d = np.linalg.norm(np.array(self.c.G.node[node]['xyz'] - np.array(self.a.G.node[n]['xyz'])))
+                if d < dOther[1]:
+                    dOther = (n,d)
+                    
+            self.a.G.node[dOther[0]]['pairNodes'].append(node)
+       
+        for node in self.a.G.nodes():
+            if not self.a.G.node[node]['pairNodes']:
                 self.a.G.remove_node(node)
 
     def probeData(self, probeNumbers=[]):
