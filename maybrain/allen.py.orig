@@ -304,6 +304,22 @@ class multiSubj:
                 self.headers[subj].append(l["structure_acronym"]) #STORE structure_acronym INSTEAD OF structure_id
             f.close()
            
+<<<<<<< HEAD
+            if MNIcoords:
+                # convert location data for Allen brain from MNI space
+                for n in self.a.G.nodes():
+                    x = 45 - (float(self.a.G.node[n]['mni_x'])/2)
+                    y = 63 + (float(self.a.G.node[n]['mni_y'])/2)
+                    z = 36 + (float(self.a.G.node[n]['mni_z'])/2)
+                    self.a.G.node[n]['xyz'] = (x,y,z)
+            else:
+                for n in self.a.G.nodes():
+                    x = float(self.a.G.node[n]['mni_x'])
+                    y = float(self.a.G.node[n]['mni_y'])
+                    z = float(self.a.G.node[n]['mni_z'])
+                    self.a.G.node[n]['xyz'] = (x,y,z)
+                    
+=======
             # convert location data for Allen brain from MNI space
             # for n in self.a.G.nodes():
             #     x = 45 - (float(self.a.G.node[n]['mni_x'])/2)
@@ -315,15 +331,16 @@ class multiSubj:
                 y = float(self.a.G.node[n]['mni_y'])
                 z = float(self.a.G.node[n]['mni_z'])
                 self.a.G.node[n]['xyz'] = (x,y,z)    
-            else:
-                for n in self.a.G.nodes():
-                    x = float(self.a.G.node[n]['mni_x'])
-                    y = float(self.a.G.node[n]['mni_y'])
-                    z = float(self.a.G.node[n]['mni_z'])
-                    self.a.G.node[n]['xyz'] = (x,y,z)
+        #written by PV to add symmetric data !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!     
+        
+        #written by PV to print location of each structure_id to file
+        #print(len(self.a.G.nodes()))
+        #f = open('myAllenNodes.txt', 'w') 
+        #for n in self.a.G.nodes():
         #    f.write('%s, %s, %s, %s \n' % (str(n), str(self.a.G.node[n]['xyz'][0]),str(self.a.G.node[n]['xyz'][1]),str(self.a.G.node[n]['xyz'][2])))
         #f.close()
-       
+
+>>>>>>> origin/petraDev
         # set up brain with graph properties
         self.c = mbo.brainObj()
         self.c.importAdjFile(assocMat, delimiter=delim, exclnodes=nodesToExclude)
