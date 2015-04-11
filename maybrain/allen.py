@@ -270,8 +270,14 @@ from glob import glob
 #         return([v for v in x])
 
 class multiSubj:
+    """
+    This object contains two 'brain' network objects, one for the imaging data and
+    one for the Allen data. Embedded functions make a comparison between the imaging
+    and Allen data by pairing nodes between the two network objects.
+    """
     def __init__(self, assocMat, nodesToExclude=[], delim=" ",
-                 subjList=None, spatialFile="atlas471_xyz_flip_xy.txt"):
+                 subjList=None, spatialFile="parcel_500.txt", symmetrise=False,
+                 convertMNI=False):
         if subjList:
             self.subjList = subjList
         else:
@@ -280,14 +286,24 @@ class multiSubj:
         self.fName = "SampleAnnot.csv"
         self.maFile = "MicroarrayExpression.csv"
         self.probeFile = "Probes.csv"
-       
+        
+        # if symmetrise is true then regions are identified by the structure name,
+        # if symmetrise is false, then regions are identified by the structural acronym
+        # these refer to headers in the SampleAnnot.csv file
+        if symmetrise:
+            self.sLab = "structure_acronym"
+        else:
+            self.sLab = "structure_name"
+        
         # set up brain for expression data
         self.a = mbo.brainObj()
        
         node_counter = 0
 
         self.headers={}
+        self.sIDDict = {} # dictionary storing the list of nodes for each structural ID by subject - for use later in averaging across all subjects
         for subj in self.subjList:
+            self.sIDDict[subj] = {}
             # import probe data
             f = open(path.join(subj, self.fName), "rb")        
             reader = csv.DictReader(f, delimiter=",", quotechar='"')
@@ -295,32 +311,37 @@ class multiSubj:
             self.headers[subj] = ['probe']
             for l in reader:
                 # n = int(l["structure_id"])
+                sID = l[self.sLab]
                 n = node_counter # GIVE NODES UNIQUE INCREMENTAL ID (across all subjects)
                 if not self.a.G.has_node(n):
                     self.a.G.add_node(n)
                     self.a.G.node[n] = l
+                    self.a.G.node[n]['sID'] = sID # store the structure_acronym/structure_name for the node
                     node_counter += 1
-                # self.headers[subj].append(l["structure_id"])
-                self.headers[subj].append(l["structure_acronym"]) #STORE structure_acronym INSTEAD OF structure_id
+                    # self.headers[subj].append(l["structure_id"])
+                    self.headers[subj].append(sID) #STORE structure_acronym or structure_name depending on symmetrise
+                    
+                    if not sID in self.sIDDict.keys():
+                        self.sIDDict[subj][sID] = [n]
+                    else:
+                        self.sIDDict[subj][sID].append(n)
+
             f.close()
            
-            # convert location data for Allen brain from MNI space
-            # for n in self.a.G.nodes():
-            #     x = 45 - (float(self.a.G.node[n]['mni_x'])/2)
-            #     y = 63 + (float(self.a.G.node[n]['mni_y'])/2)
-            #     z = 36 + (float(self.a.G.node[n]['mni_z'])/2)
-            #     self.a.G.node[n]['xyz'] = (x,y,z)
-            for n in self.a.G.nodes():
-                x = float(self.a.G.node[n]['mni_x'])
-                y = float(self.a.G.node[n]['mni_y'])
-                z = float(self.a.G.node[n]['mni_z'])
-                self.a.G.node[n]['xyz'] = (x,y,z)    
+            if convertMNI:
+                # convert location data for Allen brain from MNI space
+                 for n in self.a.G.nodes():
+                     x = 45 - (float(self.a.G.node[n]['mni_x'])/2)
+                     y = 63 + (float(self.a.G.node[n]['mni_y'])/2)
+                     z = 36 + (float(self.a.G.node[n]['mni_z'])/2)
+                     self.a.G.node[n]['xyz'] = (x,y,z)
             else:
                 for n in self.a.G.nodes():
                     x = float(self.a.G.node[n]['mni_x'])
                     y = float(self.a.G.node[n]['mni_y'])
                     z = float(self.a.G.node[n]['mni_z'])
-                    self.a.G.node[n]['xyz'] = (x,y,z)
+                    self.a.G.node[n]['xyz'] = (x,y,z)    
+
         #    f.write('%s, %s, %s, %s \n' % (str(n), str(self.a.G.node[n]['xyz'][0]),str(self.a.G.node[n]['xyz'][1]),str(self.a.G.node[n]['xyz'][2])))
         #f.close()
        
@@ -330,10 +351,12 @@ class multiSubj:
         self.c.importSpatialInfo(spatialFile)
 
     def comparison(self):
-        # set up dictionary to link nodes from probe data and graph
-        # keys are the mri nodes and values are disctionaries containing two keys: 
-        # key 1= allen, value= (n=id of closest allen node, d=distance to closest allen node)
-        # key 2= mri, value= (n=id of closest other mri node, d=distance to closest mri node)
+        """
+        set up dictionary to link nodes from probe data and graph
+        keys are the mri nodes and values are dictionaries containing two keys: 
+        key 1= allen, value= (n=id of closest allen node, d=distance to closest allen node)
+        key 2= mri, value= (n=id of closest other mri node, d=distance to closest mri node)
+        """
         nodeDictMRIs = {}
        
         for node in self.c.G.nodes():
@@ -462,12 +485,28 @@ class multiSubj:
         x = len(self.subjList)
         y = len(probeNumbers)
         z = len(self.c.G.nodes())
-        print(x,y,z)
+        s = np.max([len(v) for v in [self.sIDDict[subj] for subj in self.sIDDict.keys() ]])
+        
+        print(x,y,z,s)
         probeMat = np.memmap("tempMat.txt",
                              dtype="float64",
                              mode="w+",
-                             shape=(x,y,z))
-                             
+                             shape=(x,y,z,s))
+                            
+        # set up gene list
+        geneFlag = True
+        pFile = open(path.join(self.subjList[0], self.probeFile))
+        pReader = csv.DictReader(pFile, delimiter=",", quotechar='"')
+        pDict = {l['probe_id']:l['gene_symbol'] for l in pReader}
+        geneList = pDict.values()
+        set(geneList)
+        geneList = {gene:[] for gene in geneList}
+        
+        sIDList = []
+        for subj in self.subjList:
+            sIDList.extend([v for v in self.headers[subj] if not v=='probe'])
+        sIDList = set(sIDList)
+        
         # get the corresponding node names in the MRI graph
         # cNodes is a dict whose keys are all the MRI nodes and values are the matched alen nodes
         #### PV modified line below which constructed cNodes by looping through allen nodes
@@ -478,18 +517,7 @@ class multiSubj:
         # cNodes = {str(self.a.G.node[v]['pair']):v for v in self.a.G.nodes()}
         
         cNodes = {str(v):self.c.G.node[v]['pair'] for v in self.c.G.nodes()}
-
-        # set up gene list
-        geneFlag = True
-        pFile = open(path.join(self.subjList[0], self.probeFile))
-        pReader = csv.DictReader(pFile, delimiter=",", quotechar='"')
-        pDict = {l['probe_id']:l['gene_symbol'] for l in pReader}
-        geneList = pDict.values()
-        set(geneList)
-        geneList = {gene:[] for gene in geneList}
-       
-
-
+        
         # assign values to matrix
         for x,subj in enumerate(self.subjList):
             print(str(subj))
@@ -506,7 +534,6 @@ class multiSubj:
                 fieldnames_pv.append(str(p))   #####
             # *************************************
 
-
             # import probe data
             f = open(path.join(subj, self.maFile), "rb")
             reader = csv.DictReader(f, delimiter=",",
@@ -517,52 +544,50 @@ class multiSubj:
                 probe = l['probe']
                 if probe in probeNumbers:
 
-
                     # assign probe values to sample numbers
                     for z,cNode in enumerate(self.c.G.nodes()):
                         aNode = cNodes[str(cNode)]
                         # *************************************
                         # Find structure_acronym corresponding to the matched allen node
-                        acronym = self.a.G.node[aNode]['structure_acronym']
+                        acronym = self.a.G.node[aNode][self.sLab]
                         # Initialise list for summing expression values for allen nodes with same structure_acronym
                         totalExpression = []
                         # Loop over allen nodes to find all those with the correct acronym for the current MRI node
                         # and add their expression values to the list for averaging
+                        s=0
                         for ID, struct_ac in myNodeDict.iteritems():
                             if struct_ac == acronym:
                                 # print(ID, struct_ac, l[str(ID)])
                                 # print('\n')
                                 # if l[str(ID)]:
                                 totalExpression.append(float(l[str(ID)]))
-
-                        if len(totalExpression) > 0:       #PVPVPVPVPVPVPVPVPVPVPVPVPVPVPV   
-                            # Get average expression value for all allen nodes with this structure_acronym
-                            meanExpression = sum(totalExpression)/float(len(totalExpression))
-                            # if str(ID) in l.keys():      #PVPVPVPVPVPVPVPVPVPVPVPVPVPVPV
-                            probeMat[x,y,z] = float(meanExpression) # NOTE: pv replaced l[str(aNode)] by meanExpression
+                                probeMat[x,y,z,s] = float(l[str(ID)])
+                                s+=1
+                                
                     if geneFlag:
                         geneList[pDict[probe]].append(y)
                     y+=1
             f.close()
             del(reader)
 
-            # normalise expression levels for each probe within subject
+            # get values to normalise expression levels for each probe within subject
             for y in range(probeMat.shape[1]):
                 # create a masked array removing the 0. values
-                subjMat = np.ma.array(probeMat[x,y,:],
-                                      mask=probeMat[x,y,:]==0.,
+                subjMat = np.ma.array(probeMat[x,y,:,:],
+                                      mask=probeMat[x,y,:,:]==0.,
                                       dtype="float64")
 
-                if len(subjMat[subjMat.mask]>1):
-                    subjMat = (subjMat - np.mean(subjMat)) / np.std(subjMat)
-                else:
-                    subjMat = subjMat - np.mean(subjMat)
-                probeMat[x,y,:] = subjMat
+                subjMat = (subjMat - np.mean(subjMat)) / np.std(subjMat)
+                probeMat[x,y,:,:] = subjMat
+
             geneFlag=False
        
         # collapse across subjects and probes by gene
         geneNames = geneList.keys()
         geneNames.sort() # sort in to alphabetical order
+        
+        # collapse across nodes within regions (averaging across all subjects)
+        probeMat = np.mean(probeMat, axis=3)
        
         for g,gene in enumerate(geneNames):
             if (geneList[gene]):
