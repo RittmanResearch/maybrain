@@ -233,8 +233,9 @@ class allenBrain:
              if probe in probeNumbers:
                  # assign probe values to sample numbers
                  for node in self.a.G.nodes():
-                     if l[str(node)]:
-                         self.a.G.node[node][probe] = l[str(node)]
+                     sID = self.a.G.node[node][self.sLab]
+                     if l[sID]:
+                         self.a.G.node[node][probe] = l[sID]
                      else:
                          self.a.G.node[node][probe] = None
                
@@ -497,11 +498,12 @@ class multiSubj:
                 if probe in probeNumbers:
                     # assign probe values to sample numbers
                     for node in self.a.G.nodes():
+                        sID = self.a.G.node[node][self.sLab]
                         if not probe in self.a.G.node[node].keys():
                             self.a.G.node[node][probe] = {}
                            
-                        if str(node) in l.keys():
-                            self.a.G.node[node][probe][subj] = l[str(node)]
+                        if sID in l.keys():
+                            self.a.G.node[node][probe][subj] = l[sID]
             f.close()
             del(reader)
         # self.a.G.nodes is a dict containing every UNIQUE structure id (across all subjects)      

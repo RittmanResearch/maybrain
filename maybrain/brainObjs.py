@@ -1123,9 +1123,8 @@ class brainObj:
 
     ### basic proximities
    
-    def findSpatiallyNearest(self, nodeList, contra=False, midline=44.5):
+    def findSpatiallyNearest(self, nodeList, contra=False, midline=44.5, connected=True):
         # find the spatially closest node as no topologically close nodes exist
-        print "Finding spatially closest node"
         if isinstance(nodeList, list):
             duffNode = random.choice(nodeList)
         else:
@@ -1137,12 +1136,13 @@ class brainObj:
         shortestnode = (None, None)
         
         # get the contralaterally closest node if desired
-        pos=self.G.node[duffNode]['xyz']
+        pos = [v for v in self.G.node[duffNode]['xyz']]
         if contra:
             if pos[0] < midline:
                 pos[0] = midline + (midline - pos[0])
             else:
                 pos[0] = midline + (pos[0] - midline)
+        pos = tuple(pos)
             
         for node in nodes:
             try:
@@ -1152,11 +1152,17 @@ class brainObj:
                 
             if shortestnode[0]:
                 if distance < shortestnode[1]:
-                    if self.G.degree(node) > 0:
+                    if connected:
+                        if self.G.degree(node) > 0:
+                            shortestnode = (node, distance)
+                    else:
                         shortestnode = (node, distance)
             
             else:
-                if self.G.degree(node) > 0:
+                if connected:
+                    if self.G.degree(node) > 0:
+                        shortestnode = (node, distance)
+                else:
                     shortestnode = (node, distance)
                     
         return shortestnode[0]
