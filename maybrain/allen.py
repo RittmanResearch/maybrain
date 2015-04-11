@@ -8,7 +8,7 @@ Module for linking with the Allen brain atlas
 import maybrain.brainObjs as mbo
 
 import csv
-from os import path,rename
+from os import path,rename,remove
 import numpy as np
 from scipy import stats
 from matplotlib import pyplot as plt
@@ -321,7 +321,7 @@ class multiSubj:
                     # self.headers[subj].append(l["structure_id"])
                     self.headers[subj].append(sID) #STORE structure_acronym or structure_name depending on symmetrise
                     
-                    if not sID in self.sIDDict.keys():
+                    if not sID in self.sIDDict[subj].keys():
                         self.sIDDict[subj][sID] = [n]
                     else:
                         self.sIDDict[subj][sID].append(n)
@@ -465,7 +465,7 @@ class multiSubj:
             for probe in probeNumbers:
                 self.a.G.node[n][probe] = np.mean([float(v) for v in self.a.G.node[n][probe].values()])
                
-    def writeXMatrix(self, outFile="Xmatrix.csv", probeNumbers=None):
+    def writeXMatrix(self, outFile="Xmatrix.csv", probeNumbers=None, tempMatName="tempMat.txt"):
         # get all probes if otherwise unspecified
         if not probeNumbers:
             f = open(path.join(self.subjList[0], self.probeFile))
@@ -485,10 +485,10 @@ class multiSubj:
         x = len(self.subjList)
         y = len(probeNumbers)
         z = len(self.c.G.nodes())
-        s = np.max([len(v) for v in [self.sIDDict[subj] for subj in self.sIDDict.keys() ]])
+        s = np.max([np.max([len(v) for v in self.sIDDict[subj].values()]) for subj in self.sIDDict.keys()])
         
         print(x,y,z,s)
-        probeMat = np.memmap("tempMat.txt",
+        probeMat = np.memmap(tempMatName,
                              dtype="float64",
                              mode="w+",
                              shape=(x,y,z,s))
@@ -612,6 +612,7 @@ class multiSubj:
         self.geneList = geneList
         self.probeMat = probeMat
         out.close()
+        remove(tempMatName)
    
     def writeYMatrixGroup(self, metricDict, subj="Control", outFile="YmatrixGroup.csv"):
         '''
