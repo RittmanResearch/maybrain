@@ -1386,7 +1386,7 @@ class brainObj:
         hubscore = self.betweenessCentrality[node] + self.closenessCentrality[node] + self.degrees[node]
         return(hubscore)
     
-    def copyHemisphere(self, hSphere="L", midline=44.5):
+    def copyHemisphere(self, hSphere="R", midline=44.5):
         """
         This copies all the nodes and attributes from one hemisphere to the other, deleting any pre-existing
         data on the contralateral side. Particularly useful when you only have data from a single 
@@ -1396,9 +1396,9 @@ class brainObj:
             for node in self.G.nodes():
                 if self.G.node[node]['xyz'][0] < midline:
                     self.G.add_node(str(node)+"R")
-                    self.G.node[str(node)+"R"] = self.G.node[node]
+                    self.G.node[str(node)+"R"] = {v:w for v,w in self.G.node[node].iteritems()}
                     pos = self.G.node[node]['xyz']
-                    pos = (midline + (midline + pos[0]), pos[1], pos[2])
+                    pos = (midline + (midline - pos[0]), pos[1], pos[2])
                     self.G.node[str(node)+"R"]['xyz'] = pos
                 else:
                     self.G.remove_node(node)
@@ -1406,11 +1406,10 @@ class brainObj:
         elif hSphere=="R":
             for node in self.G.nodes():
                 if self.G.node[node]['xyz'][0] > midline:
-                    self.G.add_node(str(node)+"R")
-                    self.G.node[str(node)+"R"] = self.G.node[node]
+                    self.G.add_node(str(node)+"L")
+                    self.G.node[str(node)+"L"] = {v:w for v,w in self.G.node[node].iteritems()}
                     pos = self.G.node[node]['xyz']
-                    pos = (midline + (midline + pos[0]), pos[1], pos[2])
-                    self.G.node[str(node)+"R"]['xyz'] = pos
+                    self.G.node[str(node)+"L"]['xyz'] = (midline - (pos[0] - midline), pos[1], pos[2])
                 else:
                     self.G.remove_node(node)
 

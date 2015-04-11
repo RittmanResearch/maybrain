@@ -16,39 +16,83 @@ from glob import glob
 
 class allenBrain:
      def __init__(self, allenSubj, assocMat, delim=",",
-                  spatialFile="atlas471_xyz_flip_xy.txt", nodesToExclude=None):
+                  spatialFile="atlas471_xyz_flip_xy.txt", nodesToExclude=[],
+                  symmetrise=False, mirror=False, convertMNI=False):
+         """
+         This object contains two 'brain' network objects, one for the imaging data and
+         one for the Allen data. Embedded functions make a comparison between the imaging
+         and Allen data by pairing nodes between the two network objects.
+         """
        
          self.subj = allenSubj
          self.fName = "SampleAnnot.csv"
          self.maFile = "MicroarrayExpression.csv"
-       
+         # if symmetrise is true then regions are identified by the structure name,
+         # if symmetrise is false, then regions are identified by the structural acronym
+         # these refer to headers in the SampleAnnot.csv file
+         if symmetrise:
+             self.sLab = "structure_acronym"
+         else:
+             self.sLab = "structure_name"
+        
+         if symmetrise and mirror:
+             print "Please select either a symmetrised or mirrored graph, ignoring mirror=True"
+             mirror = False
+             
          # set up brain for expression data
          self.a = mbo.brainObj()
+         
+         node_counter = 0
        
          # import probe data
          f = open(path.join(self.subj, self.fName), "rb")        
          reader = csv.DictReader(f, delimiter=",", quotechar='"')
        
          self.headers = ['probe']
+         self.sIDDict = {}
+         
+         ### deprecated code for removal ####
+#         for l in reader:
+#             n = int(l[self.sLab])
+#             self.a.G.add_node(n)
+#             self.a.G.node[n] = l
+#             self.headers.append(l["structure_id"])
+#         f.close()
+         
          for l in reader:
-             n = int(l["structure_id"])
-             self.a.G.add_node(n)
-             self.a.G.node[n] = l
-             self.headers.append(l["structure_id"])
+            # n = int(l["structure_id"])
+            sID = l[self.sLab]
+            n = node_counter # GIVE NODES UNIQUE INCREMENTAL ID (across all subjects)
+            if not self.a.G.has_node(n):
+                self.a.G.add_node(n)
+                self.a.G.node[n] = l
+                self.a.G.node[n]['sID'] = sID # store the structure_acronym/structure_name for the node
+                node_counter += 1
+                # self.headers[subj].append(l["structure_id"])
+                self.headers.append(sID) #STORE structure_acronym or structure_name depending on symmetrise
+                
+                if not sID in self.sIDDict.keys():
+                    self.sIDDict[sID] = [n]
+                else:
+                    self.sIDDict[sID].append(n)
+
          f.close()
        
-         # convert location data for Allen brain from MNI space
-         # for n in self.a.G.nodes():
-         #     x = 45 - (float(self.a.G.node[n]['mni_x'])/2)
-         #     y = 63 + (float(self.a.G.node[n]['mni_y'])/2)
-         #     z = 36 + (float(self.a.G.node[n]['mni_z'])/2)
-         #     self.a.G.node[n]['xyz'] = (x,y,z)
-         for n in self.a.G.nodes():
-             x = float(self.a.G.node[n]['mni_x'])
-             y = float(self.a.G.node[n]['mni_y'])
-             z = float(self.a.G.node[n]['mni_z'])
-             self.a.G.node[n]['xyz'] = (x,y,z)    
-       
+         if convertMNI:
+             # convert location data for Allen brain from MNI space
+              for n in self.a.G.nodes():
+                  x = 45 - (float(self.a.G.node[n]['mni_x'])/2)
+                  y = 63 + (float(self.a.G.node[n]['mni_y'])/2)
+                  z = 36 + (float(self.a.G.node[n]['mni_z'])/2)
+                  self.a.G.node[n]['xyz'] = (x,y,z)
+         else:
+             for n in self.a.G.nodes():
+                 x = float(self.a.G.node[n]['mni_x'])
+                 y = float(self.a.G.node[n]['mni_y'])
+                 z = float(self.a.G.node[n]['mni_z'])
+                 self.a.G.node[n]['xyz'] = (x,y,z)
+                
+             
          # set up brain with graph properties
          self.c = mbo.brainObj()
          self.c.importAdjFile(assocMat, delimiter=delim,
@@ -327,7 +371,7 @@ class multiSubj:
                         self.sIDDict[subj][sID].append(n)
 
             f.close()
-           
+            
             if convertMNI:
                 # convert location data for Allen brain from MNI space
                  for n in self.a.G.nodes():
@@ -587,7 +631,14 @@ class multiSubj:
         geneNames.sort() # sort in to alphabetical order
         
         # collapse across nodes within regions (averaging across all subjects)
-        probeMat = np.mean(np.ma.array(probeMat, mask=probeMat==0.), axis=3)
+#        probeMat = np.mean(np.ma.array(probeMat, mask=probeMat==0.), axis=3) # this would work, but runs in to memory problems
+        sh = probeMat.shape
+        probeMatTemp = np.memmap("probeMatTemp.txt", mode="w+", dtype="float64", shape=sh[:3])
+        
+        for x in range(sh[0]):
+            for y in range(sh[1]):
+                for z in range(sh[2]):
+                    probeMatTemp[x,y,z] = np.mean(np.ma.array(probeMat[x,y,z], mask=probeMat[x,y,z]==0.))
        
         for g,gene in enumerate(geneNames):
             if (geneList[gene]):
