@@ -577,7 +577,7 @@ class multiSubj:
                                       mask=probeMat[x,y,:,:]==0.,
                                       dtype="float64")
 
-                subjMat = (subjMat - np.mean(subjMat)) / np.std(subjMat)
+                subjMat = (subjMat - np.mean(np.ma.array(subjMat, mask=subjMat==0.))) / np.std(np.ma.array(subjMat, mask=subjMat==0.))
                 probeMat[x,y,:,:] = subjMat
 
             geneFlag=False
@@ -587,7 +587,7 @@ class multiSubj:
         geneNames.sort() # sort in to alphabetical order
         
         # collapse across nodes within regions (averaging across all subjects)
-        probeMat = np.mean(probeMat, axis=3)
+        probeMat = np.mean(np.ma.array(probeMat, mask=probeMat==0.), axis=3)
        
         for g,gene in enumerate(geneNames):
             if (geneList[gene]):
