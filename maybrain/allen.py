@@ -531,13 +531,12 @@ class multiSubj:
         x = len(self.subjList)
         y = len(probeNumbers)
         z = len(self.c.G.nodes())
-        s = np.max([np.max([len(v) for v in self.sIDDict[subj].values()]) for subj in self.sIDDict.keys()]) # max numbers of nodes for any region
+        sT = np.max([np.max([len(v) for v in self.sIDDict[subj].values()]) for subj in self.sIDDict.keys()]) # max numbers of nodes for any region
         
-        print(x,y,z,s)
         probeMat = np.memmap(tempMatName,
                              dtype="float64",
                              mode="w+",
-                             shape=(x,y,z,s))
+                             shape=(y,z,sT*x))
                             
         # set up gene list
         geneFlag = True
@@ -606,7 +605,7 @@ class multiSubj:
                                 # print('\n')
                                 # if l[str(ID)]:
                                 totalExpression.append(float(l[str(ID)]))
-                                probeMat[x,y,z,s] = float(l[str(ID)])
+                                probeMat[y,z,sT*x + s] = float(l[str(ID)])
                                 s+=1
                                 
                     if geneFlag:
@@ -616,14 +615,14 @@ class multiSubj:
             del(reader)
 
             # get values to normalise expression levels for each probe within subject
-            for y in range(probeMat.shape[1]):
+            for y in range(probeMat.shape[0]):
                 # create a masked array removing the 0. values
-                subjMat = np.ma.array(probeMat[x,y,:,:],
-                                      mask=probeMat[x,y,:,:]==0.,
+                subjMat = np.ma.array(probeMat[y,:,sT*x:sT*x+sT],
+                                      mask=probeMat[y,:,sT*x:sT*x+sT]==0.,
                                       dtype="float64")
 
                 subjMat = (subjMat - np.mean(np.ma.array(subjMat, mask=subjMat==0.))) / np.std(np.ma.array(subjMat, mask=subjMat==0.))
-                probeMat[x,y,:,:] = subjMat
+                probeMat[y,:,sT*x:sT*x+sT] = subjMat
 
             geneFlag=False
        
@@ -634,12 +633,11 @@ class multiSubj:
         # collapse across nodes within regions (averaging across all subjects)
 #        probeMat = np.mean(np.ma.array(probeMat, mask=probeMat==0.), axis=3) # this would work, but runs in to memory problems
         sh = probeMat.shape
-        probeMatTemp = np.memmap("probeMatTemp.txt", mode="w+", dtype="float64", shape=sh[:3])
+        probeMatTemp = np.memmap("probeMatTemp.txt", mode="w+", dtype="float64", shape=sh[:2])
 
-        for x in range(sh[0]):
-            for y in range(sh[1]):
-                for z in range(sh[2]):
-                    probeMatTemp[x,y,z] = np.mean(np.ma.array(probeMat[x,y,z], mask=probeMat[x,y,z]==0.)) # mask out unused values, ie where there are less than the maximum number of homolous nodes in a structural region
+        for y in range(sh[0]):
+            for z in range(sh[1]):
+                probeMatTemp[y,z] = np.mean(np.ma.array(probeMat[y,z], mask=probeMat[y,z]==0.)) # mask out unused values, ie where there are less than the maximum number of homolous nodes in a structural region
         
         # reassign the probe matrix and delete temporary memory-mapped file
         probeMat = probeMatTemp
@@ -648,14 +646,13 @@ class multiSubj:
         
         for g,gene in enumerate(geneNames):
             if (geneList[gene]):
-                x = probeMat.shape[2] # number of nodes
-                y = probeMat.shape[0]*len(geneList[gene]) # subjects * probes
+                x = probeMat.shape[1] # number of nodes
+                y = len(geneList[gene]) # number of probes
                                
                 geneMat = np.zeros(shape=(x,y), dtype="float64")
                
                 for n,p in enumerate(geneList[gene]): # nb: p is the position of the probe recorded above
-                    for s,subj in enumerate(self.subjList):
-                        geneMat[:,n*len(self.subjList)+s] = probeMat[s,p,:]
+                    geneMat[:,n] = probeMat[p,:]
                                
                 self.geneMat = geneMat
                 meanGene = np.mean(np.ma.array(geneMat, mask=np.isnan(geneMat)), axis=1) # collapse values across probes for each gene
