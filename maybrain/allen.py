@@ -35,9 +35,10 @@ class allenBrain:
          else:
              self.sLab = "structure_name"
         
-         if symmetrise and mirror:
+         self.mirror = mirror
+         if symmetrise and self.mirror:
              print "Please select either a symmetrised or mirrored graph, ignoring mirror=True"
-             mirror = False
+             self.mirror = False
              
          # set up brain for expression data
          self.a = mbo.brainObj()
@@ -75,7 +76,6 @@ class allenBrain:
                     self.sIDDict[sID] = [n]
                 else:
                     self.sIDDict[sID].append(n)
-
          f.close()
        
          if convertMNI:
@@ -91,7 +91,10 @@ class allenBrain:
                  y = float(self.a.G.node[n]['mni_y'])
                  z = float(self.a.G.node[n]['mni_z'])
                  self.a.G.node[n]['xyz'] = (x,y,z)
-                
+         
+         # copy hemisphere if required
+         if self.mirror and len(self.a.G.nodes()) < 600:
+             self.a.copyHemisphere()
              
          # set up brain with graph properties
          self.c = mbo.brainObj()
@@ -163,7 +166,7 @@ class allenBrain:
        
          for node in self.a.G.nodes():
              if not 'pair' in self.a.G.node[node].keys():
-                 self.a.G.remove_node(node)
+                 self.a.G.remove_node(node)             
                    
      def doPlot(self):
          self.a.importSkull("/usr/share/data/fsl-mni152-templates/MNI152_T1_2mm_brain.nii.gz")
@@ -178,7 +181,7 @@ class allenBrain:
      def probeData(self, propDict, graphMetric="gm", nodeList=None, plot=False,
                    probeList=[], probeNumbers=[], sigVal=1.0, T=False):
          '''
-       
+         
          '''
          self.gm=graphMetric
          self.sigVal=sigVal
@@ -197,6 +200,7 @@ class allenBrain:
              probeNumbers = None
        
          self.outFile = path.join(self.subj, self.gm+'.txt')
+         print "Saving data in:"+self.outFile
          if path.exists(self.outFile):
              rename(self.outFile, self.outFile+'.old')
          f = open(self.outFile,"w")
@@ -239,19 +243,20 @@ class allenBrain:
                      else:
                          self.a.G.node[node][probe] = None
                
-                 aa = np.zeros((len(self.a.G.nodes()),3))
-               
-                 for n,node in enumerate(self.a.G.nodes()):
+                 aa = np.zeros((len(self.c.G.nodes()),3))
+                 
+                 for n,cnode in enumerate(self.c.G.nodes()):
+                     node = self.c.G.node[cnode]['pair']
                      if self.propDict[self.a.G.node[node]['pair']]:
                          aa[n,0] = self.a.G.node[node][probe]
-                         aa[n,1] = self.propDict[self.a.G.node[node]['pair']]
-                         aa[n,2] = self.a.G.node[node]['pair']
+                         aa[n,1] = self.propDict[cnode]
+                         aa[n,2] = cnode
                      else:
                          aa[n,:] = [np.nan, np.nan, np.nan]
                
                  aa = aa[~np.isnan(aa)]
                  aa.shape = (len(aa)/3,3)
-                   
+                 
                  r,p = stats.pearsonr(aa[:,0], aa[:,1])
                
                  if p < self.sigVal:
@@ -266,10 +271,11 @@ class allenBrain:
                          plt.close()
                    
                      # save data
+                     print "Saving data in :"+self.outFile.replace('.txt', probe+self.gm+'.txt')
                      datFile = open(self.outFile.replace('.txt', probe+self.gm+'.txt'), "wb")
                      datFile.writelines(' '.join([probe, self.gm, "node", "subj"])+'\n')
                      datFile.writelines('\n'.join([' '.join([str(aa[n,0]), str(aa[n,1]), str(aa[n,2]), self.subj]) for n in range(len(aa[:,1]))]))
-                   
+                     datFile.close()
          else:
              pass
    
