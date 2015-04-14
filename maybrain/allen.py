@@ -328,7 +328,7 @@ class multiSubj:
     """
     def __init__(self, assocMat, nodesToExclude=[], delim=" ",
                  subjList=None, spatialFile="parcel_500.txt", symmetrise=False,
-                 convertMNI=False):
+                 convertMNI=False, mirror=True):
         if subjList:
             self.subjList = subjList
         else:
@@ -337,6 +337,7 @@ class multiSubj:
         self.fName = "SampleAnnot.csv"
         self.maFile = "MicroarrayExpression.csv"
         self.probeFile = "Probes.csv"
+        self.mirror=mirror
         
         # if symmetrise is true then regions are identified by the structure name,
         # if symmetrise is false, then regions are identified by the structural acronym
@@ -391,7 +392,10 @@ class multiSubj:
                     x = float(self.a.G.node[n]['mni_x'])
                     y = float(self.a.G.node[n]['mni_y'])
                     z = float(self.a.G.node[n]['mni_z'])
-                    self.a.G.node[n]['xyz'] = (x,y,z)    
+                    self.a.G.node[n]['xyz'] = (x,y,z)
+            
+            if self.mirror and len(self.a.G.nodes()) < 600:
+                self.a.copyHemisphere()
 
         #    f.write('%s, %s, %s, %s \n' % (str(n), str(self.a.G.node[n]['xyz'][0]),str(self.a.G.node[n]['xyz'][1]),str(self.a.G.node[n]['xyz'][2])))
         #f.close()
@@ -503,7 +507,8 @@ class multiSubj:
                 probe = l['probe']
                 if probe in probeNumbers:
                     # assign probe values to sample numbers
-                    for node in self.a.G.nodes():
+                    for cnode in self.c.G.nodes():
+                        node = self.c.G.node[cnode]['pair']
                         sID = self.a.G.node[node][self.sLab]
                         if not probe in self.a.G.node[node].keys():
                             self.a.G.node[node][probe] = {}
@@ -517,7 +522,7 @@ class multiSubj:
             for probe in probeNumbers:
                 self.a.G.node[n][probe] = np.mean([float(v) for v in self.a.G.node[n][probe].values()])
                
-    def writeXMatrix(self, outFile="Xmatrix.csv", probeNumbers=None, tempMatName="tempMat.txt"):
+    def writeXMatrix(self, outFile="Xmatrix.csv", probeNumbers=None, tempMatName="tempMat.txt", sd=False, sdFile="NodesSd.txt"):
         # get all probes if otherwise unspecified
         if not probeNumbers:
             f = open(path.join(self.subjList[0], self.probeFile))
@@ -641,9 +646,18 @@ class multiSubj:
         sh = probeMat.shape
         probeMatTemp = np.memmap("probeMatTemp.txt", mode="w+", dtype="float64", shape=sh[:2])
 
+        # write out the standard deviation for each probe if specified
+        if sd:
+            sdOut = open(sdFile, "wb")
+            sdOut.writelines("Probe Node sd\n")
         for y in range(sh[0]):
             for z in range(sh[1]):
                 probeMatTemp[y,z] = np.mean(np.ma.array(probeMat[y,z], mask=probeMat[y,z]==0.)) # mask out unused values, ie where there are less than the maximum number of homolous nodes in a structural region
+                if sd:
+                    std = np.std(np.ma.array(probeMat[y,z], mask=probeMat[y,z]==0.))
+                    sdOut.writelines(' '.join([str(int(probeNumbers[y])), str(self.c.G.nodes()[z]), "{:2.5f}".format(std)])+'\n')
+        if sd:
+            sdOut.close()
         
         # reassign the probe matrix and delete temporary memory-mapped file
         probeMat = probeMatTemp
