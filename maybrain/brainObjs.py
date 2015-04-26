@@ -301,13 +301,21 @@ class brainObj:
             
         self.parcelList = np.ma.masked_values(zeroArr, 0.0)
 
-    def exportParcelsNii(self, outname='brain'):
+    def exportParcelsNii(self, outname='brain', valueDict=None):
         """
         This function saves the parcelList as a nifti file. It requires the
         brain.parcels function has been run first.
         """
         import nibabel as nb
-        N = nb.Nifti1Image(self.parcelList, self.nbiso.get_affine(), header=self.isoHeader)
+        if valueDict: # creates a numpy array based on the dictionary provided
+            outMat = np.zeros(self.nbiso.get_data().shape, dtype="float64")
+            for n in valueDict.keys():
+                outMat[np.where(self.nbiso.get_data()==n+1)] = valueDict[n]
+        else:
+            outMat = self.parcelList
+        
+        N = nb.Nifti1Image(outMat, self.nbiso.get_affine(), header=self.isoHeader)
+
         nb.save(N, outname+'.nii')
                      
         
