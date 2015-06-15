@@ -658,7 +658,10 @@ class multiSubj:
             if not self.a.G.node[node]['pairNodes']:
                 self.a.G.remove_node(node)
 
-    def probeData(self, probeNumbers=[]):
+    def probeData(self, probeNumbers=[], meanVals=True):
+        """
+        If meanVals is specified, this takes the mean probe value across subjects
+        """
         for subj in self.subjList:
             # import probe data
             f = open(path.join(subj, self.maFile), "rb")
@@ -679,10 +682,11 @@ class multiSubj:
                             self.a.G.node[node][probe][subj] = l[sID]
             f.close()
             del(reader)
-        # self.a.G.nodes is a dict containing every UNIQUE structure id (across all subjects)      
-        for n in self.a.G.nodes():
-            for probe in probeNumbers:
-                self.a.G.node[n][probe] = np.mean([float(v) for v in self.a.G.node[n][probe].values()])
+        # self.a.G.nodes is a dict containing every UNIQUE structure id (across all subjects)
+        if meanVals:
+            for n in self.a.G.nodes():
+                for probe in probeNumbers:
+                    self.a.G.node[n][probe] = np.mean([float(v) for v in self.a.G.node[n][probe].values()])
                
     def writeXMatrix(self, outFile="Xmatrix.csv", probeNumbers=None, tempMatName="tempMat.txt", sd=False, sdFile="NodesSd.txt"):
         # get all probes if otherwise unspecified
@@ -812,15 +816,17 @@ class multiSubj:
         if sd:
             sdOut = open(sdFile, "wb")
             sdOut.writelines("Probe Node sd\n")
+            
         for y in range(sh[0]):
             for z in range(sh[1]):
                 probeMatTemp[y,z] = np.mean(np.ma.array(probeMat[y,z], mask=probeMat[y,z]==0.)) # mask out unused values, ie where there are less than the maximum number of homolous nodes in a structural region
                 if sd:
                     std = np.std(np.ma.array(probeMat[y,z], mask=probeMat[y,z]==0.))
                     sdOut.writelines(' '.join([str(int(probeNumbers[y])), str(self.c.G.nodes()[z]), "{:2.5f}".format(std)])+'\n')
+            
         if sd:
             sdOut.close()
-        
+                
         # reassign the probe matrix and delete temporary memory-mapped file
         probeMat = probeMatTemp
         del(probeMatTemp)
