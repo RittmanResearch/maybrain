@@ -71,19 +71,21 @@ class plotObj():
         ''' get coordinates from lists in the brain object, possibly using only
         the indices given by nodeList and edgeList '''
         
-        # output
-        coords = []
-        # get nodes from networkx object
-        for x in brain.G.nodes():
-            # put into list
-            coords.append(brain.G.node[x]['xyz'])
-                    
-        # make into array for easy output                    
-        coords = array(coords)        
-        
         # select some rows if necessary
-        if nodeList:
-            coords = coords[nodeList,:]
+        if not nodeList:
+            nodeList = brain.G.nodes()        
+        
+        # get coordinates
+        # make into array for easy output                    
+        coords = array([brain.G.node[x]['xyz'] for x in nodeList])
+            
+#        # get nodes from networkx object
+#        else:
+#            for x in brain.G.nodes():
+#                # put into list
+#                coords.append(brain.G.node[x]['xyz'])
+                    
+#        coords = array(coords)                
         
         # return x, y and z coordinates
         return coords[:, 0], coords[:, 1], coords[:, 2]
@@ -143,11 +145,12 @@ class plotObj():
         # plot the highlights
         self.plotBrainHighlights(brain)
         
-    def plotBrainCoords(self, brain, nodes=None, opacity = 1.0, label = 'coordplot', sizeList=None, col=(0.,0.,0.), sf=None):
+    def plotBrainCoords(self, brain, nodes=None, opacity = 1.0, label = 'coordplot', sizeList=None, col=(0.,0.,0.),
+                        sf=None, sfRange=None):
         ''' plot all coordinates in a brain '''
         
         coords = self.coordsToList(brain, nodeList=nodes)
-        self.plotCoords(coords, opacity = opacity, label=label, col=col, sizeList=sizeList, sf=sf)
+        self.plotCoords(coords, opacity = opacity, label=label, col=col, sizeList=sizeList, sf=sf, sfRange=sfRange)
         
         
     def plotBrainEdges(self, brain, opacity = 1.0, label = 'edgeplot', col=None, cm ='GnBu', lw=2., scalars=None):
@@ -195,10 +198,13 @@ class plotObj():
                 self.plotCoords((x,y,z), col = ho.colour, opacity = ho.opacity, label=label)        
         
         
-    def plotCoords(self, coords, col = (1.,1.,1.), opacity = 1., label='plot', sizeList=None, sf=None):
-        ''' plot the coordinates of a brain object '''
+    def plotCoords(self, coords, col = (1.,1.,1.), opacity = 1., label='plot', sizeList=None, sf=1., sfRange=None):
+        ''' plot the coordinates of a brain object
+            "absoluteScaling" is an option to use and absolute rather than a relative scaling, particularly useful for multiple plots
+           
+        '''
         if sizeList==None:
-            # note that scalar value is currently set to x
+            # note that scalar value is currently set to 1.
             ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
                                                   figure = self.mfig)
             sf = 1.
@@ -213,10 +219,17 @@ class plotObj():
             if not sf:
                 sf = 5./power(max(sizeList), 1/3)
                 print "sf calculated as: "+str(sf)
+                
             ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
-                                                  sizeList, figure = self.mfig, scale_factor=sf)
+                                                      sizeList, figure = self.mfig)
+             
+        p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor=sf,
+                                scale_mode="scalar")
         
-        p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor = sf)
+        if sfRange:
+            print "Adjusting glyph range"
+            p.glyph.glyph.range = array(sfRange)
+
         
         self.brainNodePlots[label] = p
         print(label, p)

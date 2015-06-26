@@ -15,8 +15,16 @@ from matplotlib import pyplot as plt
 from glob import glob
 
 class allenBrain:
+    """
+    Class the includes two brain objects of the maybrain class brainObj, firstly
+    a graph of the Allen institute brain data for the subject 'allenSubj' and
+    secondly an association matrix (eg fMRI data) given by 'assocMat'.
+    
+    If the specified spatial file is in mm coordinates rather than MNI, then change
+    MNIcoords to False.
+    """
     def __init__(self, allenSubj, assocMat, delim=",",
-                 spatialFile="parcel_500_xyz.txt", nodesToExclude=None):
+                 spatialFile="parcel_500.txt", nodesToExclude=[], MNIcoords=True):
        
         self.subj = allenSubj
         self.fName = "SampleAnnot.csv"
@@ -36,21 +44,33 @@ class allenBrain:
             self.a.G.node[n] = l
             self.headers.append(l["structure_id"])
         f.close()
-       
-        # convert location data for Allen brain from MNI space
-        for n in self.a.G.nodes():
-            x = 45 - (float(self.a.G.node[n]['mni_x'])/2)
-            y = 63 + (float(self.a.G.node[n]['mni_y'])/2)
-            z = 36 + (float(self.a.G.node[n]['mni_z'])/2)
-            self.a.G.node[n]['xyz'] = (x,y,z)
+        
+        if not MNIcoords:
+            # convert location data for Allen brain from MNI space
+            for n in self.a.G.nodes():
+                x = 45 - (float(self.a.G.node[n]['mni_x'])/2)
+                y = 63 + (float(self.a.G.node[n]['mni_y'])/2)
+                z = 36 + (float(self.a.G.node[n]['mni_z'])/2)
+                self.a.G.node[n]['xyz'] = (x,y,z)
+        else:
+            for n in self.a.G.nodes():
+                x = float(self.a.G.node[n]['mni_x'])
+                y = float(self.a.G.node[n]['mni_y'])
+                z = float(self.a.G.node[n]['mni_z'])
+                self.a.G.node[n]['xyz'] = (x,y,z)
        
         # set up brain with graph properties
         self.c = mbo.brainObj()
-        self.c.readAdjFile(assocMat, delimiter=delim,
-                           excludedNodes=nodesToExclude)
-        self.c.readSpatialInfo("parcel_500_xyz.txt")
+        self.c.importAdjFile(assocMat, delimiter=delim,
+                             exclnodes=nodesToExclude)
+        self.c.importSpatialInfo(spatialFile)
    
     def comparison(self):
+        """
+        This function finds node pairs in the Allen brain atlas data and the 
+        imaging association matrix by checking bi-directionally whether two nodes
+        are the closest to each other.
+        """
         # set up dictionary to link nodes from probe data and graph
         nodeDictMRIs = {}
        
@@ -86,7 +106,7 @@ class allenBrain:
                     dOwn = (n,d)
             nodeDictAllen[node] = {"allen":dOwn, "MRIs":dOther}
        
-        nodePairs = []
+        self.nodePairs = []
         for node in nodeDictMRIs.keys():
             # check if no other MRI nodes closer
             if nodeDictMRIs[node]['allen'][1] < nodeDictMRIs[node]['MRIs'][1]:
@@ -95,7 +115,7 @@ class allenBrain:
                 if nodeDictAllen[n]['MRIs'][0] == node:
                     self.c.G.node[node]['pair'] = n
                     self.a.G.node[n]['pair'] = node
-                    nodePairs.append((node,n))
+                    self.nodePairs.append((node,n))
                 else:
                     self.c.G.remove_node(node)
             else:
@@ -106,19 +126,28 @@ class allenBrain:
                 self.a.G.remove_node(node)
                    
     def doPlot(self):
+        """
+        This plots the pairwise sets of nodes, with the Allen data in red and 
+        the imaging data in blue (or is it green?)
+        """
         self.a.importSkull("/usr/share/data/fsl-mni152-templates/MNI152_T1_2mm_brain.nii.gz")
         p = mbo.plotObj()
         p.plotSkull(self.a, contourVals = [3000,9000])
-        p.plotBrainNodes(self.c, nodes =  self.c.G.nodes(),
+        p.plotBrainCoords(self.c, nodes =  self.c.G.nodes(),
                                      col=(1,0,0), sizeList=5)
-        p.plotBrainNodes(self.a, nodes = self.a.G.nodes(),
+        p.plotBrainCoord(self.a, nodes = self.a.G.nodes(),
                                      col=(0,0,1), sizeList=5)
         self.saveFig()
                                      
     def probeData(self, propDict, graphMetric="gm", nodeList=None, plot=False,
                   probeList=[], probeNumbers=[], sigVal=1.0, T=False):
         '''
-       
+        Imports data for a specified probe in probeNumbers, or gene in probeList
+        eg MAPT. Then performs correlation with a graph metric specified as a
+        node-wise dictionary in propDict (eg the output of G.degree()).
+        
+        The sigVal is only used for plotting, ie only nodes showing a correlation between
+        the specified graph metric and probe values will be shown
         '''
         self.gm=graphMetric
         self.sigVal=sigVal
@@ -132,9 +161,6 @@ class allenBrain:
             for p in probeList:
                 probeNumbers.extend([v for v in self.probeDict.keys() if any([p in self.probeDict[v][1], p in self.probeDict[v][0]])])
             print " ".join(["Probe numbers:", ' '.join(probeNumbers)])
-       
-        else:
-            probeNumbers = None
        
         self.outFile = path.join(self.subj, self.gm+'.txt')
         if path.exists(self.outFile):
@@ -254,8 +280,8 @@ class allenBrain:
         return([v for v in x])
 
 class multiSubj:
-    def __init__(self, assocMat, nodesToExclude=None, delim=" ",
-                 subjList=None, spatialFile="parcel_500_xyz.txt"):
+    def __init__(self, assocMat, nodesToExclude=[], delim=" ",
+                 subjList=None, spatialFile="parcel_500.txt", MNIcoords=True):
         if subjList:
             self.subjList = subjList
         else:
@@ -283,16 +309,17 @@ class multiSubj:
                 self.headers[subj].append(l["structure_id"])
             f.close()
            
-            # convert location data for Allen brain from MNI space
-            for n in self.a.G.nodes():
-                x = 45 - (float(self.a.G.node[n]['mni_x'])/2)
-                y = 63 + (float(self.a.G.node[n]['mni_y'])/2)
-                z = 36 + (float(self.a.G.node[n]['mni_z'])/2)
-                self.a.G.node[n]['xyz'] = (x,y,z)
+            if MNIcoords:
+                # convert location data for Allen brain from MNI space
+                for n in self.a.G.nodes():
+                    x = 45 - (float(self.a.G.node[n]['mni_x'])/2)
+                    y = 63 + (float(self.a.G.node[n]['mni_y'])/2)
+                    z = 36 + (float(self.a.G.node[n]['mni_z'])/2)
+                    self.a.G.node[n]['xyz'] = (x,y,z)
        
         # set up brain with graph properties
         self.c = mbo.brainObj()
-        self.c.importAdjFile(assocMat, delimiter=delim)
+        self.c.importAdjFile(assocMat, delimiter=delim, exclnodes=nodesToExclude)
         self.c.importSpatialInfo(spatialFile)
    
     def comparison(self):
@@ -331,7 +358,7 @@ class multiSubj:
                     dOwn = (n,d)
             nodeDictAllen[node] = {"allen":dOwn, "MRIs":dOther}
        
-        nodePairs = []
+        self.nodePairs = []
         for node in nodeDictMRIs.keys():
             # check if no other MRI nodes closer
             if nodeDictMRIs[node]['allen'][1] < nodeDictMRIs[node]['MRIs'][1]:
@@ -340,7 +367,7 @@ class multiSubj:
                 if nodeDictAllen[n]['MRIs'][0] == node:
                     self.c.G.node[node]['pair'] = n
                     self.a.G.node[n]['pair'] = node
-                    nodePairs.append((node,n))
+                    self.nodePairs.append((node,n))
                 else:
                     self.c.G.remove_node(node)
             else:

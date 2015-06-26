@@ -90,7 +90,7 @@ class brainObj:
     ### edges and nodes
 
     #!! readAdjFile removed           
-    def importAdjFile(self, fname, delimiter = None, exclnodes=[]):
+    def importAdjFile(self, fname, delimiter = None, exclnodes=[], naVals=["NA"]):
         ''' get the adjacency data from a file and return as an array '''
         self.exclnodes=exclnodes
         
@@ -113,7 +113,7 @@ class brainObj:
         for l in linesStr:
             while l[-1] in ('\n', '\t'):
                 l = l[:-1]
-            lines.append(map(float, [v if v != "NA" else np.nan for v in split(l, sep=delimiter)]))
+            lines.append(map(float, [v if v not in naVals else np.nan for v in split(l, sep=delimiter)]))
 
         # close file                
         f.close()
@@ -276,6 +276,7 @@ class brainObj:
             defines an nibabel object, plus ndarrays with data and header info in
         
         '''
+        import nibabel as nb
         self.nbiso = nb.load(fname)
         self.iso = self.nbiso.get_data()
         self.isoHeader = self.nbiso.get_header()
@@ -305,6 +306,7 @@ class brainObj:
         This function saves the parcelList as a nifti file. It requires the
         brain.parcels function has been run first.
         """
+        import nibabel as nb
         N = nb.Nifti1Image(self.parcelList, self.nbiso.get_affine(), header=self.isoHeader)
         nb.save(N, outname+'.nii')
                      
@@ -319,7 +321,7 @@ class brainObj:
 
     #!! need to create minimum spanning tree option??
     #!! doPrint option removed in merge
-    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = -1.1, rethreshold=False):
+    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = None, rethreshold=False):
         ''' Treshold the adjacency matrix to determine which nodes are linked by edges. There are 
             three options:
             
@@ -388,8 +390,14 @@ class brainObj:
 #                threshold = weights[-edgeNum]
 #            except IndexError:
 #                threhsold = weights[0]
+        
+        # case 3 - absolute threshold
+        elif tVal:
+            self.threshold = tVal
+        
+        # case 4 - weighted graph, no threshold specified
         else:
-            self.threshold  = tVal
+            self.threshold  = np.min(weights[~np.isnan(weights)])
         
         print self.threshold
             
@@ -1115,7 +1123,7 @@ class brainObj:
 
     ### basic proximities
    
-    def findSpatiallyNearest(self, nodeList):
+    def findSpatiallyNearest(self, nodeList, contra=False, midline=44.5):
         # find the spatially closest node as no topologically close nodes exist
         print "Finding spatially closest node"
         if isinstance(nodeList, list):
@@ -1127,9 +1135,18 @@ class brainObj:
         nodes = [v for v in nodes if not v in nodeList]
 
         shortestnode = (None, None)
+        
+        # get the contralaterally closest node if desired
+        pos=self.G.node[duffNode]['xyz']
+        if contra:
+            if pos[0] < midline:
+                pos[0] = midline + (midline - pos[0])
+            else:
+                pos[0] = midline + (pos[0] - midline)
+            
         for node in nodes:
             try:
-                distance = np.linalg.norm(np.array(self.G.node[duffNode]['xyz'] - np.array(self.G.node[node]['xyz'])))
+                distance = np.linalg.norm(np.array(pos - np.array(self.G.node[node]['xyz'])))
             except:
                 print "Finding the spatially nearest node requires x,y,z values"
                 
@@ -1242,8 +1259,16 @@ class brainObj:
     def weightToDistance(self):
         #!! docstring added
         ''' convert weights to a positive distance '''
+        edgeList = [self.G.edge[v[0]][v[1]]['weight'] for v in self.G.edges() ]
+        
+        # get the maximum edge value, plus any negative correction required
+        # and a small correction to keep the values above zero
+        # the correction is the inverse of the number of nodes - designed to keep
+        # calculations of efficiency sensible
+        eMax = np.max(edgeList) + 1/float(len(self.G.nodes()))
+        
         for edge in self.G.edges():
-                self.G.edge[edge[0]][edge[1]]["distance"] = 1.00001 - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
+                self.G.edge[edge[0]][edge[1]]["distance"] = eMax - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
                 
         
     ### hubs
@@ -1360,6 +1385,34 @@ class brainObj:
         #!! docstring missing
         hubscore = self.betweenessCentrality[node] + self.closenessCentrality[node] + self.degrees[node]
         return(hubscore)
+    
+    def copyHemisphere(self, hSphere="L", midline=44.5):
+        """
+        This copies all the nodes and attributes from one hemisphere to the other, deleting any pre-existing
+        data on the contralateral side. Particularly useful when you only have data from a single 
+        hemisphere available.        
+        """
+        if hSphere=="L":
+            for node in self.G.nodes():
+                if self.G.node[node]['xyz'][0] < midline:
+                    self.G.add_node(str(node)+"R")
+                    self.G.node[str(node)+"R"] = self.G.node[node]
+                    pos = self.G.node[node]['xyz']
+                    pos = (midline + (midline + pos[0]), pos[1], pos[2])
+                    self.G.node[str(node)+"R"]['xyz'] = pos
+                else:
+                    self.G.remove_node(node)
+                    
+        elif hSphere=="R":
+            for node in self.G.nodes():
+                if self.G.node[node]['xyz'][0] > midline:
+                    self.G.add_node(str(node)+"R")
+                    self.G.node[str(node)+"R"] = self.G.node[node]
+                    pos = self.G.node[node]['xyz']
+                    pos = (midline + (midline + pos[0]), pos[1], pos[2])
+                    self.G.node[str(node)+"R"]['xyz'] = pos
+                else:
+                    self.G.remove_node(node)
 
 
     ### other functions        
@@ -1560,54 +1613,6 @@ class brainObj:
             conVal -= step
             # print "New connectivity:" +str(conVal)+ " Last sgLen:" + str(sgLen)
         return conVal+ (2*step)
-
-        
-    #!! robustness function from master, checkrobustness removed
-    def robustness(self, iterLen=500, N=50):
-        ''' a function to calculate robustness based on "Error and attack
-        tolerance of complex networks" Albert et al Nature 2000 406:378-382
-        
-        The function calculates the rate of change in the size of the largest
-        connected component (S) as nodes are randomly removed. The process runs
-        iteratively and takes a mean. The gradient of S is smoothed to provide
-        a more accurate measure by a sliding window.
-        
-        N = size of the sliding window for smoothing the gradient
-        iterLen = number of iterations
-        
-        Note, this function is relatively slow compared to other metrics due to
-        the multiple iterations.
-        
-        '''
-        fList = np.zeros(iterLen)
-        for i in range(iterLen):
-            a = nx.components.connected.connected_component_subgraphs(self.G)[0]
-            nList = [v for v in self.G.nodes()]
-            random.shuffle(nList)
-            nList = nList[:-1]
-            mat = np.zeros((len(nList)))
-            count = 0
-            S = len(a.nodes())
-            
-            while nList and S>1:
-                n = nList.pop()
-                if n in a.nodes():
-                    a.remove_node(n)
-                    if not nx.is_connected(a): # only recalculate if the further fragmentation
-                        a = nx.components.connected.connected_component_subgraphs(a)[0]
-                        S = len(a.nodes())
-                    else:
-                        S-=1
-                mat[count] = S            
-                count+=1
-            
-            g = np.gradient(mat)
-            runMean = np.convolve(g, np.ones((N,))/N)[(N-1):]
-            diffs = np.diff(runMean)
-            nr = np.argmin(diffs)
-            
-            fList[i] = nr
-        return(np.mean(fList) / len(self.G.nodes()))
         
     ### brain connectivity toolbox
     def makebctmat(self):
@@ -1621,14 +1626,13 @@ class brainObj:
         """
         self.bctmat = np.zeros((len(self.G.nodes()),len(self.G.nodes())))
         nodeIndices = dict(zip(self.G.nodes(), range(len(self.G.nodes()))))
-        for nx,x in enumerate(self.G.nodes()):
+        for nn,x in enumerate(self.G.nodes()):
             for y in self.G.edge[x].keys():
                 try:
-                    self.bctmat[nx,nodeIndices[y]] = self.G.edge[x][y]['weight']
+                    self.bctmat[nn,nodeIndices[y]] = self.G.edge[x][y]['weight']
                 except:
                     pass
-    
-    
+        
     def assignbctResult(self, bctRes):
         ''' translate a maybrain connectome into a bct compatible format ''' 
         out = dict(zip(self.G.nodes(), bctRes))
