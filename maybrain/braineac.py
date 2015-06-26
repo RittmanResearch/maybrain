@@ -11,15 +11,7 @@ import maybrain.brainObjs as mbo
 
 import nibabel as nb
 import numpy as np
-
-
-import csv
-from os import path,rename
-from scipy import stats
-from matplotlib import pyplot as plt
-from glob import glob
-
-import rpy2.robjects as ro
+from os import path
 
 class braineac:
     """
@@ -31,7 +23,7 @@ class braineac:
     Don't forget to set the path to your braineac diretory (braineacDir) which
     should contain the downloaded braineac data.
     """
-    def __init__(self,AALrois="ROI_MNI_V4.txt", braineacDir = "~/Documents/braineac"):
+    def __init__(self,AALrois="ROI_MNI_V4.txt", braineacDir = "/home/tim/Documents/braineac"):
         # get dictionary of nodes ready
         f = open(AALrois, "r")
         lines = f.readlines()
@@ -151,13 +143,21 @@ class braineac:
         """ 
         Get braineac data for the specified list of probes.
         """
+        # create a brain object
         self.b = mbo.brainObj()
+        
+        # the list of brineac nodes
         nodeList = [v for v in self.regValDict.keys()]
         nodeList.sort()
+        
+        # iterate through the braineac regions
         for n,k in enumerate(nodeList):
+            # open the data file for the appropriate regions
             inFile = "expr_"+self.regValDict[k]+'.txt'
             f = open(path.join(self.braineacDir,inFile), "r")
             lines = f.readlines()
+            
+            # have a look through each line of the data file to look for the appropriate probe data            
             for line in lines:
                 bits = line.split()
                 if bits[0] in probeList:

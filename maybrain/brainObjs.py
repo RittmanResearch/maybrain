@@ -301,13 +301,21 @@ class brainObj:
             
         self.parcelList = np.ma.masked_values(zeroArr, 0.0)
 
-    def exportParcelsNii(self, outname='brain'):
+    def exportParcelsNii(self, outname='brain', valueDict=None):
         """
         This function saves the parcelList as a nifti file. It requires the
         brain.parcels function has been run first.
         """
         import nibabel as nb
-        N = nb.Nifti1Image(self.parcelList, self.nbiso.get_affine(), header=self.isoHeader)
+        if valueDict: # creates a numpy array based on the dictionary provided
+            outMat = np.zeros(self.nbiso.get_data().shape, dtype="float64")
+            for n in valueDict.keys():
+                outMat[np.where(self.nbiso.get_data()==n+1)] = valueDict[n]
+        else:
+            outMat = self.parcelList
+        
+        N = nb.Nifti1Image(outMat, self.nbiso.get_affine(), header=self.isoHeader)
+
         nb.save(N, outname+'.nii')
                      
         
@@ -1123,9 +1131,8 @@ class brainObj:
 
     ### basic proximities
    
-    def findSpatiallyNearest(self, nodeList, contra=False, midline=44.5):
+    def findSpatiallyNearest(self, nodeList, contra=False, midline=44.5, connected=True):
         # find the spatially closest node as no topologically close nodes exist
-        print "Finding spatially closest node"
         if isinstance(nodeList, list):
             duffNode = random.choice(nodeList)
         else:
@@ -1137,12 +1144,13 @@ class brainObj:
         shortestnode = (None, None)
         
         # get the contralaterally closest node if desired
-        pos=self.G.node[duffNode]['xyz']
+        pos = [v for v in self.G.node[duffNode]['xyz']]
         if contra:
             if pos[0] < midline:
                 pos[0] = midline + (midline - pos[0])
             else:
                 pos[0] = midline + (pos[0] - midline)
+        pos = tuple(pos)
             
         for node in nodes:
             try:
@@ -1152,11 +1160,17 @@ class brainObj:
                 
             if shortestnode[0]:
                 if distance < shortestnode[1]:
-                    if self.G.degree(node) > 0:
+                    if connected:
+                        if self.G.degree(node) > 0:
+                            shortestnode = (node, distance)
+                    else:
                         shortestnode = (node, distance)
             
             else:
-                if self.G.degree(node) > 0:
+                if connected:
+                    if self.G.degree(node) > 0:
+                        shortestnode = (node, distance)
+                else:
                     shortestnode = (node, distance)
                     
         return shortestnode[0]
@@ -1386,7 +1400,7 @@ class brainObj:
         hubscore = self.betweenessCentrality[node] + self.closenessCentrality[node] + self.degrees[node]
         return(hubscore)
     
-    def copyHemisphere(self, hSphere="L", midline=44.5):
+    def copyHemisphere(self, hSphere="R", midline=44.5):
         """
         This copies all the nodes and attributes from one hemisphere to the other, deleting any pre-existing
         data on the contralateral side. Particularly useful when you only have data from a single 
@@ -1396,9 +1410,9 @@ class brainObj:
             for node in self.G.nodes():
                 if self.G.node[node]['xyz'][0] < midline:
                     self.G.add_node(str(node)+"R")
-                    self.G.node[str(node)+"R"] = self.G.node[node]
+                    self.G.node[str(node)+"R"] = {v:w for v,w in self.G.node[node].iteritems()}
                     pos = self.G.node[node]['xyz']
-                    pos = (midline + (midline + pos[0]), pos[1], pos[2])
+                    pos = (midline + (midline - pos[0]), pos[1], pos[2])
                     self.G.node[str(node)+"R"]['xyz'] = pos
                 else:
                     self.G.remove_node(node)
@@ -1406,11 +1420,10 @@ class brainObj:
         elif hSphere=="R":
             for node in self.G.nodes():
                 if self.G.node[node]['xyz'][0] > midline:
-                    self.G.add_node(str(node)+"R")
-                    self.G.node[str(node)+"R"] = self.G.node[node]
+                    self.G.add_node(str(node)+"L")
+                    self.G.node[str(node)+"L"] = {v:w for v,w in self.G.node[node].iteritems()}
                     pos = self.G.node[node]['xyz']
-                    pos = (midline + (midline + pos[0]), pos[1], pos[2])
-                    self.G.node[str(node)+"R"]['xyz'] = pos
+                    self.G.node[str(node)+"L"]['xyz'] = (midline - (pos[0] - midline), pos[1], pos[2])
                 else:
                     self.G.remove_node(node)
 
