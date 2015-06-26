@@ -43,7 +43,7 @@ class mayBrainGUI(QtGui.QMainWindow):
 
         # set up function
         self.brains = {} # dictionary to hold brain objects
-        self.plot = mb.plotObj() # start plot object
+        self.plot = mb.mbplot.plotObj() # start plot object
         self.highlights = {} # dictionary of highlights, each entry contains [brainName, highlightName]
         
         # link up buttons and functions
@@ -563,15 +563,15 @@ class mayBrainGUI(QtGui.QMainWindow):
 if __name__ == "__main__":
 
     # using instance allows Mayavi to run alongside without any problems.
-    app = QtGui.QApplication.instance()
-    ex = mayBrainGUI()
-    ex.show()
-    sys.exit(app.exec_())
+#    app = QtGui.QApplication.instance()
+#    ex = mayBrainGUI()
+#    ex.show()
+#    sys.exit(app.exec_())
 
     
 
     # create and show app    
-#    app = QtGui.QApplication(sys.argv)
-#    myapp = mayBrainGUI()
-##    myapp.show()
-#    sys.exit(app.exec_())        
+    app = QtGui.QApplication(sys.argv)
+    myapp = mayBrainGUI()
+    myapp.show()
+    sys.exit(app.exec_())        
