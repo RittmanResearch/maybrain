@@ -38,8 +38,10 @@ class mayBrainGUI(QtGui.QMainWindow):
         # set up UI
         self.ui = ui.Ui_Maybrain()
         self.ui.setupUi(self)
+        # disable some buttons
         self.ui.adjPlot.setEnabled(0)
         self.ui.skullPlot.setEnabled(0)
+        self.ui.adjReplot.setEnabled(0)
 
         # set up function
         self.brains = {} # dictionary to hold brain objects
@@ -73,6 +75,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.skullLoad, QtCore.SIGNAL('clicked()'), self.loadSkull)
         QtCore.QObject.connect(self.ui.skullPlot, QtCore.SIGNAL('clicked()'), self.plotSkull)
         QtCore.QObject.connect(self.ui.plotTree, QtCore.SIGNAL('itemClicked(QTreeWidgetItem*,int)'), self.setPlotValues)
+        QtCore.QObject.connect(self.ui.adjReplot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
         self.ui.opacitySlider.valueChanged.connect(self.setOpacity)
         self.ui.opacityBox.valueChanged.connect(self.setOpacityBox)
         self.ui.visibleCheckBox.clicked.connect(self.setVisibility)
@@ -221,7 +224,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         # plot the brain
 #        try:            
             # plot the brain (excluding highlights)
-        self.plot.plotBrain(self.brains[label], opacity = 0.2, edgeOpacity = None, label=label, plotHighlights=False)
+        self.plot.plotBrain(self.brains[label], opacity = 0.2, edgeOpacity = None, label=label)
 
 #        except:
 #           print('problem plotting brain, have files been loaded?')
@@ -229,15 +232,20 @@ class mayBrainGUI(QtGui.QMainWindow):
         # add to tree view
         self.readAvailablePlots() 
             
+        # activate replot button
+        self.ui.adjReplot.setEnabled(True)
+        
         # change plot button to replot
-        QtCore.QObject.disconnect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
-        QtCore.QObject.connect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
+#        QtCore.QObject.disconnect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
+#        QtCore.QObject.connect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
     
     
     def rePlotBrain(self):
         ''' plot brain with altered threhold '''        
         
         # get brain ***NEEDS CHANGING FOR MULTIPLE BRAINS***
+        # get brain name input
+        
         brName, nameUsedBool = self.findBrainName()
         
         if not(brName in self.brains):
@@ -246,20 +254,21 @@ class mayBrainGUI(QtGui.QMainWindow):
 
         # remove old plots
         print('\n')
-        for p in self.plot.brainEdgePlots:
-            print(p)
+#        for p in self.plot.brainEdgePlots:
+#            print(p)
         self.plot.brainEdgePlots[brName].remove()
         self.plot.brainNodePlots[brName].remove()
-            
-#        try:
-        # get new threshold
-        threshold = float(self.ui.thresholdValue.text())
-        # replot
+
+        # brain to use
         br = self.brains[brName]
-        br.applyThreshold(tVal = threshold)
         
+        # get threshold type and values
+        edgePC, totalEdges, tVal = self.getThresholdType()
+        # reapply threshold
+        br.applyThreshold(edgePC = edgePC, totalEdges = totalEdges, tVal = tVal)
+                
         # *** need to get existing opacity value ***
-        self.plot.plotBrain(br, label = brName, plotHighlights=False)
+        self.plot.plotBrain(br, label = brName)
 #        except:
 #            print('problem plotting brain, is threshold correct?')
         self.readAvailablePlots()

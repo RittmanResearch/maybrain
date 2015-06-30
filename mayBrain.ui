@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>830</width>
+    <width>831</width>
     <height>605</height>
    </rect>
   </property>
@@ -30,7 +30,7 @@
    <widget class="QTabWidget" name="tabWidget">
     <property name="geometry">
      <rect>
-      <x>-10</x>
+      <x>0</x>
       <y>0</y>
       <width>831</width>
       <height>521</height>
@@ -50,9 +50,9 @@
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>0</y>
+        <y>10</y>
         <width>821</width>
-        <height>131</height>
+        <height>171</height>
        </rect>
       </property>
       <property name="font">
@@ -71,7 +71,7 @@
        </property>
        <property name="geometry">
         <rect>
-         <x>720</x>
+         <x>650</x>
          <y>70</y>
          <width>71</width>
          <height>24</height>
@@ -112,7 +112,7 @@
         <rect>
          <x>150</x>
          <y>100</y>
-         <width>451</width>
+         <width>391</width>
          <height>23</height>
         </rect>
        </property>
@@ -120,7 +120,7 @@
       <widget class="QPushButton" name="skullLoad">
        <property name="geometry">
         <rect>
-         <x>650</x>
+         <x>580</x>
          <y>100</y>
          <width>61</width>
          <height>24</height>
@@ -135,7 +135,7 @@
         <rect>
          <x>150</x>
          <y>40</y>
-         <width>451</width>
+         <width>391</width>
          <height>23</height>
         </rect>
        </property>
@@ -145,7 +145,7 @@
         <rect>
          <x>150</x>
          <y>70</y>
-         <width>451</width>
+         <width>391</width>
          <height>23</height>
         </rect>
        </property>
@@ -153,7 +153,7 @@
       <widget class="QPushButton" name="adjFnameButton">
        <property name="geometry">
         <rect>
-         <x>620</x>
+         <x>550</x>
          <y>70</y>
          <width>21</width>
          <height>24</height>
@@ -166,7 +166,7 @@
       <widget class="QPushButton" name="brainLoad">
        <property name="geometry">
         <rect>
-         <x>650</x>
+         <x>580</x>
          <y>70</y>
          <width>61</width>
          <height>24</height>
@@ -192,7 +192,7 @@
       <widget class="QPushButton" name="spatialFnameButton">
        <property name="geometry">
         <rect>
-         <x>620</x>
+         <x>550</x>
          <y>40</y>
          <width>21</width>
          <height>24</height>
@@ -205,7 +205,7 @@
       <widget class="QPushButton" name="skullFnameButton">
        <property name="geometry">
         <rect>
-         <x>620</x>
+         <x>550</x>
          <y>100</y>
          <width>21</width>
          <height>24</height>
@@ -221,7 +221,7 @@
        </property>
        <property name="geometry">
         <rect>
-         <x>720</x>
+         <x>650</x>
          <y>100</y>
          <width>71</width>
          <height>24</height>
@@ -234,7 +234,7 @@
       <widget class="QLineEdit" name="thresholdValue">
        <property name="geometry">
         <rect>
-         <x>720</x>
+         <x>730</x>
          <y>40</y>
          <width>71</width>
          <height>23</height>
@@ -247,8 +247,8 @@
       <widget class="QLabel" name="thresholdLabel">
        <property name="geometry">
         <rect>
-         <x>650</x>
-         <y>20</y>
+         <x>580</x>
+         <y>40</y>
          <width>71</width>
          <height>16</height>
         </rect>
@@ -282,12 +282,51 @@
         </property>
        </item>
       </widget>
+      <widget class="QPushButton" name="adjReplot">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="geometry">
+        <rect>
+         <x>730</x>
+         <y>70</y>
+         <width>71</width>
+         <height>24</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Replot</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="brainPlotName">
+       <property name="geometry">
+        <rect>
+         <x>560</x>
+         <y>130</y>
+         <width>231</width>
+         <height>23</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLabel" name="brainPlotNameLabel">
+       <property name="geometry">
+        <rect>
+         <x>480</x>
+         <y>130</y>
+         <width>81</width>
+         <height>20</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Brain Name</string>
+       </property>
+      </widget>
      </widget>
      <widget class="QGroupBox" name="hlBox">
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>160</y>
+        <y>200</y>
         <width>821</width>
         <height>291</height>
        </rect>
@@ -568,7 +607,7 @@
         <rect>
          <x>20</x>
          <y>170</y>
-         <width>41</width>
+         <width>71</width>
          <height>16</height>
         </rect>
        </property>
@@ -581,29 +620,38 @@
         <rect>
          <x>20</x>
          <y>210</y>
-         <width>51</width>
+         <width>61</width>
          <height>23</height>
         </rect>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
        </property>
       </widget>
       <widget class="QDoubleSpinBox" name="hlGreenSpin">
        <property name="geometry">
         <rect>
-         <x>80</x>
+         <x>90</x>
          <y>210</y>
-         <width>51</width>
+         <width>61</width>
          <height>23</height>
         </rect>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
        </property>
       </widget>
       <widget class="QDoubleSpinBox" name="hlBlueSpin">
        <property name="geometry">
         <rect>
-         <x>140</x>
+         <x>160</x>
          <y>210</y>
-         <width>51</width>
+         <width>61</width>
          <height>23</height>
         </rect>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
        </property>
       </widget>
       <widget class="QLabel" name="hlValueLabel_3">
@@ -622,7 +670,7 @@
       <widget class="QLabel" name="hlValueLabel_4">
        <property name="geometry">
         <rect>
-         <x>90</x>
+         <x>100</x>
          <y>190</y>
          <width>41</width>
          <height>16</height>
@@ -678,7 +726,7 @@
       <widget class="QLabel" name="hlValueLabel_5">
        <property name="geometry">
         <rect>
-         <x>150</x>
+         <x>170</x>
          <y>190</y>
          <width>41</width>
          <height>16</height>
@@ -780,6 +828,16 @@
        </property>
        <property name="text">
         <string>Apply to</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="subPlotName_2">
+       <property name="geometry">
+        <rect>
+         <x>480</x>
+         <y>220</y>
+         <width>171</width>
+         <height>23</height>
+        </rect>
        </property>
       </widget>
      </widget>
@@ -943,6 +1001,9 @@
         <height>23</height>
        </rect>
       </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
      </widget>
      <widget class="QDoubleSpinBox" name="greenValueBox">
       <property name="geometry">
@@ -953,6 +1014,9 @@
         <height>23</height>
        </rect>
       </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
      </widget>
      <widget class="QDoubleSpinBox" name="blueValueBox">
       <property name="geometry">
@@ -962,6 +1026,9 @@
         <width>62</width>
         <height>23</height>
        </rect>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
       </property>
      </widget>
      <widget class="QCheckBox" name="visibleCheckBox">
@@ -1026,8 +1093,8 @@
        <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Ubuntu'; font-size:9pt;&quot;&gt;# Python code to repeat what you've just done with the buttons&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Ubuntu'; font-size:11pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;# Python code to repeat what you've just done with the buttons&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
      </widget>
      <widget class="QPushButton" name="pushButton">
@@ -1051,8 +1118,8 @@ p, li { white-space: pre-wrap; }
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>830</width>
-     <height>21</height>
+     <width>831</width>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
