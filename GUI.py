@@ -256,8 +256,11 @@ class mayBrainGUI(QtGui.QMainWindow):
         print('\n')
 #        for p in self.plot.brainEdgePlots:
 #            print(p)
-        self.plot.brainEdgePlots[brName].remove()
-        self.plot.brainNodePlots[brName].remove()
+        try:
+            self.plot.brainEdgePlots[brName].remove()
+            self.plot.brainNodePlots[brName].remove()
+        except:
+            pass
 
         # brain to use
         br = self.brains[brName]

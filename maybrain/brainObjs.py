@@ -25,6 +25,7 @@ from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
 from string import split
+import extraFns
 
 #from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 
@@ -54,7 +55,7 @@ class brainObj:
         self.threshold = 0 # value of threshold for including edges
         
         # need to define the following, what do they do???
-        self.edgePC = 5 # an arbitrary value for percentage of edges to plot. #!! is this necessary?
+#        self.edgePC = 5 # an arbitrary value for percentage of edges to plot. #!! is this necessary?
         self.hubs = []
         self.lengthEdgesRemoved = None
         self.bigconnG = None
@@ -342,62 +343,52 @@ class brainObj:
         #### Determine threshold value
         weights = self.adjMat.flatten()
         
-        ## case 1: edgePC - percent of edges are shown
+        ## cases 1 and 2: edgePC - percent of edges are shown
+        ##                totalEdges - a number of edges is given
+        
         # get the number of edges to link
-        if not edgePC == None:  # needs to be written this way in case edgePC is 0
+        if tVal == None:  
             # find threshold as a percentage of total possible edges
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
-            weights = self.adjMat.flatten()
+        
+            # get a list of weights from the adjacency matrix
+            if not self.directed:
+                # only flatten the upper right part of the matrix
+                weights = extraFns.undirectedFlatten(self.adjMat)
+            else:
+                weights = self.adjMat.flatten()
+            print(weights)
             weights.sort()
+            
+            # remove NaNs from end
             while (str(weights[-1]) == 'nan'):
                 weights = weights[:-1]
             nEdges = len(weights)
             
-            # note this works for undirected graphs because it is applied to the whole adjacency matrix
-            edgeNum = int(edgePC/100. * nEdges)
-                
-            # correct for diagonal if graph is undirected
-            if not self.directed:
-                edgeNum -= len([self.adjMat[x,x] for x in range(len(self.adjMat[0,:])) if not np.isnan(self.adjMat[x,x])])
-                            
-            print edgeNum
-            if not(self.directed):
-                edgeNum =  edgeNum * 2
-                
-            self.edgePC=edgePC
-            
-        ## case 2: totalEdges - give a fixed number of edges
-        elif totalEdges:
-            # allow a fixed number of edges
-            edgeNum = totalEdges
-            if not(self.directed):
-                edgeNum =  edgeNum * 2
-
-        ## case 3: absolute threshold - show all edges with weighting above threshold
-        else:
-            edgeNum = -1
-        
-        ##### get threshold value
-        if edgeNum>=0:
-            # cases 1 and 2 from above - get threshold value for given number of edges
-#            if rethreshold:
-#                weights = [self.G[v[0]][v[1]]['weight'] for v in self.G.edges()]
-#            else:
-            weights.sort()
-            while (str(weights[-1]) == 'nan'):
-                weights = weights[:-1]
-
-            # case where all edges are included
-            if edgeNum > len(weights):
-                self.threshold = weights[0]
-
-            # case where only some edges are included
+            # percentage case
+            if not (edgePC == None):
+                # get number of edges
+                edgeNum = int(edgePC/100. * nEdges)
             else:
+            # case where number of edges given
+            
+            # not sure if the following if is really needed. 
+#                if not self.directed:
+#                    edgeNum = totalEdges * 2
+#                else:
+                edgeNum = totalEdges
+            
+            # get threshold value
+            if edgeNum > len(weights):
+                # case where all edges are included
+                self.threshold = weights[0]
+            else:
+                # case where some edges are included
                 self.threshold = weights[-edgeNum]
-#            try:
-#                threshold = weights[-edgeNum]
-#            except IndexError:
-#                threhsold = weights[0]
+            
+            print edgeNum, self.threshold             
+#            self.edgePC=edgePC # never used
+
         
         # case 3 - absolute threshold
         elif tVal:
@@ -653,7 +644,7 @@ class brainObj:
         h = highlightObj()
         
         h.edgeIndices = edgeInds
-        h.nodeIndices = coordsInds
+        h.nodeIndices = coordInds
         h.colour = col
         
         if not(label):
@@ -1308,7 +1299,7 @@ class brainObj:
         
         #    get centrality measures
         #!! got an error because reCalc wasn't a string, should it be??
-        if reCalc or not 'hubscore' in self.G.node[0].keys():
+        if recalc or not 'hubscore' in self.G.node[0].keys():
             if weighted:
                 self.betweenessCentrality = np.array((centrality.betweenness_centrality(self.G, weight='distance').values()))
                 
