@@ -57,7 +57,8 @@ class mayBrainGUI(QtGui.QMainWindow):
         # local variables
         self.lastFolder = '' # last folder viewed by user
         self.brainName = ['brain', 0] # used to auto-create labels for brains if no user input given (currently only supports 1 brain)
-        
+        self.currentBrainName = None # currently used brain
+        self.plName = ['plot', 0]
         
         
     def connectSlots(self):
@@ -76,6 +77,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.skullPlot, QtCore.SIGNAL('clicked()'), self.plotSkull)
         QtCore.QObject.connect(self.ui.plotTree, QtCore.SIGNAL('itemClicked(QTreeWidgetItem*,int)'), self.setPlotValues)
         QtCore.QObject.connect(self.ui.adjReplot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
+        QtCore.QObject.connect(self.ui.clearFigButton, QtCore.SIGNAL('clicked()'), self.clearPlot)
         self.ui.opacitySlider.valueChanged.connect(self.setOpacity)
         self.ui.opacityBox.valueChanged.connect(self.setOpacityBox)
         self.ui.visibleCheckBox.clicked.connect(self.setVisibility)
@@ -120,16 +122,62 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.ui.propsFilename.setText(f)
         self.lastFolder = path.dirname(str(f))
         
-    def findBrainName(self, brainName = None):
+    def findBrainName(self):
         ''' construct a new brain name if necessary '''
-        if brainName:
-            boolOut = brainName in self.brains
-        else:
+
+        # Look for name entered by user
+        try:
+            brainName = str(self.ui.brainName.text())
+        except:
+            print("invalid name")
+            brainName = ''
+            
+        # get rid of unwanted characters
+        brainName = mb.extraFns.stripString(brainName)
+            
+        if brainName == '':
+        
             brainName = self.brainName[0] + str(self.brainName[1])
-            boolOut = 0
+            self.brainName[1] = self.brainName[1] + 1
+            
+        # check if it's been used previously
+        brainUsed = False
+        if brainName in self.brains:
+            brainUsed = True
+                        
+        # returns the name and whether the name has already been used to label a brain
+        return brainName, brainUsed
+
+
+    def findPlotName(self):
+        ''' construct a new brain name if necessary '''
+
+        # Look for name entered by user
+        try:
+            plName = str(self.ui.plotName.text())
+        except:
+            print("invalid name")
+            plName = ''
+            
+        # get rid of unwanted characters
+        plName = mb.extraFns.stripString(plName)
+        print(plName)
+            
+        if plName == '':
+        
+            plName = self.plName[0] + str(self.plName[1])
+            self.plName[1] = self.plName[1] + 1
+            
+        # check if it's been used previously
+        plotUsed = 0
+        if (plName in self.plot.brainNodePlots)|(plName in self.plot.brainEdgePlots):
+            plotUsed = 1
+            
+        self.currentPlotName = plName
             
         # returns the name and whether the name has already been used to label a brain
-        return brainName, boolOut
+        return plName, plotUsed
+
         
     def loadBrain(self):
         ''' load a brain using given filenames '''
@@ -142,10 +190,9 @@ class mayBrainGUI(QtGui.QMainWindow):
         # get spatial info file
         coords = str(self.ui.spatialFilename.text())
         
-        # **** can add an option here for user-defined name ****
-
         # make name for brain
         brName, brainUsedBool = self.findBrainName()
+        self.currentBrainName = brName
         
         # create and add to list of brains
         if brainUsedBool:
@@ -160,14 +207,13 @@ class mayBrainGUI(QtGui.QMainWindow):
         br.importSpatialInfo(coords)
         br.applyThreshold(edgePC = edgePC, totalEdges = totalEdges, tVal = tVal)
         
-        if not(brainUsedBool):
-            self.brains[brName] = br
+        self.brains[brName] = br
                    
         # enable plot button
-        try:
-            QtCore.QObject.disconnect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
-        except:
-            pass
+#        try:
+#            QtCore.QObject.disconnect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
+#        except:
+#            pass
         QtCore.QObject.connect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
         self.ui.adjPlot.setEnabled(True)
      
@@ -219,12 +265,22 @@ class mayBrainGUI(QtGui.QMainWindow):
         ''' plot the entire brain object '''
         
         # sort label for brain object
-        label, labelUsedBool = self.findBrainName()
-
+        brName, brUsed = self.findBrainName()
+        if not(brUsed):
+            brName = self.currentBrainName
+                
+        # get plot name
+        plname, plUsed = self.findPlotName()
+        
+        if plUsed:
+            a = 1
+            # remove old plot
+#            mb.mbplot.mlab.remove
+        
         # plot the brain
 #        try:            
             # plot the brain (excluding highlights)
-        self.plot.plotBrain(self.brains[label], opacity = 0.2, edgeOpacity = None, label=label)
+        self.plot.plotBrain(self.brains[brName], opacity = 0.2, edgeOpacity = None, label=plname)
 
 #        except:
 #           print('problem plotting brain, have files been loaded?')
@@ -232,8 +288,8 @@ class mayBrainGUI(QtGui.QMainWindow):
         # add to tree view
         self.readAvailablePlots() 
             
-        # activate replot button
-        self.ui.adjReplot.setEnabled(True)
+#        # activate replot button
+#        self.ui.adjReplot.setEnabled(True)
         
         # change plot button to replot
 #        QtCore.QObject.disconnect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
@@ -246,7 +302,8 @@ class mayBrainGUI(QtGui.QMainWindow):
         # get brain ***NEEDS CHANGING FOR MULTIPLE BRAINS***
         # get brain name input
         
-        brName, nameUsedBool = self.findBrainName()
+        brName = self.findBrainName()        
+        plotName, nameUsedBool = self.findBrainName()
         
         if not(brName in self.brains):
             print(brName + ' not found in rePlot')
@@ -322,6 +379,22 @@ class mayBrainGUI(QtGui.QMainWindow):
 #            QtGui.QTreeWidgetItem(self.ui.plotTree, ['skull', s])
 #        for s in self.plot.isosurfacePlots:
 #            QtGui.QTreeWidgetItem(self.ui.plotTree, ['isosurf', s])
+
+
+    def clearPlot(self):
+        ''' clear all current plots'''
+        
+        # remove plots from list in plot object
+        self.plot.brainEdgePlots = {}
+        self.plot.brainNodePlots = {}
+        self.plot.skullPlots = {}
+        self.plot.isosurfacePlots = {}
+
+        # clear the mayavi figure
+        mb.mbplot.mlab.clf()
+        
+        # redisplay list
+        self.readAvailablePlots()
 
 
     ## =============================================

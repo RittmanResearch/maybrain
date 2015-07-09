@@ -52,7 +52,7 @@
         <x>10</x>
         <y>10</y>
         <width>821</width>
-        <height>171</height>
+        <height>191</height>
        </rect>
       </property>
       <property name="font">
@@ -298,7 +298,7 @@
         <string>Replot</string>
        </property>
       </widget>
-      <widget class="QLineEdit" name="brainPlotName">
+      <widget class="QLineEdit" name="brainName">
        <property name="geometry">
         <rect>
          <x>560</x>
@@ -308,7 +308,7 @@
         </rect>
        </property>
       </widget>
-      <widget class="QLabel" name="brainPlotNameLabel">
+      <widget class="QLabel" name="brainNameLabel">
        <property name="geometry">
         <rect>
          <x>480</x>
@@ -319,6 +319,29 @@
        </property>
        <property name="text">
         <string>Brain Name</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="plotNameLabel">
+       <property name="geometry">
+        <rect>
+         <x>480</x>
+         <y>160</y>
+         <width>81</width>
+         <height>20</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Plot Name</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="plotName">
+       <property name="geometry">
+        <rect>
+         <x>560</x>
+         <y>160</y>
+         <width>231</width>
+         <height>23</height>
+        </rect>
        </property>
       </widget>
      </widget>
