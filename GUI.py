@@ -41,7 +41,6 @@ class mayBrainGUI(QtGui.QMainWindow):
         # disable some buttons
         self.ui.adjPlot.setEnabled(0)
         self.ui.skullPlot.setEnabled(0)
-        self.ui.adjReplot.setEnabled(0)
 
         # set up function
         self.brains = {} # dictionary to hold brain objects
@@ -76,7 +75,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.skullLoad, QtCore.SIGNAL('clicked()'), self.loadSkull)
         QtCore.QObject.connect(self.ui.skullPlot, QtCore.SIGNAL('clicked()'), self.plotSkull)
         QtCore.QObject.connect(self.ui.plotTree, QtCore.SIGNAL('itemClicked(QTreeWidgetItem*,int)'), self.setPlotValues)
-        QtCore.QObject.connect(self.ui.adjReplot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
+#        QtCore.QObject.connect(self.ui.adjReplot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
         QtCore.QObject.connect(self.ui.clearFigButton, QtCore.SIGNAL('clicked()'), self.clearPlot)
         self.ui.opacitySlider.valueChanged.connect(self.setOpacity)
         self.ui.opacityBox.valueChanged.connect(self.setOpacityBox)
@@ -208,6 +207,9 @@ class mayBrainGUI(QtGui.QMainWindow):
         br.applyThreshold(edgePC = edgePC, totalEdges = totalEdges, tVal = tVal)
         
         self.brains[brName] = br
+        
+        # add to brains selected for highlighting
+        self.ui.hlBrainSelect.addItem(brName)
                    
         # enable plot button
 #        try:
@@ -405,9 +407,12 @@ class mayBrainGUI(QtGui.QMainWindow):
         ''' make a highlight using settings from ui '''
         
         # get current brain object
-        # *** needs changing to make flexible ***
-        brName, nameUsedBool = self.findBrainName()
-        br = self.brains[brName]        
+        brName = str(self.ui.hlBrainSelect.currentText())
+        
+#        brName, nameUsedBool = self.findBrainName()
+        if not(brName in self.brains):
+            brName = self.currentBrainName
+#        br = self.brains[brName]        
         
         # get settings from ui
         propName = str(self.ui.hlProp.currentText())
@@ -496,8 +501,10 @@ class mayBrainGUI(QtGui.QMainWindow):
         # get properties filename from GUI
         fname = str(self.ui.propsFilename.text())        
         
-        # find the active brain (doesn't allow multiple brains currently)
-        brain = 'brain0'
+        # find the active brain
+        brain, usedBool = self.findBrainName()
+        if not(usedBool):
+            brain = self.currentBrainName
         
         # call function from mayBrainTools to add properties to brain
         nodesOrEdges, prop = self.brains[brain].importProperties(fname)

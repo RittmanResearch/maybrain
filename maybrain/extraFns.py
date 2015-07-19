@@ -471,6 +471,8 @@ def undirectedFlatten(mat):
             # case where there's more rows than columns, just ignore
             pass
         
+    return flatMat
+        
 
 def stripString(strIn):
     ''' remove unwanted characters from beginning and end of a string '''

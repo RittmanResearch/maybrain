@@ -23,6 +23,7 @@ class TestSequenceFunctions(unittest.TestCase):
         ''' load inital parameters and/or data for testing'''
         self.fnameAdj = 'data/3d_grid_adj.txt'
         self.fnameCo = 'data/3d_grid_coords.txt'
+        self.fnameProp = 'data/3d_grid_properties.txt'
         
         self.brain = mb.brainObj()
 
@@ -55,6 +56,29 @@ class TestSequenceFunctions(unittest.TestCase):
         br, plt = recipes.loadAndPlot(self.fnameAdj, self.fnameCo, 0.5, opacity = 0.2)
         
         plt.show()
+        
+    def test_addProperties(self):
+        ''' add properties and highlights from a file and plot '''
+        
+        br = recipes.loadAndThreshold(self.fnameAdj, self.fnameCo, 0.5)
+        
+        br.importProperties(self.fnameProp)
+        
+        # highlight nodes with x value greater than 5
+        br.highlightFromConds('x', 'gt', 0.5, label = 'x1', mode = 'node', colour = (0.5,0.5,0.), opacity = 0.5)
+        
+        # highlight edges labelled green 
+        br.highlightFromConds('colour', 'eq', 'green', label = 'green', mode = 'edge', colour = (0.,1.,0.), opacity = 0.5)
+        
+#        br.highlightFromConds(prop, rel, val, label = None, mode = 'edge', colour = (1.,0.,0.), opacity = 1.0)
+#        
+#        br.highlightFromConds(prop, rel, val, label = None, mode = 'edge', colour = (1.,0.,0.), opacity = 1.0)
+#        
+#        br.highlightFromConds(prop, rel, val, label = None, mode = 'edge', colour = (1.,0.,0.), opacity = 1.0)
+        
+        
+        
+        
 
         
 

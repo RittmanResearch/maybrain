@@ -165,7 +165,7 @@ class brainObj:
 
             nodeCount+=1
                         
-    #!! in merge importProperties taken from dev2
+    #!! in merge import Properties taken from dev2
     def importProperties(self, filename):
         ''' add properties from a file. first lines should contain the property 
             name and the following lines tabulated node indices and property value e.g.:
@@ -217,7 +217,7 @@ class brainObj:
                 propValsNodes.append(value[1])
                 
             elif mode=='edges':
-                edges.append([value[0],value[1]])
+                edges.append([int(value[0]),int(value[1])])
                 propValsEdges.append(value[2])
         
         # add data to brain
@@ -356,7 +356,7 @@ class brainObj:
                 # only flatten the upper right part of the matrix
                 weights = extraFns.undirectedFlatten(self.adjMat)
             else:
-                weights = self.adjMat.flatten()
+                weights = list(self.adjMat.flatten())
             print(weights)
             weights.sort()
             
@@ -1746,4 +1746,3 @@ class highlightObj():
         print('\n # ================ # \n')
         
        
-        

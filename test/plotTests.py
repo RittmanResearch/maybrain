@@ -14,12 +14,14 @@ options:
 
 import sys
 try:
-    sys.path.append("/home/galileo/Documents/programming/maybrain/maybrain")
+    sys.path.append("/home/galileo/Dropbox/smart laptop/maybrain/maybrain")
 except:
     pass
 
 import unittest
 import maybrain as mb
+import maybrain.recipes as recipes
+from  maybrain.mbplot import plotObj
 import networkx as nx
 
 class TestSequenceFunctions(unittest.TestCase):
@@ -28,10 +30,11 @@ class TestSequenceFunctions(unittest.TestCase):
         ''' load inital parameters and/or data for testing'''
         self.fnameAdj = 'data/3d_grid_adj.txt'
         self.fnameCo = 'data/3d_grid_coords.txt'
+        self.fnameProps = 'data/3d_grid_properties.txt'
         
         # initialise brain and plot objects
         self.a = mb.brainObj()
-        self.b = mb.plotObj()
+        self.b = plotObj()
         
         # some data
         self.edges = [(0,2),(0,4),(0,6)]
@@ -74,7 +77,7 @@ class TestSequenceFunctions(unittest.TestCase):
         self.b.clear()
         
         # load more data (in a fresh brain)
-        self.a = mb.loadAndThreshold(self.fnameAdj, self.fnameCo, 0.5)
+        self.a = recipes.loadAndThreshold(self.fnameAdj, self.fnameCo, 0.5)
         
         # plot the edges
         self.b.plotBrainEdges(self.a)
@@ -86,10 +89,24 @@ class TestSequenceFunctions(unittest.TestCase):
         self.b.clear()
         
         # load more data (in a fresh brain)
-        self.a = mb.loadAndThreshold(self.fnameAdj, self.fnameCo, 0.5)
+        self.a = recipes.loadAndThreshold(self.fnameAdj, self.fnameCo, 0.5)
         
         # plot the edges
         self.b.plotBrainCoords(self.a)
+        
+        
+    def text_addHighlight(self):
+        self.b.clear()
+        
+        self.a = recipes.loadAndThreshold(self.fnameAdj, self.fnameCo, 0.0)
+        
+        # import properties
+        self.a.importProperties(self.fnameProps)
+        
+        # plot properties
+        self.b.highlightFromConds('colour', 'eq', 'red', label = 'red_nodes', mode = 'node', colour = (1.,0.,0.), opacity = 1.)
+        self.b.highlightFromConds('colour', 'eq', 'green', label = 'green_edges', mode = 'edge', colour = (0.,1.,0.), opacity = 1.)
+        self.b.highlightFromConds('x', 'geq', 0, mode = 'edge', colour = (0.5, 0.5, 0.))
 
         
 if __name__ == '__main__':
