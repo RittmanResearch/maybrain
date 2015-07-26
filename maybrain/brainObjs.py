@@ -202,7 +202,6 @@ class brainObj:
         for l in data[1:]:
             # determine if it should apply to edges or nodes (by length)
             try:
-                print(l)
                 value = split(l)
                 if len(value)==2:
                     mode = 'nodes'
@@ -330,7 +329,7 @@ class brainObj:
 
     #!! need to create minimum spanning tree option??
     #!! doPrint option removed in merge
-    def applyThreshold(self, edgePC = None, totalEdges = None, tVal = None, rethreshold=False):
+    def applyThreshold(self, thresholdType = None, value = 0., edgePC = None, totalEdges = None, tVal = None, rethreshold=False):
         ''' Treshold the adjacency matrix to determine which nodes are linked by edges. There are 
             three options:
             
@@ -340,18 +339,70 @@ class brainObj:
             
             rethreshold can be used if the threshold has already been applied --- NOT CURRENTLY A LIVE OPTION'''
 
-        #### Determine threshold value
-        weights = self.adjMat.flatten()
-        
-        ## cases 1 and 2: edgePC - percent of edges are shown
-        ##                totalEdges - a number of edges is given
-        
-        # get the number of edges to link
-        if tVal == None:  
-            # find threshold as a percentage of total possible edges
-            # note this works for undirected graphs because it is applied to the whole adjacency matrix
-        
-            # get a list of weights from the adjacency matrix
+
+
+        #### legacy case
+        if not(thresholdType):
+
+            #### Determine threshold value
+            weights = self.adjMat.flatten()
+            
+            ## cases 1 and 2: edgePC - percent of edges are shown
+            ##                totalEdges - a number of edges is given
+            
+            # get the number of edges to link
+            if tVal == None:  
+                # find threshold as a percentage of total possible edges
+                # note this works for undirected graphs because it is applied to the whole adjacency matrix
+            
+                # get a list of weights from the adjacency matrix
+                if not self.directed:
+                    # only flatten the upper right part of the matrix
+                    weights = extraFns.undirectedFlatten(self.adjMat)
+                else:
+                    weights = list(self.adjMat.flatten())
+                print(weights)
+                weights.sort()
+                
+                # remove NaNs from end
+                while (str(weights[-1]) == 'nan'):
+                    weights = weights[:-1]
+                nEdges = len(weights)
+    
+                # percentage case
+                if thresholdType == 'edgePC':
+                    # get number of edges
+                    edgeNum = int(edgePC/100. * nEdges)
+                                    
+                # get threshold value
+                if edgeNum > len(weights):
+                    # case where all edges are included
+                    self.threshold = weights[0]
+                else:
+                    # case where some edges are included
+                    self.threshold = weights[-edgeNum]                
+                            
+            # case 3 - absolute threshold
+            elif tVal:
+                self.threshold = tVal
+            
+            # case 4 - weighted graph, no threshold specified
+            else:
+                self.threshold  = np.min(weights[~np.isnan(weights)])
+            
+            print self.threshold
+  
+
+        #### new way of doing things (kept backward compatibility for the moment)
+
+        # case where (minimum) value of threshold is given
+        if thresholdType == 'tVal':
+            print('tVal case')
+            tVal = value
+            
+        # case where % of edges to display is given
+        elif thresholdType in ['edgePC', 'totalEdges']:
+            
             if not self.directed:
                 # only flatten the upper right part of the matrix
                 weights = extraFns.undirectedFlatten(self.adjMat)
@@ -359,25 +410,25 @@ class brainObj:
                 weights = list(self.adjMat.flatten())
             print(weights)
             weights.sort()
-            
+
             # remove NaNs from end
             while (str(weights[-1]) == 'nan'):
                 weights = weights[:-1]
             nEdges = len(weights)
             
+            print(weights)
+
             # percentage case
-            if not (edgePC == None):
+            if thresholdType == 'edgePC':
+                print('edgePC')
                 # get number of edges
-                edgeNum = int(edgePC/100. * nEdges)
-            else:
-            # case where number of edges given
-            
-            # not sure if the following if is really needed. 
-#                if not self.directed:
-#                    edgeNum = totalEdges * 2
-#                else:
-                edgeNum = totalEdges
-            
+                edgeNum = int(value/100. * nEdges)
+                
+            # number of edges case
+            elif thresholdType == 'totalEdges':
+                print('num edges case')
+                edgeNum = value
+                                
             # get threshold value
             if edgeNum > len(weights):
                 # case where all edges are included
@@ -386,21 +437,11 @@ class brainObj:
                 # case where some edges are included
                 self.threshold = weights[-edgeNum]
             
-            print edgeNum, self.threshold             
-#            self.edgePC=edgePC # never used
+            print('edgeNum and thold', edgeNum, self.threshold)
 
-        
-        # case 3 - absolute threshold
-        elif tVal:
-            self.threshold = tVal
-        
-        # case 4 - weighted graph, no threshold specified
-        else:
-            self.threshold  = np.min(weights[~np.isnan(weights)])
-        
-        print self.threshold
+
             
-        ##### carry out thresholding on adjacency matrix
+        ##### carry out thresholding on adjacency matrix (new and legacy)
         boolMat = self.adjMat>=self.threshold
         try:
             np.fill_diagonal(boolMat, 0)
@@ -430,6 +471,9 @@ class brainObj:
         for ii in range(len(es[0])):
             self.G.add_edge(es[0][ii],es[1][ii], weight = self.adjMat[es[0][ii],es[1][ii]])
         
+
+
+
 
     def reconstructAdjMat(self):
         ''' redefine the adjacency matrix from the edges and weights '''

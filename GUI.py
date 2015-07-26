@@ -167,15 +167,15 @@ class mayBrainGUI(QtGui.QMainWindow):
             plName = self.plName[0] + str(self.plName[1])
             self.plName[1] = self.plName[1] + 1
             
-        # check if it's been used previously
-        plotUsed = 0
-        if (plName in self.plot.brainNodePlots)|(plName in self.plot.brainEdgePlots):
-            plotUsed = 1
+#        # check if it's been used previously
+#        plotUsed = 0
+#        if (plName in self.plot.brainNodePlots)|(plName in self.plot.brainEdgePlots):
+#            plotUsed = 1
             
         self.currentPlotName = plName
             
         # returns the name and whether the name has already been used to label a brain
-        return plName, plotUsed
+        return plName #, plotUsed
 
         
     def loadBrain(self):
@@ -185,7 +185,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         # get adjacency filename
         adj = str(self.ui.adjFilename.text())
         # get threshold
-        edgePC, totalEdges, tVal = self.getThresholdType()
+        thType, thVal = self.getThresholdType()
         # get spatial info file
         coords = str(self.ui.spatialFilename.text())
         
@@ -204,7 +204,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         # add properties
         br.importAdjFile(adj)
         br.importSpatialInfo(coords)
-        br.applyThreshold(edgePC = edgePC, totalEdges = totalEdges, tVal = tVal)
+        br.applyThreshold(thresholdType = thType, value = thVal)
         
         self.brains[brName] = br
         
@@ -246,18 +246,24 @@ class mayBrainGUI(QtGui.QMainWindow):
         thType = str(self.ui.tholdDropdown.currentText())
         value = float(self.ui.thresholdValue.text())
         
-        edgePC = None 
-        totalEdges = None
-        tVal = None
+        print(thType)
+        
+#        edgePC = None 
+#        totalEdges = None
+#        tVal = None
         
         if thType=='Value':
-            tVal = value
-        elif thType=='%':
-            edgePC = value
-        elif thType=='# edges':
-            totalEdges = value
+            thType = 'tVal'
             
-        return edgePC, totalEdges, tVal
+        elif thType=='%':
+            thType = 'edgePC'
+            
+        elif thType=='# edges':
+            thType = 'totalEdges'
+        else:
+            print('type not recognised')
+            
+        return thType, value
 
     ## =============================================
     
@@ -272,68 +278,14 @@ class mayBrainGUI(QtGui.QMainWindow):
             brName = self.currentBrainName
                 
         # get plot name
-        plname, plUsed = self.findPlotName()
-        
-        if plUsed:
-            a = 1
-            # remove old plot
-#            mb.mbplot.mlab.remove
-        
+        plname = self.findPlotName()
+                
         # plot the brain
-#        try:            
-            # plot the brain (excluding highlights)
         self.plot.plotBrain(self.brains[brName], opacity = 0.2, edgeOpacity = None, label=plname)
 
-#        except:
-#           print('problem plotting brain, have files been loaded?')
 
         # add to tree view
         self.readAvailablePlots() 
-            
-#        # activate replot button
-#        self.ui.adjReplot.setEnabled(True)
-        
-        # change plot button to replot
-#        QtCore.QObject.disconnect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
-#        QtCore.QObject.connect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
-    
-    
-    def rePlotBrain(self):
-        ''' plot brain with altered threhold '''        
-        
-        # get brain ***NEEDS CHANGING FOR MULTIPLE BRAINS***
-        # get brain name input
-        
-        brName = self.findBrainName()        
-        plotName, nameUsedBool = self.findBrainName()
-        
-        if not(brName in self.brains):
-            print(brName + ' not found in rePlot')
-            return
-
-        # remove old plots
-        print('\n')
-#        for p in self.plot.brainEdgePlots:
-#            print(p)
-        try:
-            self.plot.brainEdgePlots[brName].remove()
-            self.plot.brainNodePlots[brName].remove()
-        except:
-            pass
-
-        # brain to use
-        br = self.brains[brName]
-        
-        # get threshold type and values
-        edgePC, totalEdges, tVal = self.getThresholdType()
-        # reapply threshold
-        br.applyThreshold(edgePC = edgePC, totalEdges = totalEdges, tVal = tVal)
-                
-        # *** need to get existing opacity value ***
-        self.plot.plotBrain(br, label = brName)
-#        except:
-#            print('problem plotting brain, is threshold correct?')
-        self.readAvailablePlots()
             
             
     def plotSkull(self):
@@ -412,7 +364,7 @@ class mayBrainGUI(QtGui.QMainWindow):
 #        brName, nameUsedBool = self.findBrainName()
         if not(brName in self.brains):
             brName = self.currentBrainName
-#        br = self.brains[brName]        
+        br = self.brains[brName]        
         
         # get settings from ui
         propName = str(self.ui.hlProp.currentText())
