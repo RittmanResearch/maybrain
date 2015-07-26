@@ -209,7 +209,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.brains[brName] = br
         
         # add to brains selected for highlighting
-        self.ui.hlBrainSelect.addItem(brName)
+        self.ui.brainSelect.addItem(brName)
                    
         # enable plot button
 #        try:
@@ -246,7 +246,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         thType = str(self.ui.tholdDropdown.currentText())
         value = float(self.ui.thresholdValue.text())
         
-        print(thType)
+        print(thType, value)
         
 #        edgePC = None 
 #        totalEdges = None
@@ -262,6 +262,7 @@ class mayBrainGUI(QtGui.QMainWindow):
             thType = 'totalEdges'
         else:
             print('type not recognised')
+            thType = 'tVal'
             
         return thType, value
 
@@ -272,17 +273,23 @@ class mayBrainGUI(QtGui.QMainWindow):
     def plotBrain(self):
         ''' plot the entire brain object '''
         
-        # sort label for brain object
-        brName, brUsed = self.findBrainName()
-        if not(brUsed):
-            brName = self.currentBrainName
+        brName = self.getActiveBrainName()       
+        
+#        # sort label for brain object
+#        brName, brUsed = self.findBrainName()
+#        if not(brUsed):
+#            brName = self.currentBrainName
+            
+        # get threshold
+        thType, thVal = self.getThresholdType()
+        # apply threshold
+        self.brains[brName].applyThreshold(thType, thVal)
                 
         # get plot name
         plname = self.findPlotName()
                 
         # plot the brain
-        self.plot.plotBrain(self.brains[brName], opacity = 0.2, edgeOpacity = None, label=plname)
-
+        self.plot.plotBrain(self.brains[brName], opacity = 0.2, edgeOpacity = None, label=plname, plotHighlights = False)
 
         # add to tree view
         self.readAvailablePlots() 
@@ -338,6 +345,29 @@ class mayBrainGUI(QtGui.QMainWindow):
     def clearPlot(self):
         ''' clear all current plots'''
         
+        # delete plots from figure
+        for p in self.plot.brainNodePlots:
+            try:
+                self.plot.brainNodePlots[p].remove()
+            except ValueError:
+                continue
+        for p in self.plot.brainEdgePlots:
+            try:
+                self.plot.brainEdgePlots[p].remove()
+            except ValueError:
+                continue
+        for p in self.plot.skullPlots:
+            try:
+                self.plot.skullPlots.remove()
+            except ValueError:
+                continue                
+        for p in self.plot.isosurfacePlots:
+            try:
+                self.plot.isosurfacePlots.remove()
+            except ValueError:
+                continue                
+        
+        
         # remove plots from list in plot object
         self.plot.brainEdgePlots = {}
         self.plot.brainNodePlots = {}
@@ -359,12 +389,8 @@ class mayBrainGUI(QtGui.QMainWindow):
         ''' make a highlight using settings from ui '''
         
         # get current brain object
-        brName = str(self.ui.hlBrainSelect.currentText())
-        
-#        brName, nameUsedBool = self.findBrainName()
-        if not(brName in self.brains):
-            brName = self.currentBrainName
-        br = self.brains[brName]        
+        brName = self.getActiveBrainName()
+        br = self.brains[brName]
         
         # get settings from ui
         propName = str(self.ui.hlProp.currentText())
@@ -373,18 +399,18 @@ class mayBrainGUI(QtGui.QMainWindow):
             val1 = float(self.ui.hlValue1.text())
         except:
             val1 = str(self.ui.hlValue1.text())
+            val1 = mb.extraFns.stripString(val1)
         try:
             val2 = float(self.ui.hlValue2.text())
         except:
             val2 = str(self.ui.hlValue2.text())
+            val2 = mb.extraFns.stripString(val2)
         # *** should change the name to hlName ***
         label = str(self.ui.subPlotName.text())
         # NEEDS MODIFICATION
         if label=='':
-            label = 'highlight1'
+            label = None
         mode = str(self.ui.hlNodesOrEdgesBox.currentText())
-        # remove 's' from edge of mode
-        mode = mode[:-1]
         red = float(self.ui.hlRedSpin.value())        
         green = float(self.ui.hlGreenSpin.value())
         blue = float(self.ui.hlBlueSpin.value())
@@ -400,8 +426,18 @@ class mayBrainGUI(QtGui.QMainWindow):
         # create the highlight object
         br.highlightFromConds(propName, relation, val, label=label, mode=mode, colour = (red, green, blue), opacity=opacity)
         
-        # plot        
-        self.plot.plotBrainHighlights(br, highlights=[label])          
+        # plot
+        # bodge for cases when labels change:
+#        if label in br.highlights:
+        print('highlights: ', br.highlights)
+        self.plot.plotBrainHighlights(br, highlights=[label])
+        try:
+            print(br.highlights['green'].edgeIndices)
+        except:
+            print('it aint green')
+#        else:
+#            self.plot.plotBrainHighlights(br, highlights = [label+'_edges'])
+#            self.plot.plotBrainHighlights(br, highlights = [label+'_nodes'])
         
         # add to list of plots
         self.readAvailablePlots()
@@ -459,10 +495,13 @@ class mayBrainGUI(QtGui.QMainWindow):
             brain = self.currentBrainName
         
         # call function from mayBrainTools to add properties to brain
-        nodesOrEdges, prop = self.brains[brain].importProperties(fname)
+        prop = self.brains[brain].importProperties(fname)
         
         # add to plot properties box
         self.ui.hlProp.addItem(str(prop))
+        
+        for e in self.brains[brain].G.edges(data = True):
+            print(e)
              
     
     def setPlotValues(self, item):
@@ -601,6 +640,20 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.plot.changePlotProperty(self.selectedPlotType, 'colour', self.selectedPlot, value = v1)        
         # set slider value
         self.ui.blueSlider.setValue(int(b*100.))
+        
+        
+    def getActiveBrainName(self):
+        
+        # get current brain object
+        brName = str(self.ui.brainSelect.currentText())
+        
+#        brName, nameUsedBool = self.findBrainName()
+        if not(brName in self.brains):
+            brName = self.currentBrainName
+        else:
+            self.currentBrainName = brName
+        
+        return brName
                 
 
         

@@ -209,6 +209,14 @@ class brainObj:
                     mode =  'edges'
             except:
                 print('couldn\'t parse data line. Please check property file', l)
+                
+            # make last entry of value a float or string (property value)
+            try:
+                value[-1] = float(value[-1])
+            except ValueError:
+                value[-1] = str(value[-1])
+                value[-1] = extraFns.stripString(value[-1])
+                print(value[-1])
             
             # get data
             if mode=='nodes':
@@ -225,7 +233,7 @@ class brainObj:
         if len(edges)>0:
             self.addEdgeProperty(prop, edges, propValsEdges)
 
-        return mode, prop # required for GUI
+        return prop # required for GUI
                     
         
     def addNodeProperties(self, propertyName, nodeList, propList):
@@ -249,7 +257,7 @@ class brainObj:
             p = propList[ind]
             try:
                 self.G.edge[e[0]][e[1]][propertyName] = p
-            except:
+            except KeyError:
                 print('edge property assignment failed: ' + propertyName + ' ' + str(e) + ' ' + str(p))
 
         
@@ -360,28 +368,35 @@ class brainObj:
                     # only flatten the upper right part of the matrix
                     weights = extraFns.undirectedFlatten(self.adjMat)
                 else:
-                    weights = list(self.adjMat.flatten())
-                print(weights)
+                    weights = self.adjMat.flatten()
                 weights.sort()
                 
                 # remove NaNs from end
                 while (str(weights[-1]) == 'nan'):
                     weights = weights[:-1]
                 nEdges = len(weights)
-    
+                print('weights:', weights)
+                
                 # percentage case
-                if thresholdType == 'edgePC':
+                if not(edgePC == None):
                     # get number of edges
                     edgeNum = int(edgePC/100. * nEdges)
-                                    
+                else:
+                # case where number of edges given
+                    edgeNum = totalEdges
+                
                 # get threshold value
                 if edgeNum > len(weights):
                     # case where all edges are included
                     self.threshold = weights[0]
                 else:
                     # case where some edges are included
-                    self.threshold = weights[-edgeNum]                
-                            
+                    self.threshold = weights[-edgeNum]
+                
+                print edgeNum, self.threshold             
+    #            self.edgePC=edgePC # never used
+    
+            
             # case 3 - absolute threshold
             elif tVal:
                 self.threshold = tVal
@@ -391,57 +406,65 @@ class brainObj:
                 self.threshold  = np.min(weights[~np.isnan(weights)])
             
             print self.threshold
-  
 
-        #### new way of doing things (kept backward compatibility for the moment)
 
-        # case where (minimum) value of threshold is given
-        if thresholdType == 'tVal':
-            print('tVal case')
-            tVal = value
-            
-        # case where % of edges to display is given
-        elif thresholdType in ['edgePC', 'totalEdges']:
-            
-            if not self.directed:
-                # only flatten the upper right part of the matrix
-                weights = extraFns.undirectedFlatten(self.adjMat)
-            else:
-                weights = list(self.adjMat.flatten())
-            print(weights)
-            weights.sort()
+        #### new way of doing things (kept backward compatibility, above, for the moment)
+        else:
 
-            # remove NaNs from end
-            while (str(weights[-1]) == 'nan'):
-                weights = weights[:-1]
-            nEdges = len(weights)
-            
-            print(weights)
-
-            # percentage case
-            if thresholdType == 'edgePC':
-                print('edgePC')
-                # get number of edges
-                edgeNum = int(value/100. * nEdges)
+            # case where (minimum) value of threshold is given
+            if thresholdType == 'tVal':
+                print('tVal case', value)
+                self.threshold = value                
                 
-            # number of edges case
-            elif thresholdType == 'totalEdges':
-                print('num edges case')
-                edgeNum = value
-                                
-            # get threshold value
-            if edgeNum > len(weights):
-                # case where all edges are included
-                self.threshold = weights[0]
-            else:
-                # case where some edges are included
-                self.threshold = weights[-edgeNum]
-            
-            print('edgeNum and thold', edgeNum, self.threshold)
+            # case where % of edges to display is given
+            elif thresholdType in ['edgePC', 'totalEdges']:
+                
+                if not self.directed:
+                    # only flatten the upper right part of the matrix
+                    weights = extraFns.undirectedFlatten(self.adjMat)
+                else:
+                    weights = list(self.adjMat.flatten())
+                print(weights)
+                weights.sort()
+    
+                # remove NaNs from end
+                while (str(weights[-1]) == 'nan'):
+                    weights = weights[:-1]
+                nEdges = len(weights)
+                
+                print(weights)
+    
+                # percentage case
+                if thresholdType == 'edgePC':
+                    print('edgePC')
+                    # get number of edges
+                    edgeNum = int(value/100. * nEdges)
+                    
+                # number of edges case
+                elif thresholdType == 'totalEdges':
+                    print('num edges case')
+                    edgeNum = value
+                    
+                # make sure it's an integer
+                edgeNum = int(edgeNum)
+                                    
+                # get threshold value
+                if edgeNum > len(weights):
+                    # case where all edges are included
+                    self.threshold = weights[0]
+                elif edgeNum <=0:
+                    # case where number of edges is 0 or less
+                    self.threshold = weights[-1]+0.5
+                else:
+                    # case where some edges are included
+                    self.threshold = weights[-edgeNum]
+                
+                print('edgeNum and thold', edgeNum, self.threshold)
 
 
             
         ##### carry out thresholding on adjacency matrix (new and legacy)
+        print('threshold:', self.threshold)
         boolMat = self.adjMat>=self.threshold
         try:
             np.fill_diagonal(boolMat, 0)
@@ -619,7 +642,7 @@ class brainObj:
         '''
 
         # check filter mode
-        if not(mode in ['edge', 'node']):
+        if not(mode in ['edge', 'node', 'node or edge']):
             print('filter mode not recognised')
             return
         # check if label given
@@ -630,20 +653,25 @@ class brainObj:
         h = highlightObj()
         h.colour = colour
         h.opacity = opacity
+        h.edgeIndices = []
+        h.nodeIndices = []
         
-        # extract lists from edges        
-        if mode == 'edge':
-            h.edgeIndices = []
+        print(prop, rel, val, label, mode)
+        
+        # extract lists from edges  
+        if mode in ['edge', 'node or edge']:
             ind = -1
             for e in self.G.edges(data = True):
                 ind = ind +1
+                print(self.G.edge[e[0]][e[1]])
                 try:
                     d = self.G.edge[e[0]][e[1]][prop]
-                except:
+                except KeyError:
                     continue           
                 
                 # match properties
                 boolval = self.propCompare(d, rel, val)
+                print(d, rel, val, boolval)
                 
                 # save data in highlight
                 if boolval:
@@ -651,8 +679,7 @@ class brainObj:
                     
         
         # extract lists from nodes
-        elif mode == 'node':
-            h.nodeIndices = []
+        if mode in ['node', 'node or edge']:
             for c in range(len(self.G.nodes())):
                 # get property
 
@@ -676,7 +703,6 @@ class brainObj:
                 # add to highlight if good
                 if boolval:
                     h.nodeIndices.append(c)
-
         
         # add highlight to dictionary
         self.highlights[label] = h

@@ -134,7 +134,7 @@ class plotObj():
 
         
 
-    def plotBrain(self, brain, opacity = 1.0, edgeOpacity = None, label = 'plot'):
+    def plotBrain(self, brain, opacity = 1.0, edgeOpacity = None, label = 'plot', plotHighlights = True):
         ''' plot all the coords, edges and highlights in a brain '''     
               
         # sort out the edge opacity
@@ -150,7 +150,8 @@ class plotObj():
         self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (0.,0.,0.), opacity = opacity, label=label)  
         
         # plot the highlights
-        self.plotBrainHighlights(brain)
+        if plotHighlights:
+            self.plotBrainHighlights(brain)
         
     def plotBrainCoords(self, brain, nodes=None, opacity = 1.0, label = 'coordplot', sizeList=None, col=(0.,0.,0.),
                         sf=None, sfRange=None):
@@ -183,15 +184,26 @@ class plotObj():
         
         # plot highlights (subsets of edges or points)
         for h in highlights:
-            print(h)
             label = labelPre + h
             try:
                 ho = brain.highlights[h]
             except:
                 print('highlight not found: ' + h)
                 continue
-                
+
+            # get edge data                
             ex1, ey1, ez1, ux, uy, yz, s = ho.getEdgeCoordsToPlot(brain)
+            # get node data
+            hp = ho.nodeIndices            
+            
+#            # case where there are node and edges
+#            if (len(ex1)<0 | len(ex1)<0):
+#                print('highlight ' + h + ' has nodes and edges, label will change')
+#                labelEdge = label + '_edge'
+#                labelNode = label + '_node'
+#            else:
+#                labelEdge = label
+#                labelNode = label
             
             # case where edge opacity is not separately defined
             if not(ho.edgeOpacity):
@@ -200,14 +212,11 @@ class plotObj():
             # plot the edges
             if not(len(ex1)==0):
                 self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = ho.colour, opacity = ho.edgeOpacity, label=label)
-            else:
-                print("no data to plot")
             
             # plot the nodes
-            hp = ho.nodeIndices
-            if not(len(hp))==0:
+            if not(len(hp)==0):
                 x, y, z = ho.getCoords(brain)
-                self.plotCoords((x,y,z), col = ho.colour, opacity = ho.opacity, label=label)        
+                self.plotCoords((x,y,z), col = ho.colour, opacity = ho.opacity, label=label)  
         
         
     def plotCoords(self, coords, col = (1.,1.,1.), opacity = 1., label='plot', sizeList=None, sf=1., sfRange=None):
@@ -249,7 +258,7 @@ class plotObj():
 
         # record label for order
 
-        self.plotKeys.append(label)
+#        self.plotKeys.append(label)
         
 #        self.brainNodePlots[label] = p
 #        print(label, p)
@@ -279,8 +288,6 @@ class plotObj():
         if not col:
             self.brainEdgePlots[label].glyph.color_mode = 'color_by_scalar'
             
-#        self.brainEdgePlots[label] = v
-
                 
             
     def getCoords(self, brain, edge):
