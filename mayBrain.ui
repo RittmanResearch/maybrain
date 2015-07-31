@@ -40,7 +40,7 @@
      <enum>QTabWidget::Rounded</enum>
     </property>
     <property name="currentIndex">
-     <number>0</number>
+     <number>2</number>
     </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
@@ -121,7 +121,7 @@
      <widget class="QPushButton" name="skullFnameButton">
       <property name="geometry">
        <rect>
-        <x>480</x>
+        <x>380</x>
         <y>140</y>
         <width>21</width>
         <height>24</height>
@@ -134,9 +134,9 @@
      <widget class="QLineEdit" name="adjFilename">
       <property name="geometry">
        <rect>
-        <x>170</x>
+        <x>120</x>
         <y>70</y>
-        <width>391</width>
+        <width>251</width>
         <height>23</height>
        </rect>
       </property>
@@ -147,9 +147,9 @@
      <widget class="QLineEdit" name="spatialFilename">
       <property name="geometry">
        <rect>
-        <x>170</x>
+        <x>120</x>
         <y>40</y>
-        <width>391</width>
+        <width>251</width>
         <height>23</height>
        </rect>
       </property>
@@ -167,7 +167,7 @@
        </rect>
       </property>
       <property name="text">
-       <string>Node coordinate file</string>
+       <string>Nodes</string>
       </property>
      </widget>
      <widget class="QLabel" name="adjLabel">
@@ -180,15 +180,15 @@
        </rect>
       </property>
       <property name="text">
-       <string>Adjacency file</string>
+       <string>Adjacency matrix</string>
       </property>
      </widget>
      <widget class="QLineEdit" name="skullFilename">
       <property name="geometry">
        <rect>
-        <x>170</x>
+        <x>120</x>
         <y>140</y>
-        <width>301</width>
+        <width>251</width>
         <height>23</height>
        </rect>
       </property>
@@ -196,7 +196,7 @@
      <widget class="QPushButton" name="adjFnameButton">
       <property name="geometry">
        <rect>
-        <x>570</x>
+        <x>380</x>
         <y>70</y>
         <width>21</width>
         <height>24</height>
@@ -216,13 +216,13 @@
        </rect>
       </property>
       <property name="text">
-       <string>Background file</string>
+       <string>Background</string>
       </property>
      </widget>
      <widget class="QPushButton" name="spatialFnameButton">
       <property name="geometry">
        <rect>
-        <x>570</x>
+        <x>380</x>
         <y>40</y>
         <width>21</width>
         <height>24</height>
@@ -235,9 +235,9 @@
      <widget class="QLineEdit" name="brainName">
       <property name="geometry">
        <rect>
-        <x>170</x>
-        <y>100</y>
-        <width>331</width>
+        <x>420</x>
+        <y>70</y>
+        <width>111</width>
         <height>23</height>
        </rect>
       </property>
@@ -274,7 +274,7 @@
      <widget class="QComboBox" name="tholdDropdown">
       <property name="geometry">
        <rect>
-        <x>170</x>
+        <x>120</x>
         <y>260</y>
         <width>81</width>
         <height>22</height>
@@ -311,12 +311,12 @@
      </widget>
      <widget class="QPushButton" name="skullPlot">
       <property name="enabled">
-       <bool>true</bool>
+       <bool>false</bool>
       </property>
       <property name="geometry">
        <rect>
-        <x>510</x>
-        <y>220</y>
+        <x>540</x>
+        <y>230</y>
         <width>71</width>
         <height>24</height>
        </rect>
@@ -328,7 +328,7 @@
      <widget class="QLineEdit" name="thresholdValue">
       <property name="geometry">
        <rect>
-        <x>260</x>
+        <x>210</x>
         <y>260</y>
         <width>71</width>
         <height>23</height>
@@ -341,8 +341,8 @@
      <widget class="QPushButton" name="brainLoad">
       <property name="geometry">
        <rect>
-        <x>510</x>
-        <y>100</y>
+        <x>540</x>
+        <y>70</y>
         <width>81</width>
         <height>24</height>
        </rect>
@@ -352,9 +352,12 @@
       </property>
      </widget>
      <widget class="QPushButton" name="skullLoad">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
       <property name="geometry">
        <rect>
-        <x>510</x>
+        <x>540</x>
         <y>140</y>
         <width>81</width>
         <height>24</height>
@@ -366,11 +369,11 @@
      </widget>
      <widget class="QPushButton" name="adjPlot">
       <property name="enabled">
-       <bool>true</bool>
+       <bool>false</bool>
       </property>
       <property name="geometry">
        <rect>
-        <x>340</x>
+        <x>380</x>
         <y>260</y>
         <width>71</width>
         <height>24</height>
@@ -383,9 +386,9 @@
      <widget class="QLineEdit" name="plotName">
       <property name="geometry">
        <rect>
-        <x>170</x>
+        <x>120</x>
         <y>230</y>
-        <width>241</width>
+        <width>251</width>
         <height>23</height>
        </rect>
       </property>
@@ -434,9 +437,12 @@
       </property>
      </widget>
      <widget class="QPushButton" name="isoLoad">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
       <property name="geometry">
        <rect>
-        <x>510</x>
+        <x>540</x>
         <y>170</y>
         <width>81</width>
         <height>24</height>
@@ -456,15 +462,15 @@
        </rect>
       </property>
       <property name="text">
-       <string>Isosurface file</string>
+       <string>Isosurface</string>
       </property>
      </widget>
      <widget class="QLineEdit" name="isoFilename">
       <property name="geometry">
        <rect>
-        <x>170</x>
+        <x>120</x>
         <y>170</y>
-        <width>301</width>
+        <width>251</width>
         <height>23</height>
        </rect>
       </property>
@@ -472,7 +478,7 @@
      <widget class="QPushButton" name="isoFnameButton">
       <property name="geometry">
        <rect>
-        <x>480</x>
+        <x>380</x>
         <y>170</y>
         <width>21</width>
         <height>24</height>
@@ -482,20 +488,82 @@
        <string>..</string>
       </property>
      </widget>
-     <widget class="QPushButton" name="isPlot">
+     <widget class="QPushButton" name="isoPlot">
       <property name="enabled">
-       <bool>true</bool>
+       <bool>false</bool>
       </property>
       <property name="geometry">
        <rect>
-        <x>510</x>
-        <y>250</y>
+        <x>540</x>
+        <y>260</y>
         <width>71</width>
         <height>24</height>
        </rect>
       </property>
       <property name="text">
        <string>Plotiso</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="labelLabel">
+      <property name="geometry">
+       <rect>
+        <x>420</x>
+        <y>20</y>
+        <width>141</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <italic>true</italic>
+       </font>
+      </property>
+      <property name="text">
+       <string>Labels</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="bgName">
+      <property name="geometry">
+       <rect>
+        <x>420</x>
+        <y>140</y>
+        <width>111</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>bg</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="isoName">
+      <property name="geometry">
+       <rect>
+        <x>420</x>
+        <y>170</y>
+        <width>111</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>iso</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="labelLabel_2">
+      <property name="geometry">
+       <rect>
+        <x>120</x>
+        <y>20</y>
+        <width>141</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <italic>true</italic>
+       </font>
+      </property>
+      <property name="text">
+       <string>Filenames</string>
       </property>
      </widget>
     </widget>

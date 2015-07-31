@@ -58,6 +58,8 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.brainName = ['brain', 0] # used to auto-create labels for brains if no user input given (currently only supports 1 brain)
         self.currentBrainName = None # currently used brain
         self.plName = ['plot', 0]
+        self.bgName = ['bg', 0] # default background name prefix and index
+        self.isoName = ['iso', 0] # default isosurface name and index
         
         
     def connectSlots(self):
@@ -66,17 +68,24 @@ class mayBrainGUI(QtGui.QMainWindow):
         # quit app        
         QtCore.QObject.connect(self.ui.quitButton, QtCore.SIGNAL('clicked()'), app.quit)
         
-        # tab 1: general settings
+        # tab 1: loading files and global plotting
         QtCore.QObject.connect(self.ui.spatialFnameButton, QtCore.SIGNAL('clicked()'), self.getSpatialFilename)
         QtCore.QObject.connect(self.ui.adjFnameButton, QtCore.SIGNAL('clicked()'), self.getAdjFilename)
         QtCore.QObject.connect(self.ui.skullFnameButton, QtCore.SIGNAL('clicked()'), self.getSkullFilename)
         QtCore.QObject.connect(self.ui.propsFnameButton, QtCore.SIGNAL('clicked()'), self.getPropsFilename)                
         QtCore.QObject.connect(self.ui.brainLoad, QtCore.SIGNAL('clicked()'), self.loadBrain)
         QtCore.QObject.connect(self.ui.skullLoad, QtCore.SIGNAL('clicked()'), self.loadSkull)
+        QtCore.QObject.connect(self.ui.isoLoad, QtCore.SIGNAL('clicked()'), self.loadIso)   
         QtCore.QObject.connect(self.ui.skullPlot, QtCore.SIGNAL('clicked()'), self.plotSkull)
-        QtCore.QObject.connect(self.ui.plotTree, QtCore.SIGNAL('itemClicked(QTreeWidgetItem*,int)'), self.setPlotValues)
-#        QtCore.QObject.connect(self.ui.adjReplot, QtCore.SIGNAL('clicked()'), self.rePlotBrain)
+        QtCore.QObject.connect(self.ui.isoPlot, QtCore.SIGNAL('clicked()'), self.plotIso)
         QtCore.QObject.connect(self.ui.clearFigButton, QtCore.SIGNAL('clicked()'), self.clearPlot)
+        
+        # tab 2: highlights
+        self.ui.hlApplyButton.clicked.connect(self.makeHighlight)
+        self.ui.propsLoad.clicked.connect(self.addProperties)
+        
+        # tab 3: plotting        
+        QtCore.QObject.connect(self.ui.plotTree, QtCore.SIGNAL('itemClicked(QTreeWidgetItem*,int)'), self.setPlotValues)
         self.ui.opacitySlider.valueChanged.connect(self.setOpacity)
         self.ui.opacityBox.valueChanged.connect(self.setOpacityBox)
         self.ui.visibleCheckBox.clicked.connect(self.setVisibility)
@@ -86,9 +95,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.ui.greenValueBox.valueChanged.connect(self.setColourGreenDial)
         self.ui.blueSlider.valueChanged.connect(self.setColourBlue)
         self.ui.blueValueBox.valueChanged.connect(self.setColourBlueDial)
-        self.ui.hlApplyButton.clicked.connect(self.makeHighlight)
-        self.ui.propsLoad.clicked.connect(self.addProperties)
-        
+
         
 #        QtCore.QObject.connect(self.ui.opacitySlider, QtCore.SIGNAL('mouseReleaseEvent()'), self.setOpacity)
         
@@ -114,6 +121,12 @@ class mayBrainGUI(QtGui.QMainWindow):
         ''' get a skull filename '''
         f = QtGui.QFileDialog.getOpenFileName(self, 'Choose skull file', directory = self.lastFolder)
         self.ui.skullFilename.setText(f)
+        self.lastFolder = path.dirname(str(f))
+
+    def getIsoFilename(self):
+        ''' get an isosurface filename '''
+        f = QtGui.QFileDialog.getOpenFileName(self, 'Choose isosurface file', directory = self.lastFolder)
+        self.ui.isoFilename.setText(f)
         self.lastFolder = path.dirname(str(f))
         
     def getPropsFilename(self):
@@ -176,6 +189,45 @@ class mayBrainGUI(QtGui.QMainWindow):
             
         # returns the name and whether the name has already been used to label a brain
         return plName #, plotUsed
+        
+        
+    def findBGname(self):
+        ''' get the name for a background '''
+        
+        try:
+            bgName = str(self.ui.bgName.text())
+        except:
+            print("invalid background name")
+            bgName = ''
+            
+        # remove unwanted characters
+        bgName = mb.extraFns.stripString(bgName)
+        
+        if bgName == '':
+            bgName = self.bgName[0] + str(self.bgName[1])
+            self.bgName[1] = self.bgName[1] + 1
+            
+        return bgName
+        
+        
+    def findIsoName(self):
+        ''' get the name for an isosurface '''
+        
+        try:
+            isoName = str(self.ui.isoName.text())
+        except:
+            print("invalid isosurface name")
+            isoName = ''
+            
+        # remove unwanted characters
+        isoName = mb.extraFns.stripString(isoName)
+        
+        if isoName == '':
+            isoName = self.isoName[0] + str(self.isoName[1])
+            self.isoName[1] = self.isoName[1] + 1
+            
+        return isoName        
+        
 
         
     def loadBrain(self):
@@ -239,6 +291,25 @@ class mayBrainGUI(QtGui.QMainWindow):
         # enable plot button
         self.ui.skullPlot.setEnabled(True)
         
+    def loadIso(self):
+        ''' load a skull file '''
+        # get filename
+        f = str(self.ui.isoFilename.text())
+        # get brain name
+        brainName, brUsedBool = self.findBrainName()
+    
+        # create brain object if it doesn't exist
+        if not(brUsedBool):
+            br = mb.brainObj()
+            self.brains[brainName] = br
+        else:
+            br = self.brains[brainName]
+        # read in file
+        br.importISO(f)
+        
+        # enable plot button
+        self.ui.isoPlot.setEnabled(True)        
+        
         
     def getThresholdType(self):
         ''' read the value in the threshold dropdown box to determine thresholding method '''
@@ -298,22 +369,32 @@ class mayBrainGUI(QtGui.QMainWindow):
     def plotSkull(self):
         ''' plot the skull '''
         
-        # check if brain object exists
-        if not('mainBrain' in self.brains):
-            return
-            
-        # plot
-        try:
-            self.plot.plotSkull(self.brains['mainBrain'], label = 'skull')
-            
-            # add to treeview
-            self.readAvailablePlots()
-            # QtGui.QTreeWidgetItem(self.ui.plotTree, ['skull', 'skull'])     
-            
-        except:
-            print('could not plot skull, has file been loaded?')
-         
+        # get current brain name
+        brName = self.getActiveBrainName()    
         
+        # get label
+        bgLabel = self.findBGname()
+        
+        # plot
+        self.plot.plotSkull(self.brains[brName], label = bgLabel)
+            
+        # add to treeview
+        self.readAvailablePlots()
+
+         
+    def plotIso(self):
+        ''' plot an isosurface '''
+        
+        # get current brain name
+        brName = self.getActiveBrainName()
+        
+        # get label
+        isolabel = self.findIsoName
+        
+        # plot
+        self.plot.plotIsosurface(self.brains[brName], label = isolabel)
+        
+    
         
     def readAvailablePlots(self):
         ''' read in the available plots from the plotting object '''
