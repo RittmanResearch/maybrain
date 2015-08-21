@@ -332,11 +332,12 @@ class brainObj:
     #!! doPrint option removed in merge
     def applyThreshold(self, edgePC = None, totalEdges = None, tVal = None, rethreshold=False):
         ''' Treshold the adjacency matrix to determine which nodes are linked by edges. There are 
-            three options:
+            four options:
             
             edgePC - a percentage of edges are taken
             totalEdges - give a number for the total edges found
             tVal - give a value for the threshold at which edges are chosen 
+            no threshold - in which case all possible edges are created
             
             rethreshold can be used if the threshold has already been applied --- NOT CURRENTLY A LIVE OPTION'''
 
@@ -347,7 +348,11 @@ class brainObj:
         ##                totalEdges - a number of edges is given
         
         # get the number of edges to link
-        if tVal == None:  
+        # case 4 - weighted graph, no threshold specified, this needs to come first
+        if (edgePC==None and totalEdges==None and tVal==None):
+            self.threshold  = np.min(weights[~np.isnan(weights)])
+        
+        elif tVal == None:
             # find threshold as a percentage of total possible edges
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
         
@@ -394,9 +399,6 @@ class brainObj:
         elif tVal:
             self.threshold = tVal
         
-        # case 4 - weighted graph, no threshold specified
-        else:
-            self.threshold  = np.min(weights[~np.isnan(weights)])
         
         print self.threshold
             
