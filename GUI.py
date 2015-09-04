@@ -261,7 +261,8 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.brains[brName] = br
         
         # add to brains selected for highlighting
-        self.ui.brainSelect.addItem(brName)
+        if not(brainUsedBool):
+            self.ui.brainSelect.addItem(brName)
                    
         # enable plot button
 #        try:
