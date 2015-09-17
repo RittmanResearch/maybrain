@@ -27,7 +27,7 @@ More details at http://code.google.com/p/maybrain/.
 
 
 from mayavi import mlab
-from numpy import array
+from numpy import array,repeat,max,power
 
 
 #!! plotObj taken from dev version. Legacy code removed    
@@ -35,15 +35,12 @@ class plotObj():
     ''' classes that plot various aspects of a brain object '''
     
     
-    def __init__(self):
+    def __init__(self, bg=None):
         
         # initialise mayavi figure
-        self.startMayavi()  
+        self.startMayavi(bg)
         
-        self.nodesf = 0.5 # scale factor for nodes
-        
-        
-    def startMayavi(self):
+    def startMayavi(self,bg):
         ''' initialise the Mayavi figure for plotting '''        
         
         # start the engine
@@ -51,41 +48,54 @@ class plotObj():
         self.engine = Engine()
         self.engine.start()
         
+        if not bg:
+            bg=(1., 1., 1.)
+        
         # create a Mayavi figure
-        self.mfig = mlab.figure(bgcolor = (0, 0, 0), fgcolor = (1., 1., 1.), engine = self.engine, size=(1500, 1500))
+        self.mfig = mlab.figure(bgcolor = bg,
+                                fgcolor = (0, 0, 0),
+                                engine = self.engine,
+                                size=(1500, 1500))
         
         # holders for plot objects
         self.brainNodePlots = {}
         self.brainEdgePlots = {}
         self.skullPlots = {}
         self.isosurfacePlots = {}
+        
+        # record order of plots
+        self.plotKeys = []
 
         # autolabel for plots
         self.labelNo = 0         
         
         
-    def coordsToList(self, brain, nodeList='all'):
+    def coordsToList(self, brain, nodeList=None):
         ''' get coordinates from lists in the brain object, possibly using only
         the indices given by nodeList and edgeList '''
         
-        # output
-        coords = []
-        # get nodes from networkx object
-        if nodeList=='all':
-            nodeList = brain.G.nodes()
+        # select some rows if necessary
+        if not nodeList:
+            nodeList = brain.G.nodes()        
         
-        for x in nodeList:
+        # get coordinates
+        # make into array for easy output                    
+#        coords = array([brain.G.node[x]['xyz'] for x in nodeList])
+            
+#        # get nodes from networkx object
+#        else:
+        coords = []
+        for x in brain.G.nodes():
             # put into list
             try:
                 coords.append(brain.G.node[x]['xyz'])
-            except:
-                print("tried to access invalid nodes in coordsToList", x)
+            except KeyError:
+                print('node ' + str(x) + ' not found in function coordsToList')
                     
-        # make into array for easy output                    
-        coords = array(coords)        
-                
+        coords = array(coords)                
+        
         # return x, y and z coordinates
-        return coords[:,0], coords[:,1], coords[:,2]
+        return coords[:, 0], coords[:, 1], coords[:, 2]
         
         
     def edgesToList(self, brain):
@@ -121,42 +131,48 @@ class plotObj():
             s.append(e[2]['weight'])
         
         return x1, y1, z1, x2, y2, z2, s
+
         
 
-    def plotBrain(self, brain, opacity = 1.0, edgeOpacity = None, label = 'plot',\
-                  nodes = 'all', plotCoords=True, plotEdges=True, plotHighlights=True):
+    def plotBrain(self, brain, opacity = 1.0, edgeOpacity = None, label = 'plot', plotHighlights = True):
         ''' plot all the coords, edges and highlights in a brain '''     
-               
+              
         # sort out the edge opacity
         if not(edgeOpacity):
             edgeOpacity = opacity
 
         # plot coords
-        if plotCoords:
-            coords = self.coordsToList(brain, nodeList=nodes)
-            self.plotCoords(coords, opacity = opacity, label=label)
+        coords = self.coordsToList(brain)
+        self.plotCoords(coords, opacity = opacity, label=label)
         
         # plot  edges
-        if plotEdges:
-            ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)    
-            self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (1., 1., 1.), opacity = opacity, label=label)  
+        ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)    
+        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (0.,0.,0.), opacity = opacity, label=label)  
         
         # plot the highlights
         if plotHighlights:
             self.plotBrainHighlights(brain)
         
-    def plotBrainCoords(self, brain, opacity = 1.0, label = 'coordplot', nodes = 'all'):
+    def plotBrainCoords(self, brain, nodes=None, opacity = 1.0, label = 'coordplot', sizeList=None, col=(0.,0.,0.),
+                        sf=None, sfRange=None):
         ''' plot all coordinates in a brain '''
+
+       
+        coords = self.coordsToList(brain, nodeList=nodes)
+        self.plotCoords(coords, opacity = opacity, label=label, col=col, sizeList=sizeList, sf=sf, sfRange=sfRange)
         
-        coords = self.coordsToList(brain, nodeList= nodes)
-        self.plotCoords(coords, opacity = opacity, label=label)
+        
+    def plotBrainEdges(self, brain, opacity = 1.0, label = 'edgeplot', col=None, cm ='GnBu', lw=2., scalars=None):
+        ''' plot all edges within a brain 
+        lw = line width
+        #### Not working currently - plots in a different window #### --Really, seems OK to me!
+        ''' 
         
         
-    def plotBrainEdges(self, brain, opacity = 1.0, label = 'edgeplot'):
-        ''' plot all edges within a brain ''' 
-        
-        ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)    
-        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (1., 1., 1.), opacity = opacity, label=label)  
+        ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)
+        if scalars:
+            s=scalars
+        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, lw=lw, col = col, cm=cm, opacity = opacity, label=label)  
 
 
     def plotBrainHighlights(self, brain, highlights = [], labelPre = ''):    
@@ -174,8 +190,20 @@ class plotObj():
             except:
                 print('highlight not found: ' + h)
                 continue
-                
+
+            # get edge data                
             ex1, ey1, ez1, ux, uy, yz, s = ho.getEdgeCoordsToPlot(brain)
+            # get node data
+            hp = ho.nodeIndices            
+            
+#            # case where there are node and edges
+#            if (len(ex1)<0 | len(ex1)<0):
+#                print('highlight ' + h + ' has nodes and edges, label will change')
+#                labelEdge = label + '_edge'
+#                labelNode = label + '_node'
+#            else:
+#                labelEdge = label
+#                labelNode = label
             
             # case where edge opacity is not separately defined
             if not(ho.edgeOpacity):
@@ -186,45 +214,81 @@ class plotObj():
                 self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = ho.colour, opacity = ho.edgeOpacity, label=label)
             
             # plot the nodes
-            hp = ho.nodeIndices
-            if not(len(hp))==0:
+            if not(len(hp)==0):
                 x, y, z = ho.getCoords(brain)
-                self.plotCoords((x,y,z), col = ho.colour, opacity = ho.opacity, label=label)        
+                self.plotCoords((x,y,z), col = ho.colour, opacity = ho.opacity, label=label)  
         
         
-    def plotCoords(self, coords, col = (1,1,1), opacity = 1., label='plot'):
-        ''' plot the coordinates of a brain object '''
+    def plotCoords(self, coords, col = (1.,1.,1.), opacity = 1., label='plot', sizeList=None, sf=1., sfRange=None):
+        ''' plot the coordinates of a brain object
+            "absoluteScaling" is an option to use and absolute rather than a relative scaling, particularly useful for multiple plots
+           
+        '''
+
+        # remove old version, if any
+        if label in self.brainNodePlots:
+            self.brainNodePlots[label].remove()
+
+        if sizeList==None:
+            # note that scalar value is currently set to 1.
+            ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
+                                                  figure = self.mfig)
+            sf = 1.
+            
+        else:
+            try:
+                float(sizeList)
+                sizeList = repeat(sizeList, len(coords[0]))
+            except:
+                pass
+
+            if not sf:
+                sf = 5./power(max(sizeList), 1/3)
+                print "sf calculated as: "+str(sf)
+                
+            ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
+                                                      sizeList, figure = self.mfig)
+             
+        self.brainNodePlots[label] = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor=sf,
+                                scale_mode="scalar")
         
-        # note that scalar value is currently set to x
-        ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2], figure = self.mfig)
-        p = mlab.pipeline.glyph(ptdata, color = col, opacity = opacity, scale_factor = 0.1)
+        if sfRange:
+            print "Adjusting glyph range"
+            self.brainNodePlots[label].glyph.glyph.range = array(sfRange)
+
+        # record label for order
+
+#        self.plotKeys.append(label)
         
-        self.brainNodePlots[label] = p
-        print(label, p)
+#        self.brainNodePlots[label] = p
+#        print(label, p)
         
         
-    def plotEdges(self, ex1, ey1, ez1, ux, uy, uz, s, col = None, opacity = 1., label='plot'):
+    def plotEdges(self, ex1, ey1, ez1, ux, uy, uz, s, lw=2., col = None, opacity = 1., cm = 'GnBu', label='plot'):
         ''' plot some edges
         
             ec has the order [x0, x1, y0, y1, z0, z1]
-            s is the scalars
+            s is the scalars - used to determine the node colour
+            cm = 'GnBu'  colormap for plotting scalars
             col is a triple of numbers in the interval (0,1), or None
+            lw is the line width
+            
             
         '''
+
+        if label in self.brainEdgePlots:
+            self.brainEdgePlots[label].remove()
         
         plotmode = '2ddash' # could be modified later
-        cm = 'GnBu' # colormap for plotting
         
         # add data to mayavi
 #        edata = mlab.pipeline.vector_scatter(ex1, ey1, ez1, ux, uy, yz, scalars = s, figure = self.mfig)
-        
         # plot
-        v = mlab.quiver3d(ex1, ey1, ez1, ux, uy, uz, scalars = s, line_width=1., opacity=opacity, mode = plotmode, color = col, scale_factor = 1., scale_mode = 'vector', colormap = cm)
-        if not(col):
-            v.glyph.color_mode = 'color_by_scalar'
+        self.brainEdgePlots[label] = mlab.quiver3d(ex1, ey1, ez1, ux, uy, uz, scalars = s, line_width=lw, opacity=opacity, mode = plotmode, color = col, scale_factor = 1., scale_mode = 'vector', colormap = cm)
+        if not col:
+            self.brainEdgePlots[label].glyph.color_mode = 'color_by_scalar'
             
-        self.brainEdgePlots[label] = v
-        
+                
             
     def getCoords(self, brain, edge):
         ''' get coordinates from nodes and return a coordinate and a vector '''
@@ -239,32 +303,39 @@ class plotObj():
     
     def plotSkull(self, brain, label = None, contourVals = [], opacity = 0.1, cmap='Spectral'):
         ''' plot the skull using Mayavi '''
-        
+      
         if not(label):
             label = self.getAutoLabel()        
+
+        # remove old version        
+        if not(label in self.skullPlots):
+            self.skullPlots[label].remove()
         
         if contourVals == []:            
-            s = mlab.contour3d(brain.skull, opacity = opacity, colormap=cmap)
+            self.skullPlots[label] = mlab.contour3d(brain.background, opacity = opacity, colormap=cmap)
         else:
-            s = mlab.contour3d(brain.skull, opacity = opacity, contours = contourVals, colormap=cmap)
+            self.skullPlots[label] = mlab.contour3d(brain.background, opacity = opacity, contours = contourVals, colormap=cmap)
             
         # get the object for editing
-        self.skullPlots[label] = s
+#        self.skullPlots[label] = s
         
         
     def plotIsosurface(self, brain, label = None, contourVals = [], opacity = 0.1, cmap='autumn'):
         ''' plot an isosurface using Mayavi, almost the same as skull plotting '''
         
         if not(label):
-            label = self.getAutoLabel()        
+            label = self.getAutoLabel()  
+            
+        if label in self.isosurfacePlots:
+            self.isosurfacePlots[label].remove()
         
         if contourVals == []:            
-            s = mlab.contour3d(brain.iso, opacity = opacity, colormap=cmap)
+            self.isosurfacePlots[label] = mlab.contour3d(brain.iso, opacity = opacity, colormap=cmap)
         else:
-            s = mlab.contour3d(brain.iso, opacity = opacity, contours = contourVals, colormap=cmap)
+            self.isosurfacePlots[label] = mlab.contour3d(brain.iso, opacity = opacity, contours = contourVals, colormap=cmap)
             
         # get the object for editing
-        self.isosurfacePlots[label] = s
+#        self.isosurfacePlots[label] = s
         
     def plotParcels(self, brain, label = None, contourVals = [], opacity = 0.5, cmap='autumn'):
         ''' plot an isosurface using Mayavi, almost the same as skull plotting '''
@@ -273,12 +344,12 @@ class plotObj():
             label = self.getAutoLabel()        
         
         if contourVals == []:            
-            s = mlab.contour3d(brain.parcels, opacity = opacity, colormap=cmap)
+            self.isosurfacePlots[label] = mlab.contour3d(brain.parcels, opacity = opacity, colormap=cmap)
         else:
-            s = mlab.contour3d(brain.parcels, opacity = opacity, contours = contourVals, colormap=cmap)
+            self.isosurfacePlots[label] = mlab.contour3d(brain.parcels, opacity = opacity, contours = contourVals, colormap=cmap)
             
         # get the object for editing
-        self.isosurfacePlots[label] = s
+#        self.isosurfacePlots[label] = s
             
     def changePlotProperty(self, plotType, prop, plotLabel, value = 0.):
         ''' change a specified property prop of a plot of type plotType, index is used if multiple plots of
@@ -377,12 +448,18 @@ class plotObj():
         self.labelNo = self.labelNo + 1
         
         return label
-        
-    def show(self):
-        ''' show the mayavi plot '''
-        mlab.show()
-        
+
         
     def clear(self):
-        ''' clear the current plot '''
+        ''' clear current plot '''
+        
         mlab.clf()
+        
+        # need to clear other things here
+        self.brainNodePlots = {}
+        self.brainEdgePlots = {}
+        self.skullPlots = {}
+        self.isosurfacePlots = {}
+
+        # autolabel for plots
+        self.labelNo = 0         

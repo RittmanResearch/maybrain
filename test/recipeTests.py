@@ -8,12 +8,13 @@ Some unit tests for Maybrain recipes - loading of data
 # add the local path to python executable path
 import sys
 try:
-    sys.path.append("/home/galileo/Documents/programming/maybrain/maybrain")
+    sys.path.append("/home/galileo/Dropbox/smart laptop/maybrain/maybrain")
 except:
     pass
 
 import unittest
 import maybrain.recipes as mb
+
 
 class TestSequenceFunctions(unittest.TestCase):
 

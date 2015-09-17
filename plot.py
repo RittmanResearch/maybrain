@@ -27,7 +27,7 @@ More details at http://code.google.com/p/maybrain/.
 
 
 from mayavi import mlab
-from numpy import array,repeat,max,power
+from numpy import array,repeat,power
 
 
 #!! plotObj taken from dev version. Legacy code removed    
@@ -35,12 +35,15 @@ class plotObj():
     ''' classes that plot various aspects of a brain object '''
     
     
-    def __init__(self, bg=None):
+    def __init__(self):
         
         # initialise mayavi figure
-        self.startMayavi(bg)
+        self.startMayavi()  
         
-    def startMayavi(self,bg):
+        self.nodesf = 0.5 # scale factor for nodes
+        
+        
+    def startMayavi(self):
         ''' initialise the Mayavi figure for plotting '''        
         
         # start the engine
@@ -48,14 +51,8 @@ class plotObj():
         self.engine = Engine()
         self.engine.start()
         
-        if not bg:
-            bg=(1., 1., 1.)
-        
         # create a Mayavi figure
-        self.mfig = mlab.figure(bgcolor = bg,
-                                fgcolor = (0, 0, 0),
-                                engine = self.engine,
-                                size=(1500, 1500))
+        self.mfig = mlab.figure(bgcolor = (1., 1., 1.,), fgcolor = (0., 0., 0.), engine = self.engine, size=(1500, 1500))
         
         # holders for plot objects
         self.brainNodePlots = {}
@@ -67,26 +64,28 @@ class plotObj():
         self.labelNo = 0         
         
         
-    def coordsToList(self, brain, nodeList=None):
+    def coordsToList(self, brain, nodeList='all'):
         ''' get coordinates from lists in the brain object, possibly using only
         the indices given by nodeList and edgeList '''
         
         # output
         coords = []
         # get nodes from networkx object
-        for x in brain.G.nodes():
+        if nodeList=='all':
+            nodeList = brain.G.nodes()
+        
+        for x in nodeList:
             # put into list
-            coords.append(brain.G.node[x]['xyz'])
+            try:
+                coords.append(brain.G.node[x]['xyz'])
+            except:
+                print("tried to access invalid nodes in coordsToList", x)
                     
         # make into array for easy output                    
         coords = array(coords)        
-        
-        # select some rows if necessary
-        if nodeList:
-            coords = coords[nodeList,:]
-        
+                
         # return x, y and z coordinates
-        return coords[:, 0], coords[:, 1], coords[:, 2]
+        return coords[:,0], coords[:,1], coords[:,2]
         
         
     def edgesToList(self, brain):
@@ -122,10 +121,10 @@ class plotObj():
             s.append(e[2]['weight'])
         
         return x1, y1, z1, x2, y2, z2, s
-
         
 
-    def plotBrain(self, brain, opacity = 1.0, edgeOpacity = None, label = 'plot'):
+    def plotBrain(self, brain, opacity = 1.0, edgeOpacity = None, label = 'plot',\
+                  nodes = 'all', plotCoords=True, plotEdges=True, plotHighlights=True):
         ''' plot all the coords, edges and highlights in a brain '''     
                
         # sort out the edge opacity
@@ -133,33 +132,31 @@ class plotObj():
             edgeOpacity = opacity
 
         # plot coords
-        coords = self.coordsToList(brain)
-        self.plotCoords(coords, opacity = opacity, label=label)
+        if plotCoords:
+            coords = self.coordsToList(brain, nodeList=nodes)
+            self.plotCoords(coords, opacity = opacity, label=label)
         
         # plot  edges
-        ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)    
-        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (0.,0.,0.), opacity = opacity, label=label)  
+        if plotEdges:
+            ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)    
+            self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = (1., 1., 1.), opacity = opacity, label=label)  
         
         # plot the highlights
-        self.plotBrainHighlights(brain)
+        if plotHighlights:
+            self.plotBrainHighlights(brain)
         
-    def plotBrainCoords(self, brain, nodes=None, opacity = 1.0, label = 'coordplot', sizeList=None, col=(0.,0.,0.), sf=None):
+    def plotBrainCoords(self, brain, opacity = 1.0, label = 'coordplot', nodes = 'all', col=(0,0,0), sizeList=None, sf=None):
         ''' plot all coordinates in a brain '''
         
-        coords = self.coordsToList(brain, nodeList=nodes)
+        coords = self.coordsToList(brain, nodeList= nodes)
         self.plotCoords(coords, opacity = opacity, label=label, col=col, sizeList=sizeList, sf=sf)
         
         
-    def plotBrainEdges(self, brain, opacity = 1.0, label = 'edgeplot', col=None, cm ='GnBu', lw=2., scalars=None):
-        ''' plot all edges within a brain 
-        lw = line width
-        #### Not working currently - plots in a different window #### --Really, seems OK to me!
-        ''' 
+    def plotBrainEdges(self, brain, opacity = 1.0, label = 'edgeplot', col=(1., 1., 1.)):
+        ''' plot all edges within a brain ''' 
         
-        ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)
-        if scalars:
-            s=scalars
-        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, lw=lw, col = col, cm=cm, opacity = opacity, label=label)  
+        ex1, ey1, ez1, ux, uy, yz, s = self.edgesToList(brain)    
+        self.plotEdges(ex1, ey1, ez1, ux, uy, yz, s, col = col, opacity = opacity, label=label)  
 
 
     def plotBrainHighlights(self, brain, highlights = [], labelPre = ''):    
@@ -195,24 +192,25 @@ class plotObj():
                 self.plotCoords((x,y,z), col = ho.colour, opacity = ho.opacity, label=label)        
         
         
-    def plotCoords(self, coords, col = (1.,1.,1.), opacity = 1., label='plot', sizeList=None, sf=None):
+    def plotCoords(self, coords, col = (0,0,0), opacity = 1., label='plot', sizeList=None, sf=None):
         ''' plot the coordinates of a brain object '''
+        
+        # note that scalar value is currently set to x
         if sizeList==None:
+            sf = 4.
             # note that scalar value is currently set to x
             ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
-                                                  figure = self.mfig)
-            sf = 1.
-            
+                                                  figure = self.mfig, scale_factor=sf)
         else:
             try:
                 float(sizeList)
                 sizeList = repeat(sizeList, len(coords[0]))
             except:
                 pass
-
             if not sf:
-                sf = 5./power(max(sizeList), 1/3)
-                print "sf calculated as: "+str(sf)
+                sf = 4./power(max(sizeList), 1/3)
+                
+            print "sf calculated as: "+str(sf)
             ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
                                                   sizeList, figure = self.mfig, scale_factor=sf)
         
@@ -222,53 +220,28 @@ class plotObj():
         print(label, p)
         
         
-    def plotEdges(self, ex1, ey1, ez1, ux, uy, uz, s, lw=2., col = None, opacity = 1., cm = 'GnBu', label='plot'):
+    def plotEdges(self, ex1, ey1, ez1, ux, uy, uz, s, col = (0,0,0), opacity = 1., label='plot'):
         ''' plot some edges
         
             ec has the order [x0, x1, y0, y1, z0, z1]
-            s is the scalars - used to determine the node colour
-            cm = 'GnBu'  colormap for plotting scalars
+            s is the scalars
             col is a triple of numbers in the interval (0,1), or None
-            lw is the line width
-            
             
         '''
         
         plotmode = '2ddash' # could be modified later
+        cm = 'GnBu' # colormap for plotting
         
         # add data to mayavi
 #        edata = mlab.pipeline.vector_scatter(ex1, ey1, ez1, ux, uy, yz, scalars = s, figure = self.mfig)
+        
         # plot
-        v = mlab.quiver3d(ex1, ey1, ez1, ux, uy, uz, scalars = s, line_width=lw, opacity=opacity, mode = plotmode, color = col, scale_factor = 1., scale_mode = 'vector', colormap = cm)
-        if not col:
+        v = mlab.quiver3d(ex1, ey1, ez1, ux, uy, uz, scalars = s, line_width=1., opacity=opacity, mode = plotmode, color = col, scale_factor = 1., scale_mode = 'vector', colormap = cm)
+        if not(col):
             v.glyph.color_mode = 'color_by_scalar'
             
         self.brainEdgePlots[label] = v
-
-            
-#    #!! old version of plotbrain removed here
-#
-#    def plotBrainNodes(self, brain, nodes = None, col = (0.,0.,0.,), opacity = 1., label=None):
-#        ''' plot the nodes using Mayavi TO BE DEPRECATED'''
-#        
-#        # sort out keywords
-#        if not nodes:
-#            nodeList = brain.G.nodes()
-#        else:
-#            nodeList = nodes
-#            
-#        if not(label):
-#            label = self.getAutoLabel()       
-#            
-#        # turn nodes into lists for plotting
-#        xn, yn, zn = self.getNodesList(brain, nodeList=nodeList)
-#        
-#        # plot nodes
-#        s = mlab.points3d(xn, yn, zn, scale_factor = self.nodesf, color = col, opacity = opacity)
-#        self.brainNodePlots[label] = s
-#
-#
-    #!! old plotBrainEdges and plotSubset removed here       
+        
             
     def getCoords(self, brain, edge):
         ''' get coordinates from nodes and return a coordinate and a vector '''
@@ -281,7 +254,7 @@ class plotObj():
         return c1, diff           
     
     
-    def plotSkull(self, brain, label = None, contourVals = [], opacity = 0.1, cmap='Spectral'):
+    def plotBackground(self, brain, label = None, contourVals = [3000,9000], opacity = 0.1, cmap='Spectral'):
         ''' plot the skull using Mayavi '''
         
         if not(label):
@@ -421,3 +394,12 @@ class plotObj():
         self.labelNo = self.labelNo + 1
         
         return label
+        
+    def show(self):
+        ''' show the mayavi plot '''
+        mlab.show()
+        
+        
+    def clear(self):
+        ''' clear the current plot '''
+        mlab.clf()
