@@ -322,7 +322,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         # logging
         if self.logBool:
             # simplify somewhat
-            line = 'brain.importSkull('+f'+)'
+            line = 'brain.importSkull('+f+')'
 
             self.logging(line)
         
@@ -404,6 +404,7 @@ class mayBrainGUI(QtGui.QMainWindow):
                 
         # logging
         if self.logBool:
+            a = 1
             
     
     

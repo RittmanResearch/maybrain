@@ -5,12 +5,24 @@ GUI for Maybrain
 
 """
 
-# First, and before importing any Enthought packages, set the ETS_TOOLKIT
-# environment variable to qt4, to tell Traits that we will use Qt.
+## add the local path to python executable path
+#import sys
+#try:
+#    sys.path.append('/home/galileo/Documents/programming/maybrain/maybrain/')
+#except:
+#    pass
 
 
-#import os
-#os.environ['ETS_TOOLKIT'] = 'qt4'
+#=======
+
+
+## First, and before importing any Enthought packages, set the ETS_TOOLKIT
+## environment variable to qt4, to tell Traits that we will use Qt.
+#
+#
+##import os
+##os.environ['ETS_TOOLKIT'] = 'qt4'
+
 
 # To be able to use PySide or PyQt4 and not run in conflicts with traits,
 # we need to import QtGui and QtCore from pyface.qt
@@ -24,6 +36,7 @@ import maybrain as mb
 import sys
 import mayBrainUI as ui
 from os import path
+
 
 
 class mayBrainGUI(QtGui.QMainWindow):
@@ -56,6 +69,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         # local variables
         self.lastFolder = '' # last folder viewed by user
         self.brainName = ['brain', 0] # used to auto-create labels for brains if no user input given (currently only supports 1 brain)
+        self.logBool = True # use logging (set to false after testing)
         self.currentBrainName = None # currently used brain
         self.plName = ['plot', 0]
         self.bgName = ['bg', 0] # default background name prefix and index
@@ -271,7 +285,18 @@ class mayBrainGUI(QtGui.QMainWindow):
 #            pass
         QtCore.QObject.connect(self.ui.adjPlot, QtCore.SIGNAL('clicked()'), self.plotBrain)
         self.ui.adjPlot.setEnabled(True)
-     
+        
+        # logging
+        if self.logBool:
+            if brainUsedBool:
+                line = 'br = self.brains['+brName+']\n' + \
+                'br.inputAdjFile('+adj+')\n'+\
+                'br.inputSpatialInfo('+coords+')\n'+\
+                'br.applythreshold(tVal='+thold+')'
+            else:
+                line ='brain = mb.loadAndThreshold(' + adj + ', '+coords+','+thold + ')'
+            
+            self.logging(line)
         
     def loadSkull(self):
         ''' load a skull file '''
@@ -281,17 +306,27 @@ class mayBrainGUI(QtGui.QMainWindow):
         brainName, brUsedBool = self.findBrainName()
     
         # create brain object if it doesn't exist
-        if not(brUsedBool):
+        if brUsedBool:
+            br = self.brains[brainName]
+        else:
             br = mb.brainObj()
             self.brains[brainName] = br
-        else:
-            br = self.brains[brainName]
+            
         # read in file
         br.importSkull(f)
         
         # enable plot button
         self.ui.skullPlot.setEnabled(True)
         
+
+        # logging
+        if self.logBool:
+            # simplify somewhat
+            line = 'brain.importSkull('+f+')'
+
+            self.logging(line)
+        
+
     def loadIso(self):
         ''' load a skull file '''
         # get filename
@@ -338,6 +373,7 @@ class mayBrainGUI(QtGui.QMainWindow):
             
         return thType, value
 
+
     ## =============================================
     
     #### plotting functions
@@ -365,6 +401,42 @@ class mayBrainGUI(QtGui.QMainWindow):
 
         # add to tree view
         self.readAvailablePlots() 
+                
+        # logging
+        if self.logBool:
+            a = 1
+            
+    
+    
+    def rePlotBrain(self):
+        ''' plot brain with altered threhold '''        
+        
+        # get brain ***NEEDS CHANGING FOR MULTIPLE BRAINS***
+        brName, nameUsedBool = self.findBrainName()
+        
+        if not(brName in self.brains):
+            print(brName + ' not found in rePlot')
+            return
+
+        # remove old plots
+        print('\n')
+        for p in self.plot.brainEdgePlots:
+            print(p)
+        self.plot.brainEdgePlots[brName].remove()
+        self.plot.brainNodePlots[brName].remove()
+            
+#        try:
+        # get new threshold
+        threshold = float(self.ui.thresholdValue.text())
+        # replot
+        br = self.brains[brName]
+        br.applyThreshold(tVal = threshold)
+        
+        # *** need to get existing opacity value ***
+        self.plot.plotBrainBase(br, label = brName)       
+#        except:
+#            print('problem plotting brain, is threshold correct?')
+        self.readAvailablePlots()
             
             
     def plotSkull(self):
@@ -737,9 +809,29 @@ class mayBrainGUI(QtGui.QMainWindow):
         
         return brName
                 
+    
+    def logging(self, command, extra = ''):
+        ''' write to logging interface 
+
+        the log file assumes you're only dealing with one brain object as it currently stands.        
+        
+        '''
+        
+        
+        # write the script: command(v1, v2, v3) 
+#        lineOut = command + '('
+#        for v in variables:
+#            lineOut = lineOut + ','
+#        lineOut = lineOut[:-1]
+#        lineOut = lineOut + ')'
+        
+        # display in logging area
+        self.ui.logText.setText(lineOut)
+        
+        print(llineOut)
+        
 
         
-if __name__ == "__main__":
 
     # using instance allows Mayavi to run alongside without any problems.
 #    app = QtGui.QApplication.instance()
