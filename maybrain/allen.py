@@ -637,7 +637,7 @@ class multiSubj:
     def comparisonAveraged(self):
         """
         This function should generate sets of nodes in the imaging data associated
-        with single nodes in the Allen data, ie all the closes imaging data nodes will
+        with single nodes in the Allen data, ie all the closest imaging data nodes will
         be associated with any specific Allen node.
         """
         for n in self.a.G.nodes():
