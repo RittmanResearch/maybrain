@@ -463,7 +463,7 @@ def undirectedFlatten(mat):
     
     flatMat = []
     
-    # flatt the upper right section
+    # flatten the upper right section
     for rows in range(s[0]):
         try:
             flatMat = flatMat + list(mat[rows,rows+1:])
