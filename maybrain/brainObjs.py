@@ -57,7 +57,6 @@ class brainObj:
         # need to define the following, what do they do???
 #        self.edgePC = 5 # an arbitrary value for percentage of edges to plot. #!! is this necessary?
         self.hubs = []
-        self.lengthEdgesRemoved = None
         self.bigconnG = None
         #!! following two added in merge
         self.dyingEdges = {}
@@ -75,6 +74,8 @@ class brainObj:
         
         self.labelNo = 0 # index for autolabeling of highlights
         self.highlights = {} # highlights items consist of a list contating a name, a highlight object and a colour
+        
+        self.riskEdges = None
 
         # create a new networkX graph object
         if self.directed:
@@ -534,29 +535,21 @@ class brainObj:
         adjMat = np.zeros([n,n])
         
         for e in self.G.edges():
-            try:
-                w = self.G.edge[e[0]][e[1]]['weight']
-                adjMat[e[0], e[1]] = w
-                adjMat[e[1], e[0]] = w
-            except:
-                #print("no weight found for edge " + str(e[0]) + " " + str(e[1]) + ", skipped" )
-                adjMat[e[0], e[1]] = np.nan
+            self.updateAdjMat(e)
 
         self.adjMat = adjMat
-        
-        return adjMat
-        
+                
     def updateAdjMat(self, edge):
         ''' update the adjacency matrix for a single edge '''
         
         try:
             w = self.G.edge[edge[0]][edge[1]]['weight']
-            self.adjMat[edge[0], edge[1]] = w
-            self.adjMat[edge[1], edge[0]] = w
+            self.adjMat[self.G.nodes().index(edge[0]), self.G.nodes().index(edge[1])] = w
+            self.adjMat[self.G.nodes().index(edge[1]), self.G.nodes().index(edge[0])] = w
         except:
-            print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
-            self.adjMat[edge[0], edge[1]] = np.nan
-            self.adjMat[edge[1], edge[0]] = np.nan
+#            print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
+            self.adjMat[self.G.nodes().index(edge[0]), self.G.nodes().index(edge[1])] = np.nan
+            self.adjMat[self.G.nodes().index(edge[1]), self.G.nodes().index(edge[0])] = np.nan
             
 
     #!! added from master is this in the right place?? 
@@ -811,7 +804,7 @@ class brainObj:
     ### edge removal/degeneration
             
     def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, threshLimit=None,
-                   pcLimit=None, weightLossLimit=None, toxicNodes=None,
+                   pcLimit=None, weightLossLimit=None, nodeList=[],
                    riskEdges=None, spread=False, updateAdjmat=True,
                    distances=False, spatialSearch=False):
         ''' remove random edges from connections of the toxicNodes set, or from the riskEdges set. This occurs either until edgesRemovedLimit
@@ -830,10 +823,9 @@ class brainObj:
         
         '''
         
-        if toxicNodes:
-            nodeList = [v for v in toxicNodes]
-        else:
-            nodeList = []
+        # get rid of the existing list of edges if the node list is specified
+        if nodeList:
+            self.riskEdges = None
             
         # set limit
         if weightLossLimit and pcLimit:
@@ -863,32 +855,28 @@ class brainObj:
         else:
             limit = edgesRemovedLimit
         
-        if not riskEdges:
+        if not self.riskEdges:
             reDefineEdges=True
             # if no toxic nodes defined, select the whole graph
             if not nodeList:
                 nodeList = self.G.nodes()
             
             # generate list of at risk edges
-            riskEdges = [v for v in nx.edges(self.G, nodeList) if self.G.edge[v[0]][v[1]]['weight'] != 0.]
+            self.riskEdges = [v for v in nx.edges(self.G, nodeList) if self.G.edge[v[0]][v[1]]['weight'] != 0.]
         else:
             reDefineEdges=False
             
         if spread:
             nodeList = []
-            
-        # iterate number of steps
-        self.lengthEdgesRemoved = []
         
         # check if there are enough weights left
-        riskEdgeWtSum = np.sum([self.G.edge[v[0]][v[1]]['weight'] for v in riskEdges])
+        riskEdgeWtSum = np.sum([self.G.edge[v[0]][v[1]]['weight'] for v in self.riskEdges])
         if limit > riskEdgeWtSum:
             print "Not enough weight left to remove"
             return nodeList
             
-        
         while limit>0.:
-            if not riskEdges and spatialSearch:
+            if not self.riskEdges and spatialSearch:
                 # find spatially closest nodes if no edges exist
                 # is it necessary to do this for all nodes?? - waste of computing power,
                 # choose node first, then calculated spatially nearest of a single node
@@ -896,20 +884,22 @@ class brainObj:
                 if newNode:
                     print "Found spatially nearest node"
                     nodeList.append(newNode)
-                    riskEdges = nx.edges(self.G, nodeList)
+                    self.riskEdges = nx.edges(self.G, nodeList)
                 else:
                     print "No further edges to degenerate"
                     break
             # choose at risk edge to degenerate from           
-            dyingEdge = random.choice(riskEdges)            
+            dyingEdge = random.choice(self.riskEdges)            
                         
             # remove specified weight from edge
             w = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
             
             if np.absolute(w) < weightloss:
                 loss = np.absolute(w)
-                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] = 0.
-                riskEdges.remove(dyingEdge)
+                self.G.remove_edge(dyingEdge[0], dyingEdge[1])
+                self.riskEdges.remove(dyingEdge)
+                if not weightLossLimit:
+                    limit-=1
             
             elif w>0:
                 loss = weightloss
@@ -934,24 +924,12 @@ class brainObj:
                     if not node in nodeList and self.G.edge[dyingEdge[0]][dyingEdge[1]] > spread:
                         nodeList.append(node)
                         
-            # remove edge if below the graph threshold
-            if self.G[dyingEdge[0]][dyingEdge[1]]['weight'] < self.threshold:
-                self.G.remove_edge(dyingEdge[0], dyingEdge[1])
-                riskEdges.remove(dyingEdge)
-                print ' '.join(["Edge removed:",str(dyingEdge[0]),str(dyingEdge[1])])
-                if not weightLossLimit:
-                    limit-=1
-            
             if weightLossLimit:
                 limit -= loss
                 
             # redefine at risk edges
             if reDefineEdges or spread:
-                riskEdges = nx.edges(self.G, nodeList)
-            
-            print limit
-
-        
+                self.riskEdges = nx.edges(self.G, nodeList)        
         
         ## Update adjacency matrix to reflect changes
         #self.reconstructAdjMat()
