@@ -40,7 +40,7 @@
      <enum>QTabWidget::Rounded</enum>
     </property>
     <property name="currentIndex">
-     <number>2</number>
+     <number>0</number>
     </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
@@ -1132,6 +1132,32 @@
      <attribute name="title">
       <string>Analysis</string>
      </attribute>
+     <widget class="QPushButton" name="degreeButton">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>30</y>
+        <width>81</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Degree</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="degreeFilename">
+      <property name="geometry">
+       <rect>
+        <x>120</x>
+        <y>30</y>
+        <width>251</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>degree.txt</string>
+      </property>
+     </widget>
     </widget>
     <widget class="QWidget" name="log">
      <attribute name="title">

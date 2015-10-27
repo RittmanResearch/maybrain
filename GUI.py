@@ -60,6 +60,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.plName = ['plot', 0]
         self.bgName = ['bg', 0] # default background name prefix and index
         self.isoName = ['iso', 0] # default isosurface name and index
+        self.brInds = 0 # counter for number of brains
         
         
     def connectSlots(self):
@@ -95,9 +96,24 @@ class mayBrainGUI(QtGui.QMainWindow):
         self.ui.greenValueBox.valueChanged.connect(self.setColourGreenDial)
         self.ui.blueSlider.valueChanged.connect(self.setColourBlue)
         self.ui.blueValueBox.valueChanged.connect(self.setColourBlueDial)
+        self.ui.brainSelect.currentIndexChanged.connect(self.selectActiveBrain)
+        
+        # tab 4: metrics
+        self.ui.degreeButton.clicked.connect(self.getDegree)
 
         
 #        QtCore.QObject.connect(self.ui.opacitySlider, QtCore.SIGNAL('mouseReleaseEvent()'), self.setOpacity)
+
+    ## =============================================
+    
+    #### General functions
+
+    def selectActiveBrain(self):
+        ''' changes the active brain when selected in the box at the top of the GUI (brainSelect)'''
+
+        print(str(self.ui.brainSelect.currentText()))
+        self.activeBrain = self.brains[str(self.ui.brainSelect.currentText())]
+        
         
         
     ## =============================================
@@ -258,11 +274,16 @@ class mayBrainGUI(QtGui.QMainWindow):
         br.importSpatialInfo(coords)
         br.applyThreshold(thresholdType = thType, value = thVal)
         
-        self.brains[brName] = br
+        self.brains[brName] = brma
         
         # add to brains selected for highlighting
         if not(brainUsedBool):
             self.ui.brainSelect.addItem(brName)
+
+        # make sure the active brain is the desired one - this is a bit of a hack, but seems to work
+        brInd = len(self.brains.keys()) - self.brains.keys().index(brName)-1
+        self.ui.brainSelect.setCurrentIndex(brInd)
+        self.selectActiveBrain()
                    
         # enable plot button
 #        try:
@@ -345,7 +366,7 @@ class mayBrainGUI(QtGui.QMainWindow):
     def plotBrain(self):
         ''' plot the entire brain object '''
         
-        brName = self.getActiveBrainName()       
+        brName = self.getActiveBrainName()
         
 #        # sort label for brain object
 #        brName, brUsed = self.findBrainName()
@@ -471,8 +492,8 @@ class mayBrainGUI(QtGui.QMainWindow):
         ''' make a highlight using settings from ui '''
         
         # get current brain object
-        brName = self.getActiveBrainName()
-        br = self.brains[brName]
+        br = self.selectActiveBrain()
+        br = self.activeBrain
         
         # get settings from ui
         propName = str(self.ui.hlProp.currentText())
@@ -737,6 +758,30 @@ class mayBrainGUI(QtGui.QMainWindow):
         
         return brName
                 
+    ## =============================================
+    
+    #### Analysis Functions
+    
+    def getDegree(self):
+        ''' Find the degree of the active brain and save to file '''
+
+        # get the active brain and find nodes and degrees        
+        self.activeBrain = self.brains[str(self.ui.brainSelect.currentText())]
+        nodes = self.activeBrain.G.nodes()
+        degree = self.activeBrain.G.degree().values()
+        
+        # get the output file ready
+        fname = self.ui.degreeFilename.text()
+        f = open(fname, 'w')
+        f.write('node\tdegree')
+        print(degree)
+        
+        for d in range(len(degree)):
+            print(nodes[d], degree[d])
+            f.write('\n'+str(nodes[d]) + '\t' + str(degree[d]))
+
+
+        f.close()
 
         
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'mayBrain.ui'
 #
-# Created: Fri Jul 31 15:23:20 2015
+# Created: Thu Oct 15 07:16:34 2015
 #      by: PyQt4 UI code generator 4.11.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -326,6 +326,12 @@ class Ui_Maybrain(object):
         self.highlightTab.addTab(self.tab_2, _fromUtf8(""))
         self.tab_3 = QtGui.QWidget()
         self.tab_3.setObjectName(_fromUtf8("tab_3"))
+        self.degreeButton = QtGui.QPushButton(self.tab_3)
+        self.degreeButton.setGeometry(QtCore.QRect(20, 30, 81, 24))
+        self.degreeButton.setObjectName(_fromUtf8("degreeButton"))
+        self.degreeFilename = QtGui.QLineEdit(self.tab_3)
+        self.degreeFilename.setGeometry(QtCore.QRect(120, 30, 251, 23))
+        self.degreeFilename.setObjectName(_fromUtf8("degreeFilename"))
         self.highlightTab.addTab(self.tab_3, _fromUtf8(""))
         self.log = QtGui.QWidget()
         self.log.setObjectName(_fromUtf8("log"))
@@ -364,7 +370,7 @@ class Ui_Maybrain(object):
         self.menubar.addAction(self.menuAbout.menuAction())
 
         self.retranslateUi(Maybrain)
-        self.highlightTab.setCurrentIndex(2)
+        self.highlightTab.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(Maybrain)
 
     def retranslateUi(self, Maybrain):
@@ -446,6 +452,8 @@ class Ui_Maybrain(object):
         self.visibleCheckBox.setText(_translate("Maybrain", "Plot visible", None))
         self.clearFigButton.setText(_translate("Maybrain", "Clear figure", None))
         self.highlightTab.setTabText(self.highlightTab.indexOf(self.tab_2), _translate("Maybrain", "Adjust plot properties", None))
+        self.degreeButton.setText(_translate("Maybrain", "Degree", None))
+        self.degreeFilename.setText(_translate("Maybrain", "degree.txt", None))
         self.highlightTab.setTabText(self.highlightTab.indexOf(self.tab_3), _translate("Maybrain", "Analysis", None))
         self.textBrowser.setHtml(_translate("Maybrain", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
