@@ -274,7 +274,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         br.importSpatialInfo(coords)
         br.applyThreshold(thresholdType = thType, value = thVal)
         
-        self.brains[brName] = brma
+        self.brains[brName] = br
         
         # add to brains selected for highlighting
         if not(brainUsedBool):
