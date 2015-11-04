@@ -531,25 +531,24 @@ class brainObj:
 
     def reconstructAdjMat(self):
         ''' redefine the adjacency matrix from the edges and weights '''
-        n = len(self.G.nodes())
-        adjMat = np.zeros([n,n])
+        s = self.adjMat.shape
+        self.adjMat = np.zeros(s)
+        self.adjMat[:] = np.nan        
         
         for e in self.G.edges():
             self.updateAdjMat(e)
-
-        self.adjMat = adjMat
                 
     def updateAdjMat(self, edge):
         ''' update the adjacency matrix for a single edge '''
         
         try:
             w = self.G.edge[edge[0]][edge[1]]['weight']
-            self.adjMat[self.G.nodes().index(edge[0]), self.G.nodes().index(edge[1])] = w
-            self.adjMat[self.G.nodes().index(edge[1]), self.G.nodes().index(edge[0])] = w
+            self.adjMat[edge[0], edge[1]] = w
+            self.adjMat[edge[1], edge[0]] = w
         except:
 #            print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
-            self.adjMat[self.G.nodes().index(edge[0]), self.G.nodes().index(edge[1])] = np.nan
-            self.adjMat[self.G.nodes().index(edge[1]), self.G.nodes().index(edge[0])] = np.nan
+            self.adjMat[edge[0], edge[1]] = np.nan
+            self.adjMat[edge[1], edge[0]] = np.nan
             
 
     #!! added from master is this in the right place?? 
@@ -591,7 +590,6 @@ class brainObj:
     
         # create minimum spanning tree
         T = self.minimum_spanning_tree(self)
-        print nx.is_connected(T)
         lenEdges = len(T.edges())
         if lenEdges > edgeNum:
             print "The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges."
@@ -1196,7 +1194,7 @@ class brainObj:
         # Add node and graph attributes as shallow copy
         for n in T:
             T.node[n] = self.G.node[n].copy()
-        T.graph = self.G.graph.copy()
+#        T.graph = self.G.graph.copy()
         return T
 
 
