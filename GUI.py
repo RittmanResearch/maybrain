@@ -256,6 +256,13 @@ class mayBrainGUI(QtGui.QMainWindow):
         thType, thVal = self.getThresholdType()
         # get spatial info file
         coords = str(self.ui.spatialFilename.text())
+        # get delimiter (can be blank)
+        delim = str(self.ui.delimiter.text())
+        if delim == '':
+            delim = None
+        elif delim == '\\t':
+            delim = '\t'
+        print(delim)
         
         # make name for brain
         brName, brainUsedBool = self.findBrainName()
@@ -270,11 +277,11 @@ class mayBrainGUI(QtGui.QMainWindow):
             br = mb.brainObj()
                         
         # add properties
-        br.importAdjFile(adj)
+        br.importAdjFile(adj, delimiter = delim)
         br.importSpatialInfo(coords)
         br.applyThreshold(thresholdType = thType, value = thVal)
         
-        self.brains[brName] = brma
+        self.brains[brName] = br
         
         # add to brains selected for highlighting
         if not(brainUsedBool):

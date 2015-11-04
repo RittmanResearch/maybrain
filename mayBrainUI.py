@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'mayBrain.ui'
 #
-# Created: Thu Oct 15 07:16:34 2015
+# Created: Wed Nov  4 08:11:51 2015
 #      by: PyQt4 UI code generator 4.11.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -175,6 +175,12 @@ class Ui_Maybrain(object):
         font.setItalic(True)
         self.labelLabel_2.setFont(font)
         self.labelLabel_2.setObjectName(_fromUtf8("labelLabel_2"))
+        self.delimiter = QtGui.QLineEdit(self.tab)
+        self.delimiter.setGeometry(QtCore.QRect(540, 40, 31, 23))
+        self.delimiter.setObjectName(_fromUtf8("delimiter"))
+        self.delimLabel = QtGui.QLabel(self.tab)
+        self.delimLabel.setGeometry(QtCore.QRect(580, 40, 81, 16))
+        self.delimLabel.setObjectName(_fromUtf8("delimLabel"))
         self.highlightTab.addTab(self.tab, _fromUtf8(""))
         self.tab_4 = QtGui.QWidget()
         self.tab_4.setObjectName(_fromUtf8("tab_4"))
@@ -412,6 +418,8 @@ class Ui_Maybrain(object):
         self.bgName.setText(_translate("Maybrain", "bg", None))
         self.isoName.setText(_translate("Maybrain", "iso", None))
         self.labelLabel_2.setText(_translate("Maybrain", "Filenames", None))
+        self.delimiter.setText(_translate("Maybrain", "\\t", None))
+        self.delimLabel.setText(_translate("Maybrain", "Delimiter", None))
         self.highlightTab.setTabText(self.highlightTab.indexOf(self.tab), _translate("Maybrain", "General settings", None))
         self.hlNodesOrEdgesBox.setItemText(0, _translate("Maybrain", "node", None))
         self.hlNodesOrEdgesBox.setItemText(1, _translate("Maybrain", "edge", None))
