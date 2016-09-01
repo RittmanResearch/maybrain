@@ -308,7 +308,7 @@ class plotObj():
             label = self.getAutoLabel()        
 
         # remove old version        
-        if not(label in self.skullPlots):
+        if label in self.skullPlots:
             self.skullPlots[label].remove()
         
         if contourVals == []:            
