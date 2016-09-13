@@ -822,8 +822,9 @@ class multiSubj:
                 probeMatTemp[y,z] = np.mean(np.ma.array(probeMat[y,z], mask=probeMat[y,z]==0.)) # mask out unused values, ie where there are less than the maximum number of homolous nodes in a structural region
                 if sd:
                     std = np.std(np.ma.array(probeMat[y,z], mask=probeMat[y,z]==0.))
-                    sdOut.writelines(' '.join([str(int(probeNumbers[y])), str(self.c.G.nodes()[z]), "{:2.5f}".format(std)])+'\n')
-            
+                    sdOut.writelines(' '.join([str(int(probeNumbers[y])), str(self.c.G.nodes()[z]), "{:2.5f}".format(float(std))])+'\n')
+
+                        
         if sd:
             sdOut.close()
                 
