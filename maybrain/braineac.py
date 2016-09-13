@@ -62,7 +62,7 @@ class braineac:
         # Create new template image with new parcel values
         self.out = np.zeros(aal.shape, dtype="int")  # create output matrix
         
-        # create dictionary of which the values are parcels in ALL atlas lie within the keys of braineac regions
+        # create dictionary of which the values are parcels in AAL atlas lie within the keys of braineac regions
         # create log file with names and regions
         log = open(logName, "w")
         self.regValDict = {}
