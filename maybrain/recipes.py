@@ -9,7 +9,7 @@ A series of recipes for maybrain, intended to act as a quick start
 """
 
 from brainObjs import brainObj
-from plot import plotObj
+from mbplot import plotObj
 
 def loadFiles(adjname, coordname):
     ''' create a brain object and load adjacency matrix and coordinates. Returns a brain object. '''
