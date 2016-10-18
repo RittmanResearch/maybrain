@@ -67,7 +67,11 @@ class plotObj():
         self.plotKeys = []
 
         # autolabel for plots
-        self.labelNo = 0         
+        self.labelNo = 0  
+
+    def show(self):
+	''' show the final plot '''
+	mlab.show()
         
         
     def coordsToList(self, brain, nodeList=None):
