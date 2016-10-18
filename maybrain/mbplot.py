@@ -157,8 +157,10 @@ class plotObj():
                         sf=None, sfRange=None):
         ''' plot all coordinates in a brain '''
 
-       
-        coords = self.coordsToList(brain, nodeList=nodes)
+        if nodes:
+            coords = nodes
+        else:
+            coords = self.coordsToList(brain, nodeList=nodes)
         self.plotCoords(coords, opacity = opacity, label=label, col=col, sizeList=sizeList, sf=sf, sfRange=sfRange)
         
         
