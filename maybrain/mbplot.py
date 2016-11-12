@@ -162,9 +162,9 @@ class plotObj():
         ''' plot all coordinates in a brain '''
 
         if nodes:
-            coords = nodes
-        else:
             coords = self.coordsToList(brain, nodeList=nodes)
+        else:
+            coords = self.coordsToList(brain)
         self.plotCoords(coords, opacity = opacity, label=label, col=col, sizeList=sizeList, sf=sf, sfRange=sfRange)
         
         
@@ -314,7 +314,7 @@ class plotObj():
             label = self.getAutoLabel()        
 
         # remove old version        
-        if not(label in self.skullPlots):
+        if label in self.skullPlots:
             self.skullPlots[label].remove()
         
         if contourVals == []:            
