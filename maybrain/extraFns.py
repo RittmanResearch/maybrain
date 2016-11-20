@@ -373,7 +373,7 @@ def normalise(G, func, n=500, retNorm=True, inVal=None, printLCC=False):
     else: # return a list of the values from the random graph
         return(vals)
         
-def normaliseNodeWise(G, func, inVal={}, n=500, retNorm=True, distance=False):
+def normaliseNodeWise(G, func, inVal={}, n=500, retNorm=True, distance=False, weight='weight', spatial=False):
     """
     This function normalises the function G by generating a series of n random
     graphs and averaging the results. If retNorm is specified, the normalised 
@@ -381,36 +381,35 @@ def normaliseNodeWise(G, func, inVal={}, n=500, retNorm=True, distance=False):
     """
     nodesDict = {v:[] for v in G.nodes()}
     for i in range(n):
-        rand = configuration_model(G.degree().values())
+        rand = configuration_model(G.degree(weight='weight').values())
         rand = nx.Graph(rand) # convert to simple graph from multigraph
         nodeList = [v for v in rand.nodes() if rand.degree(v)==0]
         rand.remove_nodes_from(nodeList)
         
-        try:
-            if distance:
-                edgeList = [rand.edge[v[0]][v[1]]['weight'] for v in rand.edges() ]
-                
-                # get the maximum edge value, plus any negative correction required
-                # and a small correction to keep the values above zero
-                # the correction is the inverse of the number of nodes - designed to keep
-                # calculations of efficiency sensible
-                eMax = np.max(edgeList) + 1/float(len(rand.nodes()))
-                
-                for edge in rand.edges():
-                    rand.edge[edge[0]][edge[1]]["distance"] = eMax - rand.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
-                
-                res = func(rand, distance=True) # collect values using the function
-            else:
-                try:
-                    res = func(rand, weight=weight) # collect values using the function
-                except:
-                    res = func(rand) # collect values using the function
+#        if distance:
+#            edgeList = [rand.edge[v[0]][v[1]]['weight'] for v in rand.edges() ]
+#            
+#            # get the maximum edge value, plus any negative correction required
+#            # and a small correction to keep the values above zero
+#            # the correction is the inverse of the number of nodes - designed to keep
+#            # calculations of efficiency sensible
+#            eMax = np.max(edgeList) + 1/float(len(rand.nodes()))
+#            
+#            for edge in rand.edges():
+#                rand.edge[edge[0]][edge[1]]["distance"] = eMax - rand.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
 
-        except KeyError: # exception raised if the spatial information is missing
+        if spatial:
             print "Adding spatial info"
             nx.set_node_attributes(rand, 'xyz', {rn:G.node[v]['xyz'] for rn,v in enumerate(G.nodes())}) # copy across spatial information
-            res = func(rand) # collect values using the function
             
+        if distance:
+            res = func(rand, distance=True) # collect values using the function
+        else:
+            try:
+                res = func(rand, weight=weight) # collect values using the function
+            except:
+                res = func(rand) # collect values using the function
+
         for x,node in enumerate(nodesDict):
             nodesDict[node].append(res[x])
 
