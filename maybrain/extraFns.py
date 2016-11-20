@@ -373,7 +373,7 @@ def normalise(G, func, n=500, retNorm=True, inVal=None, printLCC=False):
     else: # return a list of the values from the random graph
         return(vals)
         
-def normaliseNodeWise(G, func, n=500, retNorm=True, inVal=None):
+def normaliseNodeWise(G, func, inVal={}, n=500, retNorm=True, distance=False):
     """
     This function normalises the function G by generating a series of n random
     graphs and averaging the results. If retNorm is specified, the normalised 
@@ -387,7 +387,25 @@ def normaliseNodeWise(G, func, n=500, retNorm=True, inVal=None):
         rand.remove_nodes_from(nodeList)
         
         try:
-            res = func(rand) # collect values using the function
+            if distance:
+                edgeList = [rand.edge[v[0]][v[1]]['weight'] for v in rand.edges() ]
+                
+                # get the maximum edge value, plus any negative correction required
+                # and a small correction to keep the values above zero
+                # the correction is the inverse of the number of nodes - designed to keep
+                # calculations of efficiency sensible
+                eMax = np.max(edgeList) + 1/float(len(rand.nodes()))
+                
+                for edge in rand.edges():
+                    rand.edge[edge[0]][edge[1]]["distance"] = eMax - rand.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
+                
+                res = func(rand, distance=True) # collect values using the function
+            else:
+                try:
+                    res = func(rand, weight=weight) # collect values using the function
+                except:
+                    res = func(rand) # collect values using the function
+
         except KeyError: # exception raised if the spatial information is missing
             print "Adding spatial info"
             nx.set_node_attributes(rand, 'xyz', {rn:G.node[v]['xyz'] for rn,v in enumerate(G.nodes())}) # copy across spatial information
@@ -397,8 +415,6 @@ def normaliseNodeWise(G, func, n=500, retNorm=True, inVal=None):
             nodesDict[node].append(res[x])
 
     if retNorm: # return the normalised values
-        if not inVal:
-            inVal = func(G)
         for node in nodesDict:
             nodesDict[node] = inVal[node]/np.mean(nodesDict[node])
         return(nodesDict)
