@@ -13,6 +13,7 @@ from networkx import configuration_model
 from networkx import connected_component_subgraphs as ccs
 import random
 from numpy import linalg as lg
+from random import shuffle
 
 def efficiencyfunc(node, G, weight=None):
     pls = nx.shortest_path_length(G, source=node, weight=weight)
@@ -345,7 +346,7 @@ def writeResultsOld(results, measure,
     f.writelines(out+'\n')
     f.close()
     
-def normalise(G, func, n=500, retNorm=True, inVal=None, printLCC=False):
+def normalise(G, func, n=500, retNorm=True, inVal=None, weight='weight'):
     """
     This function normalises the function G by generating a series of n random
     graphs and averaging the results. If retNorm is specified, the normalised 
@@ -354,15 +355,32 @@ def normalise(G, func, n=500, retNorm=True, inVal=None, printLCC=False):
     vals = []
     for i in range(n):
         rand = configuration_model(G.degree().values())
-        if nx.components.number_connected_components(rand)>1:
-            graphList = ccs(rand)
-            rand = graphList.next()
-            if printLCC:
-                print "Selecting largest connected components of "+str(len(rand.nodes()))+" nodes"
+        rand = nx.Graph(rand) # convert to simple graph from multigraph
+
+        # check whether the graph is weighted
+        # if so, the algorithm randomly reassigns weights from the input graph to the random graph node by node
+        # this means that for each node the total weighted degree will be similar
+        # nb this depends on the random graph having the same or fewer vertices for each node
+        if isinstance(G.degree(weight=weight)[0], float):
+            randDegs = rand.degree()
+            for node in rand.nodes():
+                edgeVals = [v[2][weight] for v in G.edges(G.nodes()[node],data=True)]
+                shuffle(edgeVals)
+                for en,edge in enumerate(rand.edges(node)):
+                    rand.edge[edge[0]][edge[1]]['weight'] = edgeVals[en]
+
+        # remove unconnected nodes
+        nodeList = [rand.degree()[v] for v in rand.nodes() if rand.degree(v)==0]
+        rand.remove_nodes_from(nodeList)
+        
+        # add spatial information if necessary
+        if spatial:
+            print "Adding spatial info"
+            nx.set_node_attributes(rand, 'xyz', {rn:G.node[v]['xyz'] for rn,v in enumerate(G.nodes())}) # copy across spatial information
+
         try:
-            vals.append(func(rand)) # collect values using the function
-        except KeyError: # exception raised if the spatial information is missing
-            nx.set_node_attributes(rand, 'xyz', {rn:G.node[v]['xyz'] for rn,v in enumerate(G.nodes())})
+            vals.append(func(rand),weight='weight') # collect values using the function
+        except:
             vals.append(func(rand)) # collect values using the function
 
     if retNorm: # return the normalised values
@@ -381,9 +399,23 @@ def normaliseNodeWise(G, func, inVal={}, n=500, retNorm=True, distance=False, we
     """
     nodesDict = {v:[] for v in G.nodes()}
     for i in range(n):
-        rand = configuration_model(G.degree(weight='weight').values())
+        rand = configuration_model(G.degree().values())
         rand = nx.Graph(rand) # convert to simple graph from multigraph
-        nodeList = [v for v in rand.nodes() if rand.degree(v)==0]
+
+        # check whether the graph is weighted
+        # if so, the algorithm randomly reassigns weights from the input graph to the random graph node by node
+        # this means that for each node the total weighted degree will be similar
+        # nb this depends on the random graph having the same or fewer vertices for each node
+        if isinstance(G.degree(weight=weight)[0], float):
+            randDegs = rand.degree()
+            for node in rand.nodes():
+                edgeVals = [v[2][weight] for v in G.edges(G.nodes()[node],data=True)]
+                shuffle(edgeVals)
+                for en,edge in enumerate(rand.edges(node)):
+                    rand.edge[edge[0]][edge[1]]['weight'] = edgeVals[en]
+
+        # remove unconnected nodes
+        nodeList = [rand.degree()[v] for v in rand.nodes() if rand.degree(v)==0]
         rand.remove_nodes_from(nodeList)
         
 #        if distance:
@@ -398,6 +430,7 @@ def normaliseNodeWise(G, func, inVal={}, n=500, retNorm=True, distance=False, we
 #            for edge in rand.edges():
 #                rand.edge[edge[0]][edge[1]]["distance"] = eMax - rand.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
 
+        # add spatial information if necessary
         if spatial:
             print "Adding spatial info"
             nx.set_node_attributes(rand, 'xyz', {rn:G.node[v]['xyz'] for rn,v in enumerate(G.nodes())}) # copy across spatial information
@@ -406,7 +439,9 @@ def normaliseNodeWise(G, func, inVal={}, n=500, retNorm=True, distance=False, we
             res = func(rand, distance=True) # collect values using the function
         else:
             try:
-                res = func(rand, weight=weight) # collect values using the function
+                # collect values using the function
+                # nb it doesn't matter what the specified weight value is (ie weight or distance), the values are stored as 'weight' in the random graph
+                res = func(rand, weight='weight')
             except:
                 res = func(rand) # collect values using the function
 
