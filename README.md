@@ -1,80 +1,58 @@
-=========
-Maybrain
-=========
-
-Overview
-========
-Maybrain is a module for visualizing brain connectivity data. It has been written by Timothy Rittman
-and Martyn Rittman and we are happy to have others contribute code and feedback to the project.
-
-Installation
-============
-Maybrain has been tested with Python 2.7 and requires the following modules
-
-* networkX == v1.8.1
-* nibabel >= v1.3.0
-* numpy >= v1.8.1
-* mayavi == v4.4.2
-
-We currently have no idea how it will behave with Python 3.x, but will have to make the
-switch at some point.
-
-To install, simply copy the files into a convenient location such as Python[xx]\Lib\site-packages
-where [xx] is the python version you are using. We will also soon look at uploadin to Pypi for 
-easier access.
+# Maybrain
 
 
-Some practical details
---------------------------
-Modules are imported into the initialistion file to avoid having to call the 
-submodule each time.
-
-To avoid having to import mayavi you can use, e.g.
-
-	from mayavin import brainObj
-
-General layout of the module
-=============================
-
-There are two principal objects: one for what we call 'the brain', a network with associated
-properties. The other is for plotting. Brains can be highlighted so that a subnetwork can be
-worked with instead of the entire object.
-
-Metrics and manipulations are included in the brain module and a few extra functions.
-
-For detailed information, please see the pdf user guide.
+![Python v2.7](https://img.shields.io/badge/python-v2.7-blue.svg) ![GitHub Issues](https://img.shields.io/github/release/rittman/maybrain/all.svg) ![GitHub Issues](https://img.shields.io/github/issues/rittman/maybrain.svg) ![License CC-BY-4.0](https://img.shields.io/badge/license-CC--BY--4.0-lightgrey.svg)
 
 
+Maybrain is a module written in Python for visualising brain connectivity data. Its purpose is to allow easy visualisation of brain connectome and related data, and perform various analyses. 
 
-Rest format
+## Dependencies
 
-Some text intro
+To run Maybrain you will need a Python 2.7 installtion and several other packages on which parts of the code depend. The following are required for analysis:
 
-	some code
+* [Numpy](http://www.numpy.org/) 1.8.1
+* [NetworkX](http://networkx.github.io/) 1.8.1
+
+The following is required for plotting functions:
+* [Mayavi](http://docs.enthought.com/mayavi/mayavi/) 4.4.2
+
+The following provides some extra functionality for input of certain data types:
+* [NiBabel](http://nipy.org/nibabel/) 1.3.0
+
+Software versions higher than those given may also work, updates will be given on the project website. If you are not familiar with Python it is recommended that you install a pre-packaged version that will include most of the above, for example [Python(x,y)](http://python-xy.github.io/) or [Enthought Canopy](https://www.enthought.com/downloads/). Installation for each package can be found on the individual websites.
+
+We currently have no idea how it will behave with Python 3.x, but will have to make the switch at some point.
+
+## Installation
+
+To install, simply copy the files that are inside the `maybrain` folder into the **site-packages** folder of your Python installation.
+
+If you are not sure where this folder is located, you can open a Python terminal and run the following code to find where Python searches for installed packages:
+
+```python
+import sys
+print '\n'.join(sys.path)
+```
+
+## Documentation
+For a detailed documentation, with usage examples and explanations, please go to our [Wiki pages](https://github.com/rittman/maybrain/wiki).
 
 
-*italics* and **bold** and ``monospace``
+## Contributing
+The authors are happy for developers to extend, customise, improve or simply to [create an issue](https://github.com/rittman/maybrain/issues). We will create an innovative and meaningful hall of fame for anyone contributing a bug-fix and promise to buy you a beer (or acceptable non-alcoholic alternative) when we meet.
 
-A section 
-=========
+### Submitting a Pull Request
+1. Fork it.
+2. Create a branch (`git checkout -b my_maybrain`)
+3. Commit your changes (`git commit -am "Added message type"`)
+4. Push to the branch (`git push origin my_maybrain`)
+5. Open a [Pull Request](https://github.com/rittman/maybrain/pulls)
+6. Enjoy a refreshing beverage and wait
 
-A sub-section
--------------
+## Credits
 
-Numbered lists 
+Maybrain has been written by Timothy Rittman and Martyn Rittman.
 
-1. item here
+## License
 
-2. item here
-
-
-some more text
-
-
-Lists
-
-* number one
-
-* number two indent
-  properly
-
+<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
