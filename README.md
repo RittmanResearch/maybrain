@@ -1,7 +1,7 @@
 # Maybrain
 
 
-![Python v2.7](https://img.shields.io/badge/python-v2.7-blue.svg) ![GitHub Issues](https://img.shields.io/github/release/rittman/maybrain/all.svg) ![GitHub Issues](https://img.shields.io/github/issues/rittman/maybrain.svg) ![License CC-BY-4.0](https://img.shields.io/badge/license-CC--BY--4.0-lightgrey.svg)
+[![Python v2.7](https://img.shields.io/badge/python-v2.7-blue.svg)]() [![Release](https://img.shields.io/github/release/rittman/maybrain/all.svg)](https://github.com/rittman/maybrain) [![GitHub Issues](https://img.shields.io/github/issues/rittman/maybrain.svg)](https://github.com/rittman/maybrain/issues) [![License CC-BY-4.0](https://img.shields.io/badge/license-CC--BY--4.0-lightgrey.svg)](https://github.com/rittman/maybrain/blob/master/LICENSE)
 
 
 Maybrain is a module written in Python for visualising brain connectivity data. Its purpose is to allow easy visualisation of brain connectome and related data, and perform various analyses. 
