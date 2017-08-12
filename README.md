@@ -1,7 +1,7 @@
 # Maybrain
 
 
-[![Python v2.7](https://img.shields.io/badge/python-v2.7-blue.svg)]() [![Release](https://img.shields.io/github/release/rittman/maybrain/all.svg)](https://github.com/rittman/maybrain) [![GitHub Issues](https://img.shields.io/github/issues/rittman/maybrain.svg)](https://github.com/rittman/maybrain/issues) [![License CC-BY-4.0](https://img.shields.io/badge/license-CC--BY--4.0-lightgrey.svg)](https://github.com/rittman/maybrain/blob/master/LICENSE)
+[![Python v2.7](https://img.shields.io/badge/python-v2.7-blue.svg)]() [![Release](https://img.shields.io/github/release/rittman/maybrain/all.svg)](https://github.com/rittman/maybrain/releases) [![GitHub Issues](https://img.shields.io/github/issues/rittman/maybrain.svg)](https://github.com/rittman/maybrain/issues) [![License CC-BY-4.0](https://img.shields.io/badge/license-CC--BY--4.0-lightgrey.svg)](https://github.com/rittman/maybrain/blob/master/LICENSE)
 
 
 Maybrain is a module written in Python for visualising brain connectivity data. Its purpose is to allow easy visualisation of brain connectome and related data, and perform various analyses. 
@@ -19,7 +19,7 @@ The following is required for plotting functions:
 The following provides some extra functionality for input of certain data types:
 * [NiBabel](http://nipy.org/nibabel/) 1.3.0
 
-Software versions higher than those given may also work, updates will be given on the project website. If you are not familiar with Python it is recommended that you install a pre-packaged version that will include most of the above, for example [Python(x,y)](http://python-xy.github.io/) or [Enthought Canopy](https://www.enthought.com/downloads/). Installation for each package can be found on the individual websites.
+Software versions higher than those given may also work. If you are not familiar with Python it is recommended that you install a pre-packaged version that will include most of the above, for example [Python(x,y)](http://python-xy.github.io/) or [Enthought Canopy](https://www.enthought.com/downloads/). Installation for each package can be found on the individual websites.
 
 We currently have no idea how it will behave with Python 3.x, but will have to make the switch at some point.
 
