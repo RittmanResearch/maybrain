@@ -39,7 +39,7 @@ To avoid having to import mayavi you can use, e.g.
 from brainObjs import brainObj
 #from plot import plotObj
 from extraFns import *
-import mbplot
+#import mbplot
 
 #import plot
 #import plotObjs
