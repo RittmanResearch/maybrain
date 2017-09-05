@@ -23,6 +23,7 @@ import numpy as np
 #from networkx.drawing import *
 from networkx.algorithms import centrality
 from networkx.algorithms import components
+from networkx.algorithms.tree import minimum_spanning_tree
 import random
 from string import split
 import extraFns
@@ -257,7 +258,7 @@ class brainObj:
             e = edgeList[ind]
             p = propList[ind]
             try:
-                self.G.edge[e[0]][e[1]][propertyName] = p
+                self.G[e[0]][e[1]][propertyName] = p
             except KeyError:
                 print('edge property assignment failed: ' + propertyName + ' ' + str(e) + ' ' + str(p))
 
@@ -524,7 +525,7 @@ class brainObj:
         # could improve the next few lines by spotting when you're only adding edges            
         
         # remove previous edges
-        self.G.remove_edges_from(self.G.edges())
+        self.G.remove_edges_from([v for v in self.G.edges()])
         # add new edges
         for ii in range(len(es[0])):
             self.G.add_edge(es[0][ii],es[1][ii], weight = self.adjMat[es[0][ii],es[1][ii]])
@@ -542,7 +543,7 @@ class brainObj:
         ''' update the adjacency matrix for a single edge '''
         
         try:
-            w = self.G.edge[edge[0]][edge[1]]['weight']
+            w = self.G[edge[0]][edge[1]]['weight']
             self.adjMat[edge[0], edge[1]] = w
             self.adjMat[edge[1], edge[0]] = w
         except:
@@ -589,7 +590,7 @@ class brainObj:
         k=1 # number of degrees for NNG
     
         # create minimum spanning tree
-        T = self.minimum_spanning_tree(self)
+        T = minimum_spanning_tree(self.G)
         lenEdges = len(T.edges())
         if lenEdges > edgeNum:
             print "The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges."
@@ -609,7 +610,7 @@ class brainObj:
             
             # add weights to NNG
             for e in nng.edges():
-                nng.edge[e[0]][e[1]]['weight'] = self.adjMat[e[0],e[1]]
+                nng[e[0]][e[1]]['weight'] = self.adjMat[e[0],e[1]]
             
             nng.edges(data=True)
             
@@ -634,7 +635,7 @@ class brainObj:
             removes weighting from edges 
         '''
         for edge in self.G.edges():
-            self.G.edge[edge[0]][edge[1]]['weight'] = 1        
+            self.G[edge[0]][edge[1]]['weight'] = 1        
 
     def removeUnconnectedNodes(self):
         '''
@@ -684,9 +685,9 @@ class brainObj:
             ind = -1
             for e in self.G.edges(data = True):
                 ind = ind +1
-                print(self.G.edge[e[0]][e[1]])
+                print(self.G[e[0]][e[1]])
                 try:
-                    d = self.G.edge[e[0]][e[1]][prop]
+                    d = self.G[e[0]][e[1]][prop]
                 except KeyError:
                     continue           
                 
@@ -860,7 +861,7 @@ class brainObj:
                 nodeList = self.G.nodes()
             
             # generate list of at risk edges
-            self.riskEdges = [v for v in nx.edges(self.G, nodeList) if self.G.edge[v[0]][v[1]]['weight'] != 0.]
+            self.riskEdges = [v for v in nx.edges(self.G, nodeList) if self.G[v[0]][v[1]]['weight'] != 0.]
         else:
             reDefineEdges=False
             
@@ -868,7 +869,7 @@ class brainObj:
             nodeList = []
         
         # check if there are enough weights left
-        riskEdgeWtSum = np.sum([self.G.edge[v[0]][v[1]]['weight'] for v in self.riskEdges])
+        riskEdgeWtSum = np.sum([self.G[v[0]][v[1]]['weight'] for v in self.riskEdges])
         if limit > riskEdgeWtSum:
             print "Not enough weight left to remove"
             return nodeList
@@ -919,7 +920,7 @@ class brainObj:
             # add nodes to toxic list if the spread option is selected
             if spread:
                 for node in dyingEdge:
-                    if not node in nodeList and self.G.edge[dyingEdge[0]][dyingEdge[1]] > spread:
+                    if not node in nodeList and self.G[dyingEdge[0]][dyingEdge[1]] > spread:
                         nodeList.append(node)
                         
             if weightLossLimit:
@@ -1059,8 +1060,10 @@ class brainObj:
 
     #!! This and following functions added during merge. Need explanation.
     def NNG(self, k):
-        ''' '''
-        #!! docstring missing
+        '''
+        This algorithm generates a graph with k nearest neighbours. k=1 is equivalent to the minimum spanning tree.
+        
+        '''
         G = nx.Graph()
         nodes = range(len(self.adjMat[0]))
         
@@ -1080,124 +1083,124 @@ class brainObj:
         
         return(G)
 
-
-    def minimum_spanning_edges(self, weight='weight', data=True):
-        """Generate edges in a minimum spanning forest of an undirected 
-        weighted graph.
-    
-        A minimum spanning tree is a subgraph of the graph (a tree)
-        with the minimum sum of edge weights.  A spanning forest is a
-        union of the spanning trees for each connected component of the graph.
-    
-        Parameters
-        ----------
-        G : NetworkX Graph
-        
-        weight : string
-           Edge data key to use for weight (default 'weight').
-    
-        data : bool, optional
-           If True yield the edge data along with the edge.
-           
-        Returns
-        -------
-        edges : iterator
-           A generator that produces edges in the minimum spanning tree.
-           The edges are three-tuples (u,v,w) where w is the weight.
-        
-        Examples
-        --------
-        >>> G=nx.cycle_graph(4)
-        >>> G.add_edge(0,3,weight=2) # assign weight 2 to edge 0-3
-        >>> mst=nx.minimum_spanning_edges(G,data=False) # a generator of MST edges
-        >>> edgelist=list(mst) # make a list of the edges
-        >>> print(sorted(edgelist))
-        [(0, 1), (1, 2), (2, 3)]
-    
-        Notes
-        -----
-        Uses Kruskal's algorithm.
-    
-        If the graph edges do not have a weight attribute a default weight of 1
-        will be used.
-    
-        Modified code from David Eppstein, April 2006
-        http://www.ics.uci.edu/~eppstein/PADS/
-        """
-        # Modified code from David Eppstein, April 2006
-        # http://www.ics.uci.edu/~eppstein/PADS/
-        # Kruskal's algorithm: sort edges by weight, and add them one at a time.
-        # We use Kruskal's algorithm, first because it is very simple to
-        # implement once UnionFind exists, and second, because the only slow
-        # part (the sort) is sped up by being built in to Python.
-        from networkx.utils import UnionFind
-        if self.G.is_directed():
-            raise nx.NetworkXError(
-                "Mimimum spanning tree not defined for directed graphs.")
-    
-        subtrees = UnionFind()
-        edges = sorted(self.G.edges(data=True),key=lambda t: t[2][weight], reverse=True)
-    #    print edges[0]    
-    #    edges = [ v for v in edges if not isnan(v[2]) ]
-        
-        for u,v,d in edges:
-            if subtrees[u] != subtrees[v]:
-                if data:
-                    yield (u,v,d)
-                else:
-                    yield (u,v)
-                subtrees.union(u,v)
-
-                
-    def minimum_spanning_tree(self, weight='weight'):
-        """Return a minimum spanning tree or forest of an undirected 
-        weighted graph.
-    
-        A minimum spanning tree is a subgraph of the graph (a tree) with
-        the minimum sum of edge weights.
-    
-        If the graph is not connected a spanning forest is constructed.  A
-        spanning forest is a union of the spanning trees for each
-        connected component of the graph.
-    
-        Parameters
-        ----------
-        G : NetworkX Graph
-        
-        weight : string
-           Edge data key to use for weight (default 'weight').
-    
-        Returns
-        -------
-        G : NetworkX Graph
-           A minimum spanning tree or forest. 
-        
-        Examples
-        --------
-        >>> G=nx.cycle_graph(4)
-        >>> G.add_edge(0,3,weight=2) # assign weight 2 to edge 0-3
-        >>> T=nx.minimum_spanning_tree(G)
-        >>> print(sorted(T.edges(data=True)))
-        [(0, 1, {}), (1, 2, {}), (2, 3, {})]
-    
-        Notes
-        -----
-        Uses Kruskal's algorithm.
-    
-        If the graph edges do not have a weight attribute a default weight of 1
-        will be used.
-        """
-        T=nx.Graph(self.minimum_spanning_edges(weight="weight", data=True))
-        # Add isolated nodes
-        if len(T)!=len(self.G):
-            T.add_nodes_from([n for n,d in self.G.degree().items() if d==0])
-        # Add node and graph attributes as shallow copy
-        for n in T:
-            T.node[n] = self.G.node[n].copy()
+#### the following lines are deprecated and will be deleted in future versions (given this code exists in newer versions of networkx)
+#   def minimum_spanning_edges(self, weight='weight', data=True):
+#       """Generate edges in a minimum spanning forest of an undirected 
+#       weighted graph.
+#   
+#       A minimum spanning tree is a subgraph of the graph (a tree)
+#       with the minimum sum of edge weights.  A spanning forest is a
+#       union of the spanning trees for each connected component of the graph.
+#   
+#       Parameters
+#       ----------
+#       G : NetworkX Graph
+#       
+#       weight : string
+#          Edge data key to use for weight (default 'weight').
+#   
+#       data : bool, optional
+#          If True yield the edge data along with the edge.
+#          
+#       Returns
+#       -------
+#       edges : iterator
+#          A generator that produces edges in the minimum spanning tree.
+#          The edges are three-tuples (u,v,w) where w is the weight.
+#       
+#       Examples
+#       --------
+#       >>> G=nx.cycle_graph(4)
+#       >>> G.add_edge(0,3,weight=2) # assign weight 2 to edge 0-3
+#       >>> mst=nx.minimum_spanning_edges(G,data=False) # a generator of MST edges
+#       >>> edgelist=list(mst) # make a list of the edges
+#       >>> print(sorted(edgelist))
+#       [(0, 1), (1, 2), (2, 3)]
+#   
+#       Notes
+#       -----
+#       Uses Kruskal's algorithm.
+#   
+#       If the graph edges do not have a weight attribute a default weight of 1
+#       will be used.
+#   
+#       Modified code from David Eppstein, April 2006
+#       http://www.ics.uci.edu/~eppstein/PADS/
+#       """
+#       # Modified code from David Eppstein, April 2006
+#       # http://www.ics.uci.edu/~eppstein/PADS/
+#       # Kruskal's algorithm: sort edges by weight, and add them one at a time.
+#       # We use Kruskal's algorithm, first because it is very simple to
+#       # implement once UnionFind exists, and second, because the only slow
+#       # part (the sort) is sped up by being built in to Python.
+#       from networkx.utils import UnionFind
+#       if self.G.is_directed():
+#           raise nx.NetworkXError(
+#               "Mimimum spanning tree not defined for directed graphs.")
+#   
+#       subtrees = UnionFind()
+#       edges = sorted(self.G.edges(data=True),key=lambda t: t[2][weight], reverse=True)
+#   #    print edges[0]    
+#   #    edges = [ v for v in edges if not isnan(v[2]) ]
+#       
+#       for u,v,d in edges:
+#           if subtrees[u] != subtrees[v]:
+#               if data:
+#                   yield (u,v,d)
+#               else:
+#                   yield (u,v)
+#               subtrees.union(u,v)
+#
+#               
+#   def minimum_spanning_tree(self, weight='weight'):
+#       """Return a minimum spanning tree or forest of an undirected 
+#       weighted graph.
+#   
+#       A minimum spanning tree is a subgraph of the graph (a tree) with
+#       the minimum sum of edge weights.
+#   
+#       If the graph is not connected a spanning forest is constructed.  A
+#       spanning forest is a union of the spanning trees for each
+#       connected component of the graph.
+#   
+#       Parameters
+#       ----------
+#       G : NetworkX Graph
+#       
+#       weight : string
+#          Edge data key to use for weight (default 'weight').
+#   
+#       Returns
+#       -------
+#       G : NetworkX Graph
+#          A minimum spanning tree or forest. 
+#       
+#       Examples
+#       --------
+#       >>> G=nx.cycle_graph(4)
+#       >>> G.add_edge(0,3,weight=2) # assign weight 2 to edge 0-3
+#       >>> T=nx.minimum_spanning_tree(G)
+#       >>> print(sorted(T.edges(data=True)))
+#       [(0, 1, {}), (1, 2, {}), (2, 3, {})]
+#   
+#       Notes
+#       -----
+#       Uses Kruskal's algorithm.
+#   
+#       If the graph edges do not have a weight attribute a default weight of 1
+#       will be used.
+#       """
+#       T=nx.Graph(self.minimum_spanning_edges(weight="weight", data=True))
+#       # Add isolated nodes
+#       if len(T)!=len(self.G):
+#           T.add_nodes_from([n for n,d in self.G.degree().items() if d==0])
+#       # Add node and graph attributes as shallow copy
+#       for n in T:
+#           T.node[n] = self.G.node[n].copy()
 #        T.graph = self.G.graph.copy()
-        return T
-
-
+#       return T
+#
+#
     ### basic proximities
    
     def findSpatiallyNearest(self, nodeList, contra=False, midline=44.5, connected=True):
@@ -1342,7 +1345,7 @@ class brainObj:
     def weightToDistance(self):
         #!! docstring added
         ''' convert weights to a positive distance '''
-        edgeList = [self.G.edge[v[0]][v[1]]['weight'] for v in self.G.edges() ]
+        edgeList = [self.G[v[0]][v[1]]['weight'] for v in self.G.edges() ]
         
         # get the maximum edge value, plus any negative correction required
         # and a small correction to keep the values above zero
@@ -1351,7 +1354,7 @@ class brainObj:
         eMax = np.max(edgeList) + 1/float(len(self.G.nodes()))
         
         for edge in self.G.edges():
-                self.G.edge[edge[0]][edge[1]]["distance"] = eMax - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
+                self.G[edge[0]][edge[1]]["distance"] = eMax - self.G[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
                 
         
     ### hubs
@@ -1709,9 +1712,9 @@ class brainObj:
         self.bctmat = np.zeros((len(self.G.nodes()),len(self.G.nodes())))
         nodeIndices = dict(zip(self.G.nodes(), range(len(self.G.nodes()))))
         for nn,x in enumerate(self.G.nodes()):
-            for y in self.G.edge[x].keys():
+            for y in self.G[x].keys():
                 try:
-                    self.bctmat[nn,nodeIndices[y]] = self.G.edge[x][y]['weight']
+                    self.bctmat[nn,nodeIndices[y]] = self.G[x][y]['weight']
                 except:
                     pass
         
@@ -1776,7 +1779,7 @@ class highlightObj():
             z1.append(p1[2])
             z2.append(p2[2]-p1[2])
             
-            s.append(brain.G.edge[e[0]][e[1]]['weight'])
+            s.append(brain.G[e[0]][e[1]]['weight'])
             
         return x1, y1, z1, x2, y2, z2, s
         
