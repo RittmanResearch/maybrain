@@ -256,6 +256,10 @@ def writeResults(results, measure,
         writeHeadFlag=False
     
     # check to see what form the results take
+    if str(type(results)) == "<class 'networkx.classes.reportviews.DegreeView'>":
+    # convert to a dictionary to write
+        results = {v[0]:v[1] for v in results}
+
     if isinstance(results, (dict)):
         headers = [v for v in results.keys()]
         headers.sort()
@@ -263,9 +267,12 @@ def writeResults(results, measure,
         out = ' '.join([ str(results[v]) if v in results.keys() else 'NA' for v in headers] )
         
     elif isinstance(results, (list)):
-        if writeHeadFlag:
-            headers = ' '.join([str(v) for v in range(len(results))])
-        out = ' '.join([str(v) for v in results])
+        try:
+            out = {v[0]:v[1] for v in results}
+        except:
+            if writeHeadFlag:
+                headers = ' '.join([str(v) for v in range(len(results))])
+            out = ' '.join([str(v) for v in results])
     
     else:
         if writeHeadFlag:
