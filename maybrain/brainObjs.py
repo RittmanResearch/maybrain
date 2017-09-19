@@ -102,12 +102,14 @@ class brainObj:
 
         # get line that data starts in 
         startLine = 0
-        for line in reader:
-            if 'begins line' in str(line):
-                lstr = str(line)
-                whereLabel = lstr.find('begins line')
-                startLine = int(lstr[whereLabel + 12])-1
-                break
+
+#### Lines below commented - legacy code that will be removed in future versions
+#        for line in reader:
+#            if 'begins line' in str(line):
+#                lstr = str(line)
+#                whereLabel = lstr.find('begins line')
+#                startLine = int(lstr[whereLabel + 12])-1
+#                break
                 
         # get data and convert to lists of floats
         linesStr = reader[startLine:]
