@@ -19,7 +19,7 @@ The following is required for plotting functions:
 The following provides some extra functionality for input of certain data types:
 * [NiBabel](http://nipy.org/nibabel/) 1.3.0
 
-Software versions higher than those given may also work. If you are not familiar with Python it is recommended that you install a pre-packaged version that will include most of the above, for example [Python(x,y)](http://python-xy.github.io/) or [Enthought Canopy](https://www.enthought.com/downloads/). Installation for each package can be found on the individual websites.
+Software versions higher than those given may also work. If you are not familiar with Python, or you don't want to manually install and deal with each package separately, it is recommended that you install a pre-packaged version that will include most of the above, for example [Anaconda](https://www.anaconda.com) or [Enthought Canopy](https://www.enthought.com/downloads/). Installation for each package can be found on the individual websites.
 
 We currently have no idea how it will behave with Python 3.x, but will have to make the switch at some point.
 
