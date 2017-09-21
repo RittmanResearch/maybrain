@@ -20,14 +20,11 @@ pysurfer??
 """
 import networkx as nx
 import numpy as np
-#from networkx.drawing import *
-from networkx.algorithms import centrality
 from networkx.algorithms import components
 import random
 from string import split
 import extraFns
 
-#from mayavi.core.ui.api import MlabSceneModel, SceneEditor
 
 class brainObj:
     """
@@ -52,13 +49,11 @@ class brainObj:
         
         # initialise global variables
         self.adjMat = None # adjacency matrix, containing weighting of edges. Should be square.
-#        self.threshold = 0 # value of threshold for including edges -- this line should be commented, a threshold of 0 is likely to be wrong.
-        
-        # need to define the following, what do they do???
-#        self.edgePC = 5 # an arbitrary value for percentage of edges to plot. #!! is this necessary?
+     
+        # TODO: need to define the following, what do they do???
         self.hubs = []
         self.bigconnG = None
-        #!! following two added in merge
+
         self.dyingEdges = {}
         self.nodesRemoved = None
         
@@ -89,38 +84,27 @@ class brainObj:
 
     ##### File inputs and outputs
 
-    ### edges and nodes
-
-    #!! readAdjFile removed           
+    ### edges and nodes        
     def importAdjFile(self, fname, delimiter = None, exclnodes=[], naVals=["NA"]):
-        ''' get the adjacency data from a file and return as an array '''
+        '''
+        Imports an adjacency matrix from a file.
+        fname : file name
+        delimiter : the delimiter of the values inside the matrix, like ","
+        exclnodes : Nodes you don't want to load, in an array format
+        naVals : How the "Not a Number" values are represented in the file
+        '''
         self.exclnodes=exclnodes
         
-        # open file
-        f = open(fname,"rb")
-        reader = f.readlines()        
-
-        # get line that data starts in 
-        startLine = 0
-
-#### Lines below commented - legacy code that will be removed in future versions
-#        for line in reader:
-#            if 'begins line' in str(line):
-#                lstr = str(line)
-#                whereLabel = lstr.find('begins line')
-#                startLine = int(lstr[whereLabel + 12])-1
-#                break
-                
-        # get data and convert to lists of floats
-        linesStr = reader[startLine:]
         lines = []
-        for l in linesStr:
-            while l[-1] in ('\n', '\t'):
-                l = l[:-1]
-            lines.append(map(float, [v if v not in naVals else np.nan for v in split(l, sep=delimiter)]))
-
-        # close file                
-        f.close()
+        try:
+            with open(fname, "rb") as f:
+                for l in f:
+                    while l[-1] in ('\n', '\t'):
+                        l = l[:-1]
+                    lines.append(map(float, [v if v not in naVals else np.nan for v in split(l, sep=delimiter)]))
+        except IOError as error:
+            print 'Problem with opening file "' + fname + '": ' + error[1]               
+            return
 
         # set adjacency matrix
         self.adjMat = np.array(lines)
@@ -134,7 +118,7 @@ class brainObj:
                 self.adjMat[:,en]=np.nan
                 self.adjMat[en,:]=np.nan
 
-    #!! After much deliberation, this function was kept from the master, but renamed
+
     def importSpatialInfo(self, fname, delimiter=None, convertMNI=False):
         ''' add 3D coordinate information for each node from a given file
             note that the graph object is recreated here by default
