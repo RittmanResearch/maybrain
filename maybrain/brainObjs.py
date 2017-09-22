@@ -136,8 +136,8 @@ class brainObj:
 
     #!! After much deliberation, this function was kept from the master, but renamed
     def importSpatialInfo(self, fname, delimiter=None, convertMNI=False):
-        ''' add 3D coordinate information for each node from a given file
-            note that the graph object is recreated here by default
+        '''
+        add 3D coordinate information for each node from a given file
         '''
         # open file
         try:
