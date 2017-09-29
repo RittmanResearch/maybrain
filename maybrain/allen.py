@@ -5,7 +5,7 @@ Module for linking with the Allen brain atlas
 @author: tim
 """
 
-import maybrain.brainObjs as mbo
+import maybrain.brainObj as mbo
 
 import csv
 from os import path,rename,remove
