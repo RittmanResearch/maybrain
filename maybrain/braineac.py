@@ -7,7 +7,7 @@ It also requires an AAL atlas and AAL regions of interest file (contact me on tr
 @author: tim
 """
 
-import maybrain.brainObjs as mbo
+import maybrain.brainObj as mbo
 
 import nibabel as nb
 import numpy as np
