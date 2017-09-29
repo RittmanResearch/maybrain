@@ -13,6 +13,7 @@ from networkx.algorithms import components
 import random
 from string import split
 import extraFns
+import highlightObj
 
 
 class brainObj:
@@ -109,16 +110,17 @@ class brainObj:
 
 
     def importSpatialInfo(self, fname, delimiter=None, convertMNI=False):
-        ''' add 3D coordinate information for each node from a given file
-            note that the graph object is recreated here by default
+        ''' 
+        Add 3D coordinate information for each node from a given file
+        fname : file name
+        delimiter : the delimiter of the values inside the matrix, like ","
+        convertMNI : Whether you want to convert coordinates to MNI space
         '''
         # open file
         try:
             f = open(fname,"rb")
-        except IOError, error:
-            (errorno, errordetails) = error
-            print "Couldn't find 3D position information"
-            print "Problem with opening file: "+errordetails                
+        except IOError as error:
+            print 'Problem with opening 3D position file "' + fname + '": ' + error[1]               
             return                
                
         # get data from file
@@ -312,104 +314,87 @@ class brainObj:
     ### adjacency matrix and edge thresholding
 
     def applyThreshold(self, thresholdType = None, value = 0.):
-        ''' Treshold the adjacency matrix to determine which nodes are linked by edges. There are 
-            four options:
-            
-            edgePC - a percentage of edges are taken
-            totalEdges - give a number for the total edges found
-            tVal - give a value for the threshold at which edges are chosen 
-            no threshold - in which case all possible edges are created
+        ''' 
+        Treshold the adjacency matrix to determine which nodes are linked by edges.
+        thresholdType : The type of threshold applied. Four options are available:
+            "edgePC" -> retain the most connected edges as a percentage of the total possible number of edges. "value" must be between 0 and 100
+            "totalEdges" -> retain the most strongly connected edges
+            "tVal" -> retain edges with a weight greater than value
+            None -> all possible edges are created
+        value : Value according to thresholdType
         '''
-        #TODO meter aqui no doc que quando aparecer nan são como que ignorados. edgePC no caso de undirected
+        
+        # Controlling input
+        if thresholdType not in ["edgePC", "totalEdges", "tval", None]:
+            print("Error: Not a valid thresholdType")
+            return
 
+        # Finding threshold value for each type
         if not(thresholdType):
-
-            #### Determine threshold value
-            weights = self.adjMat.flatten()
-            self.threshold = np.min(np.ma.array(weights, mask=np.isnan(weights), dtype="float64"))
-
-        #### new way of doing things (kept backward compatibility, above, for the moment)
-        else:
-
-            # case where (minimum) value of threshold is given
-            if thresholdType == 'tVal':
-                print('tVal case', value)
-                self.threshold = value  
+            self.threshold = np.nanmin(self.adjMat)
+            print('None thresholding', self.threshold)
+        elif thresholdType == 'tVal':
+            print('tVal case', value)
+            self.threshold = value
+        else: # 'edgePC' or 'totalEdges'
+            if not self.directed:
+                # only flatten the upper right part of the matrix
+                weights = np.array(extraFns.undirectedFlatten(self.adjMat))
+            else:
+                weights = np.array(self.adjMat.flatten())
+            
+            # remove NaNs
+            weights = weights[~np.isnan(weights)]
+            
+            # sort in to ascending orders
+            weights.sort()
+            
+            # get number of edges
+            nEdges = len(weights)
                 
-            # case where % of edges to display is given
-            elif thresholdType in ['edgePC', 'totalEdges']:
-                if not self.directed:
-                    # only flatten the upper right part of the matrix
-                    weights = np.array(extraFns.undirectedFlatten(self.adjMat))
-                else:
-                    weights = np.array(self.adjMat.flatten())
-                
-                # remove NaNs
-                weights = weights[~np.isnan(weights)]
-                
-                # sort in to ascending orders
-                weights.sort()
-                
+            # percentage case
+            if thresholdType == 'edgePC':
+                print('edgePC')
                 # get number of edges
-                nEdges = len(weights)
-                    
-                # percentage case
-                if thresholdType == 'edgePC':
-                    print('edgePC')
-                    # get number of edges
-                    edgeNum = int( (value/100.) * nEdges)
-                    
-                # number of edges case
-                elif thresholdType == 'totalEdges':
-                    print('num edges case')
-                    edgeNum = value
-                    
-                # make sure it's an integer
-                edgeNum = int(edgeNum)
-                                    
-                # get threshold value
-                if edgeNum > len(weights):
-                    # case where all edges are included
-                    self.threshold = weights[0]
-                elif edgeNum <=0:
-                    # case where number of edges is 0 or less
-                    self.threshold = weights[-1]+0.5
-                else:
-                    # case where some edges are included
-                    print weights
-                    self.threshold = weights[-edgeNum]
+                edgeNum = int( (value/100.) * nEdges)   
+            # number of edges case
+            elif thresholdType == 'totalEdges':
+                print('num edges case')
+                edgeNum = int(value)
                 
-                print("edgeNum and threshold", edgeNum, self.threshold)
+            # get threshold value
+            if edgeNum > len(weights):
+                # case where all edges are included
+                self.threshold = weights[0]
+            elif edgeNum <=0:
+                # case where number of edges is 0 or less
+                self.threshold = weights[-1]+0.5
+            else:
+                # case where some edges are included
+                print weights
+                self.threshold = weights[-edgeNum]
+            
+            print("edgeNum and threshold", edgeNum, self.threshold)
 
             
-        ##### carry out thresholding on adjacency matrix (new and legacy)
+        ##### carry out thresholding on adjacency matrix
         boolMat = self.adjMat>=self.threshold
         try:
             np.fill_diagonal(boolMat, 0)
-        except:
+        except: # Compatibility for older versions where fill_diagonal doesn't exist
             for x in range(len(boolMat[0,:])):
                 boolMat[x,x] = 0
-                
-        es = np.where(boolMat) # lists of where edges should be
 
-        # exclude duplicates if not directed 
-        if not(self.directed):
-            newes1 = []
-            newes2 = []
-            for ii in range(len(es[1])):
-                if es[0][ii]<es[1][ii]:
-                    newes1.append(es[0][ii])
-                    newes2.append(es[1][ii])
-                    
-            es = (newes1, newes2)                   
-        # add edges to networkx
-
-        # could improve the next few lines by spotting when you're only adding edges            
+        es = np.where(boolMat) # lists of where edges should be                 
         
         # remove previous edges
         self.G.remove_edges_from(self.G.edges())
+        
         # add new edges
         for ii in range(len(es[0])):
+            # Don't add the lower half of matrix in undirected matrices
+            if not(self.directed) and es[0][ii]>=es[1][ii]: 
+                continue
             self.G.add_edge(es[0][ii],es[1][ii], weight = self.adjMat[es[0][ii],es[1][ii]])
 
     def reconstructAdjMat(self):
