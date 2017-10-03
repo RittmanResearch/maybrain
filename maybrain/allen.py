@@ -42,7 +42,7 @@ class allenBrain:
        
         self.mirror = mirror
         if symmetrise and self.mirror:
-            print "Please select either a symmetrised or mirrored graph, ignoring mirror=True"
+            print("Please select either a symmetrised or mirrored graph, ignoring mirror=True")
             self.mirror = False
             
         # set up brain for expression data
@@ -77,7 +77,7 @@ class allenBrain:
                # self.headers[subj].append(l["structure_id"])
                self.headers.append(sID) #STORE structure_acronym or structure_name depending on symmetrise
                
-               if not sID in self.sIDDict.keys():
+               if not sID in list(self.sIDDict.keys()):
                    self.sIDDict[sID] = [n]
                else:
                    self.sIDDict[sID].append(n)
@@ -149,7 +149,7 @@ class allenBrain:
       
         nodePairs = []
         # for each MRI node
-        for node in nodeDictMRIs.keys():
+        for node in list(nodeDictMRIs.keys()):
             # find closest allen node 'n'
             n = nodeDictMRIs[node]['allen'][0]
             self.c.G.node[node]['pair'] = n
@@ -170,7 +170,7 @@ class allenBrain:
             #     self.c.G.remove_node(node)
       
         for node in self.a.G.nodes():
-            if not 'pair' in self.a.G.node[node].keys():
+            if not 'pair' in list(self.a.G.node[node].keys()):
                 self.a.G.remove_node(node)             
                   
     def doPlot(self):
@@ -198,14 +198,14 @@ class allenBrain:
         if probeList:
             probeNumbers = []
             for p in probeList:
-                probeNumbers.extend([v for v in self.probeDict.keys() if any([p in self.probeDict[v][1], p in self.probeDict[v][0]])])
-            print " ".join(["Probe numbers:", ' '.join(probeNumbers)])
+                probeNumbers.extend([v for v in list(self.probeDict.keys()) if any([p in self.probeDict[v][1], p in self.probeDict[v][0]])])
+            print((" ".join(["Probe numbers:", ' '.join(probeNumbers)])))
       
         else:
             probeNumbers = None
       
         self.outFile = path.join(self.subj, self.gm+'.txt')
-        print "Saving data in:"+self.outFile
+        print(("Saving data in:"+self.outFile))
         if path.exists(self.outFile):
             rename(self.outFile, self.outFile+'.old')
         f = open(self.outFile,"w")
@@ -252,7 +252,7 @@ class allenBrain:
        # set up matrix
        y = len(probeNumbers)
        z = len(self.c.G.nodes())
-       sT = np.max([len(self.sIDDict.values())]) # max numbers of nodes for any region
+       sT = np.max([len(list(self.sIDDict.values()))]) # max numbers of nodes for any region
        
        probeMat = np.memmap(tempMatName,
                             dtype="float64",
@@ -264,7 +264,7 @@ class allenBrain:
        pFile = open(path.join(self.subj, self.probeFile))
        pReader = csv.DictReader(pFile, delimiter=",", quotechar='"')
        pDict = {l['probe_id']:l['gene_symbol'] for l in pReader}
-       geneList = pDict.values()
+       geneList = list(pDict.values())
        set(geneList)
        geneList = {gene:[] for gene in geneList}
        
@@ -283,7 +283,7 @@ class allenBrain:
        cNodes = {str(v):self.c.G.node[v]['pair'] for v in self.c.G.nodes()}
        
        # assign values to matrix
-       print(str(self.subj))
+       print((str(self.subj)))
        print('\n')
        # Generate custom fieldnames list for DictReader which doesn't rely on structure_id
        # *************************************
@@ -317,7 +317,7 @@ class allenBrain:
                    # Loop over allen nodes to find all those with the correct acronym for the current MRI node
                    # and add their expression values to the list for averaging
                    s=0
-                   for ID, struct_ac in myNodeDict.iteritems():
+                   for ID, struct_ac in list(myNodeDict.items()):
                        if struct_ac == acronym:
                            # print(ID, struct_ac, l[str(ID)])
                            # print('\n')
@@ -345,7 +345,7 @@ class allenBrain:
        geneFlag=False
       
        # collapse across subjects and probes by gene
-       geneNames = geneList.keys()
+       geneNames = list(geneList.keys())
        geneNames.sort() # sort in to alphabetical order
        
        # collapse across nodes within regions (averaging across all subjects)
@@ -384,7 +384,7 @@ class allenBrain:
                self.geneMat = geneMat
                meanGene = np.mean(np.ma.array(geneMat, mask=np.isnan(geneMat)), axis=1) # collapse values across probes for each gene
               
-               outDict = dict(zip([str(v) for v in self.c.G.nodes()], ["{:10.20f}".format(v) for v in meanGene]))
+               outDict = dict(list(zip([str(v) for v in self.c.G.nodes()], ["{:10.20f}".format(v) for v in meanGene])))
                outDict["Gene"] = gene
                writer.writerow(outDict)
       
@@ -422,7 +422,7 @@ class allenBrain:
                 r,p = stats.pearsonr(aa[:,0], aa[:,1])
               
                 if p < self.sigVal:
-                    print probe
+                    print(probe)
                     # plot graph
                     out = open(self.outFile, "a")
                     out.writelines(','.join([str(v) for v in [probe, '"'+self.probeDict[probe][1]+'"', r, p]])+'\n')
@@ -433,7 +433,7 @@ class allenBrain:
                         plt.close()
                   
                     # save data
-                    print "Saving data in :"+self.outFile.replace('.txt', probe+self.gm+'.txt')
+                    print(("Saving data in :"+self.outFile.replace('.txt', probe+self.gm+'.txt')))
                     datFile = open(self.outFile.replace('.txt', probe+self.gm+'.txt'), "wb")
                     datFile.writelines(' '.join([probe, self.gm, "node", "subj"])+'\n')
                     datFile.writelines('\n'.join([' '.join([str(aa[n,0]), str(aa[n,1]), str(aa[n,2]), self.subj]) for n in range(len(aa[:,1]))]))
@@ -459,12 +459,12 @@ class allenBrain:
                         self.a.G.node[node][probe] = None
                                     
                     outDict = {probe:probe, 'subj':self.subj}
-                    for p in self.propDict.keys():
+                    for p in list(self.propDict.keys()):
                         outDict[p] = self.propDict[p]
                   
                     if not datFile:
                         headers = [probe, "subj"]
-                        gmSubjs = self.propDict[self.probeDict.keys()[0]].keys()
+                        gmSubjs = list(self.propDict[list(self.probeDict.keys())[0]].keys())
                         gmSubjs.sort()
                         headers.extend(gmSubjs)
 
@@ -535,7 +535,7 @@ class multiSubj:
                     # self.headers[subj].append(l["structure_id"])
                     self.headers[subj].append(sID) #STORE structure_acronym or structure_name depending on symmetrise
                     
-                    if not sID in self.sIDDict[subj].keys():
+                    if not sID in list(self.sIDDict[subj].keys()):
                         self.sIDDict[subj][sID] = [n]
                     else:
                         self.sIDDict[subj][sID].append(n)
@@ -610,7 +610,7 @@ class multiSubj:
        
         nodePairs = []
         # for each MRI node
-        for node in nodeDictMRIs.keys():
+        for node in list(nodeDictMRIs.keys()):
             # find closest allen node 'n'
             n = nodeDictMRIs[node]['allen'][0]
             self.c.G.node[node]['pair'] = n
@@ -631,7 +631,7 @@ class multiSubj:
             #     self.c.G.remove_node(node)
        
         for node in self.a.G.nodes():
-            if not 'pair' in self.a.G.node[node].keys():
+            if not 'pair' in list(self.a.G.node[node].keys()):
                 self.a.G.remove_node(node)
 
     def comparisonAveraged(self):
@@ -675,10 +675,10 @@ class multiSubj:
                     for cnode in self.c.G.nodes():
                         node = self.c.G.node[cnode]['pair']
                         sID = self.a.G.node[node][self.sLab]
-                        if not probe in self.a.G.node[node].keys():
+                        if not probe in list(self.a.G.node[node].keys()):
                             self.a.G.node[node][probe] = {}
                            
-                        if sID in l.keys():
+                        if sID in list(l.keys()):
                             self.a.G.node[node][probe][subj] = l[sID]
             f.close()
             del(reader)
@@ -686,7 +686,7 @@ class multiSubj:
         if meanVals:
             for n in self.a.G.nodes():
                 for probe in probeNumbers:
-                    self.a.G.node[n][probe] = np.mean([float(v) for v in self.a.G.node[n][probe].values()])
+                    self.a.G.node[n][probe] = np.mean([float(v) for v in list(self.a.G.node[n][probe].values())])
                
     def writeXMatrix(self, outFile="Xmatrix.csv", probeNumbers=None, tempMatName="tempMat.txt", sd=False, sdFile="NodesSd.txt"):
         # get all probes if otherwise unspecified
@@ -708,7 +708,7 @@ class multiSubj:
         x = len(self.subjList)
         y = len(probeNumbers)
         z = len(self.c.G.nodes())
-        sT = np.max([np.max([len(v) for v in self.sIDDict[subj].values()]) for subj in self.sIDDict.keys()]) # max numbers of nodes for any region
+        sT = np.max([np.max([len(v) for v in list(self.sIDDict[subj].values())]) for subj in list(self.sIDDict.keys())]) # max numbers of nodes for any region
         
         probeMat = np.memmap(tempMatName,
                              dtype="float64",
@@ -720,7 +720,7 @@ class multiSubj:
         pFile = open(path.join(self.subjList[0], self.probeFile))
         pReader = csv.DictReader(pFile, delimiter=",", quotechar='"')
         pDict = {l['probe_id']:l['gene_symbol'] for l in pReader}
-        geneList = pDict.values()
+        geneList = list(pDict.values())
         set(geneList)
         geneList = {gene:[] for gene in geneList}
         
@@ -742,7 +742,7 @@ class multiSubj:
         
         # assign values to matrix
         for x,subj in enumerate(self.subjList):
-            print(str(subj))
+            print((str(subj)))
             print('\n')
             # Generate custom fieldnames list for DictReader which doesn't rely on structure_id
             # *************************************
@@ -776,7 +776,7 @@ class multiSubj:
                         # Loop over allen nodes to find all those with the correct acronym for the current MRI node
                         # and add their expression values to the list for averaging
                         s=0
-                        for ID, struct_ac in myNodeDict.iteritems():
+                        for ID, struct_ac in list(myNodeDict.items()):
                             if struct_ac == acronym:
                                 # print(ID, struct_ac, l[str(ID)])
                                 # print('\n')
@@ -804,7 +804,7 @@ class multiSubj:
             geneFlag=False
        
         # collapse across subjects and probes by gene
-        geneNames = geneList.keys()
+        geneNames = list(geneList.keys())
         geneNames.sort() # sort in to alphabetical order
         
         # collapse across nodes within regions (averaging across all subjects)
@@ -846,7 +846,7 @@ class multiSubj:
                 self.geneMat = geneMat
                 meanGene = np.mean(np.ma.array(geneMat, mask=np.isnan(geneMat)), axis=1) # collapse values across probes for each gene
                
-                outDict = dict(zip([str(v) for v in self.c.G.nodes()], ["{:10.20f}".format(v) for v in meanGene]))
+                outDict = dict(list(zip([str(v) for v in self.c.G.nodes()], ["{:10.20f}".format(v) for v in meanGene])))
                 outDict["Gene"] = gene
                 writer.writerow(outDict)
        
@@ -868,26 +868,26 @@ class multiSubj:
         writer.writeheader()
        
         # iterate through the metrics
-        for m in metricDict.keys():
+        for m in list(metricDict.keys()):
             f = open(path.join(subj, metricDict[m]), "r")
             reader = csv.DictReader(f, delimiter=" ")
-            l = reader.next()
+            l = next(reader)
            
             # remove non-numeric keys
-            for v in l.keys():
+            for v in list(l.keys()):
                 try:
                     int(v)
                 except:
                     del(l[v])
 
-            mDict = {v:l[v] for v in l.keys() if int(v) in self.c.G.nodes()}
+            mDict = {v:l[v] for v in list(l.keys()) if int(v) in self.c.G.nodes()}
             f.close()
            
             # normalise within metric
-            meanMetric = np.mean([float(v) for v in mDict.values()])
-            sdMetric = np.std([float(v) for v in mDict.values()])
+            meanMetric = np.mean([float(v) for v in list(mDict.values())])
+            sdMetric = np.std([float(v) for v in list(mDict.values())])
 
-            mDict = {str(v):(float(mDict[str(v)])-meanMetric)/sdMetric for v in mDict.keys()}
+            mDict = {str(v):(float(mDict[str(v)])-meanMetric)/sdMetric for v in list(mDict.keys())}
            
             mDict["Metric"] = m
            
@@ -906,27 +906,27 @@ class multiSubj:
         writer.writeheader()
        
         # iterate through the metrics
-        for m in metricDict.keys():
+        for m in list(metricDict.keys()):
             for subj in subjList:            
                 f = open(path.join(subj, metricDict[m]), "r")
                 reader = csv.DictReader(f, delimiter=" ")
-                l = reader.next()
+                l = next(reader)
                
                 # remove non-numeric keys
-                for v in l.keys():
+                for v in list(l.keys()):
                     try:
                         int(v)
                     except:
                         del(l[v])
    
-                mDict = {v:l[v] for v in l.keys() if int(v) in self.c.G.nodes()}
+                mDict = {v:l[v] for v in list(l.keys()) if int(v) in self.c.G.nodes()}
                 f.close()
                
                 # normalise within metric
-                meanMetric = np.mean([float(v) for v in mDict.values()])
-                sdMetric = np.std([float(v) for v in mDict.values()])
+                meanMetric = np.mean([float(v) for v in list(mDict.values())])
+                sdMetric = np.std([float(v) for v in list(mDict.values())])
    
-                mDict = {str(v):(float(mDict[str(v)])-meanMetric)/sdMetric for v in mDict.keys()}
+                mDict = {str(v):(float(mDict[str(v)])-meanMetric)/sdMetric for v in list(mDict.keys())}
                
                 mDict["Metric"] = m
                 mDict["Subject"] = subj

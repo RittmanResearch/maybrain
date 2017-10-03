@@ -38,12 +38,12 @@ class braineac:
                   "Temporal":"TCTX",
                   "Thalamus":"THAL"}
 
-        self.ROIs= {v:[] for v in self.brD.values()}
+        self.ROIs= {v:[] for v in list(self.brD.values())}
         self.braineacDir = braineacDir
         
         for l in lines:
             bits = l.rstrip('\n').split()
-            for k,v in self.brD.iteritems():
+            for k,v in self.brD.items():
                 if k in bits[1]:
                     self.ROIs[v].append(bits[2])
         f.close()
@@ -99,7 +99,7 @@ class braineac:
             self.a.G.node['braineac'] = None
         
         self.nodeDict = {n:{"L":[], "R":[]} for n in range(1,8)}
-        for n in self.nodeDict.keys():
+        for n in list(self.nodeDict.keys()):
             tmp = self.a.parcelList[np.where(self.out==n)]
             nodeList = [int(v) for v in np.unique(tmp.data.flatten()) if not v==0]
             
@@ -107,7 +107,7 @@ class braineac:
             for node in nodeList:
                 rat = float(len(self.a.parcelList[np.where(self.a.parcelList==node) and np.where(self.a.parcelList==n)])) / float(len(self.a.parcelList[np.where(self.a.parcelList==node)]))
                 if rat < 0.5:
-                    print str(node)+" less than 50% in "+str(n)
+                    print(str(node)+" less than 50% in "+str(n))
                     
                 elif self.a.G.node[node-1]["xyz"][0] < midLine:
                     self.nodeDict[n]["L"].append(node-1)
@@ -129,7 +129,7 @@ class braineac:
         """
         # create parcellation image
         isoPC = np.zeros(self.a.iso.shape, dtype="int")
-        for pc in self.nodeDict.keys():
+        for pc in list(self.nodeDict.keys()):
             for n,s in enumerate(["L", "R"]):
                 fillVal = float(str(n+1)+str(pc))
                 for ar in self.nodeDict[pc][s]:
@@ -147,7 +147,7 @@ class braineac:
         self.b = mbo.brainObj()
         
         # the list of brineac nodes
-        nodeList = [v for v in self.regValDict.keys()]
+        nodeList = [v for v in list(self.regValDict.keys())]
         nodeList.sort()
         
         # iterate through the braineac regions

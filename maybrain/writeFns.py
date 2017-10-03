@@ -51,7 +51,7 @@ class writeFns():
             
         f.close()
             
-        print("data written to " + filename)
+        print(("data written to " + filename))
         
                    
         
@@ -82,13 +82,13 @@ class writeFns():
                 try:
                     line = line + '\t' + str(n[2][p])
                 except:
-                    print(p, "omitted in edge output")
+                    print((p, "omitted in edge output"))
             line = line + '\n'
             # write out
             f.write(line)
         f.close()
 
-        print("edges written to " + filename)            
+        print(("edges written to " + filename))            
         
 
     def outputEdgesMatrix(self, brain, filename):
@@ -116,7 +116,7 @@ class writeFns():
             f.write(str(row[-1]) + '\n')
         f.close()
                 
-        print("edges written to " + filename)   
+        print(("edges written to " + filename))   
 
 
     def fileCheck(self, fname, boolVal):
@@ -125,7 +125,7 @@ class writeFns():
             return path.exists(fname)
         
         if path.exists(fname):
-            print 'moving ' + fname + ' to ' + fname + '.old'
+            print('moving ' + fname + ' to ' + fname + '.old')
             rename(fname, fname + '.old')
             return True
         return False
@@ -152,7 +152,7 @@ class writeFns():
         # get degrees of each node
         degs = brain.G.degree()
         degstowrite = dict((n,None) for n in brain.G.nodes())
-        for node in degs.keys():
+        for node in list(degs.keys()):
             degstowrite[node] = degs[node]
         # write out
         nodewriter.writerow(degstowrite)
@@ -195,11 +195,11 @@ class writeFns():
             # get degrees of hubs
             try:
                 degs = brain.G.degree(deghubs)
-                for node in degs.keys():
+                for node in list(degs.keys()):
                     degstowrite[node] = degs[node]
             except:
                 # why not check for this specifically beforehand than using try...except?
-                print "no hubs in largest connected component"
+                print("no hubs in largest connected component")
             
             # write to file
             idwriter.writerow(degstowrite)
@@ -369,7 +369,7 @@ class writeFns():
         effs = {"Globalefficiency":globalEffs ,"Localefficiency":localEffs}
         
         # write results to file
-        writeObj = DictWriter(f,fieldnames = effs.keys())
+        writeObj = DictWriter(f,fieldnames = list(effs.keys()))
         if brain.iter == None:
             f.writelines("Localefficiency,Globalefficiency\n")
     #        writer.writeheader()
@@ -430,7 +430,7 @@ class writeFns():
         print('edge lengths')
         for s in l:
             print(s)
-        print('mean edge length ' + str(meanEdgeLengths))
+        print(('mean edge length ' + str(meanEdgeLengths)))
         
         # do the same for hubs
         if len(brain.hubs) == 0:

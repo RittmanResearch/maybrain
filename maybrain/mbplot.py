@@ -94,7 +94,7 @@ class plotObj():
             try:
                 coords.append(brain.G.node[x]['xyz'])
             except KeyError:
-                print('node ' + str(x) + ' not found in function coordsToList')
+                print(('node ' + str(x) + ' not found in function coordsToList'))
                     
         coords = array(coords)                
         
@@ -194,7 +194,7 @@ class plotObj():
             try:
                 ho = brain.highlights[h]
             except:
-                print('highlight not found: ' + h)
+                print(('highlight not found: ' + h))
                 continue
 
             # get edge data                
@@ -250,7 +250,7 @@ class plotObj():
 
             if not sf:
                 sf = 5./power(max(sizeList), 1/3)
-                print "sf calculated as: "+str(sf)
+                print("sf calculated as: "+str(sf))
                 
             ptdata = mlab.pipeline.scalar_scatter(coords[0], coords[1], coords[2],
                                                       sizeList, figure = self.mfig)
@@ -259,7 +259,7 @@ class plotObj():
                                 scale_mode="scalar")
         
         if sfRange:
-            print "Adjusting glyph range"
+            print("Adjusting glyph range")
             self.brainNodePlots[label].glyph.glyph.range = array(sfRange)
 
         # record label for order
@@ -378,7 +378,7 @@ class plotObj():
             elif plotType == 'edges':
                 plot = self.brainEdgePlots[plotLabel]
             else:
-                print('plotType not recognised: ' + plotType)
+                print(('plotType not recognised: ' + plotType))
                 return
         except:
             # quietly go back if the selected plot doesn't exist
@@ -389,7 +389,7 @@ class plotObj():
             try:
                 plot.actor.property.opacity = value
             except:
-                print('opacity value not recognised, should be a float', value)
+                print(('opacity value not recognised, should be a float', value))
         
         # toggle plot visibility
         elif prop == 'visibility':
@@ -406,7 +406,7 @@ class plotObj():
             try:
                 plot.actor.property.color = value            
             except:
-                print('colour not recognised, should be a triple of values between 0 and 1', value)
+                print(('colour not recognised, should be a triple of values between 0 and 1', value))
                 
         else:
             print('property not recognised')
@@ -423,7 +423,7 @@ class plotObj():
         elif plotType == 'edges':
             plot = self.brainEdgePlots[plotLabel]
         else:
-            print('plotType not recognised: ' + plotType )
+            print(('plotType not recognised: ' + plotType ))
             return
             
         if prop == 'opacity':
@@ -448,7 +448,7 @@ class plotObj():
         
         # make label and print
         label = 'plot ' + num
-        print('automatically generated label: '+ label)
+        print(('automatically generated label: '+ label))
         
         # iterate label index
         self.labelNo = self.labelNo + 1

@@ -67,22 +67,22 @@ class highlightObj():
         
         # introduction
         print('# ================ #')
-        print('\n'+'highlight information:')
+        print(('\n'+'highlight information:'))
         # colour
-        print('colour', self.colour)
+        print(('colour', self.colour))
         # opacity
-        print('opacity', self.opacity) 
+        print(('opacity', self.opacity)) 
         # edge opacity
-        print('edge opacity', self.edgeOpacity)
+        print(('edge opacity', self.edgeOpacity))
         
         # nodes
         print('\n nodes')
         for n in self.nodeIndices:
-            print(str(n), brain.G.node[n]['xyz'])
+            print((str(n), brain.G.node[n]['xyz']))
             
         # edges
         print('\n edges')
         for e in self.edgeIndices:
-            print(str(e), brain.G.node[e[0]]['xyz'], brain.G.node[e[1]]['xyz'])
+            print((str(e), brain.G.node[e[0]]['xyz'], brain.G.node[e[1]]['xyz']))
             
         print('\n # ================ # \n')

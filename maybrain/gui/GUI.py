@@ -22,7 +22,7 @@ from numpy import log10
 import maybrain as mb
 
 import sys
-import mayBrainUI as ui
+from . import mayBrainUI as ui
 from os import path
 
 
@@ -318,7 +318,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         thType = str(self.ui.tholdDropdown.currentText())
         value = float(self.ui.thresholdValue.text())
         
-        print(thType, value)
+        print((thType, value))
         
 #        edgePC = None 
 #        totalEdges = None
@@ -408,7 +408,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         labels = ['edges', 'nodes', 'skull', 'isosurf']
         
         for ls in range(len(lists)):
-            names = lists[ls].keys()
+            names = list(lists[ls].keys())
             names.sort()
             lab = labels[ls]
             for p in names:
@@ -511,10 +511,10 @@ class mayBrainGUI(QtGui.QMainWindow):
         # plot
         # bodge for cases when labels change:
 #        if label in br.highlights:
-        print('highlights: ', br.highlights)
+        print(('highlights: ', br.highlights))
         self.plot.plotBrainHighlights(br, highlights=[label])
         try:
-            print(br.highlights['green'].edgeIndices)
+            print((br.highlights['green'].edgeIndices))
         except:
             print('it aint green')
 #        else:
