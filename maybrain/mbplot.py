@@ -70,8 +70,8 @@ class plotObj():
         self.labelNo = 0  
 
     def show(self):
-	''' show the final plot '''
-	mlab.show()
+        ''' show the final plot '''
+        mlab.show()
         
         
     def coordsToList(self, brain, nodeList=None):

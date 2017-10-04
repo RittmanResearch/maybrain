@@ -11,7 +11,6 @@ import networkx as nx
 import numpy as np
 from networkx.algorithms import components
 import random
-from string import split
 from . import extraFns
 from . import highlightObj
 
@@ -91,7 +90,7 @@ class brainObj:
                 for l in f:
                     while l[-1] in ('\n', '\t'):
                         l = l[:-1]
-                    lines.append(list(map(float, [v if v not in naVals else np.nan for v in split(l, sep=delimiter)])))
+                    lines.append(list(map(float, [v if v not in naVals else np.nan for v in l.split(sep=delimiter)])))
         except IOError as error:
             print('Problem with opening file "' + fname + '": ' + error[1])               
             return
@@ -128,9 +127,9 @@ class brainObj:
         nodeCount=0
         for line in lines:
             if delimiter:
-                l = split(line,sep=delimiter)
+                l = line.split(sep=delimiter)
             else:
-                l = split(line)
+                l = line.split()
 
             if convertMNI:
                 l[1] = 45 - (float(l[1])/2)
@@ -180,7 +179,7 @@ class brainObj:
         for l in data[1:]:
             # determine if it should apply to edges or nodes (by length)
             try:
-                value = split(l)
+                value = l.split()
                 if len(value)==2:
                     mode = 'nodes'
                 elif len(value)==3:
