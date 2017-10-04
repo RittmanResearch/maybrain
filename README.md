@@ -31,7 +31,7 @@ If you are not sure where this folder is located, you can open a Python terminal
 
 ```python
 import sys
-print '\n'.join(sys.path)
+print('\n'.join(sys.path))
 ```
 
 ## Documentation
