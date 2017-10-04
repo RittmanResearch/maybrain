@@ -1,8 +1,11 @@
 language: python
 python:
  - "2.7"
-install: pip install -r requirements.txt
+install: 
+ - pip install -r requirements.txt
+script:
+ - python --version
 branches:
   only:
-  - master
-  - python3
+  - gh-pages
+  - /.*/ 
