@@ -18,3 +18,7 @@ install:
  - conda install -c conda-forge nibabel
 script: 
  - python test/testBrainObj.py
+branches:
+  only:
+  - gh-pages
+  - /.*/
