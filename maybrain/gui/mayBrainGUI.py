@@ -15,7 +15,7 @@ except:
 from pyface.qt import QtGui, QtCore
 from numpy import log10
 import maybrain as mb
-import mayBrainUI as ui
+from . import mayBrainUI as ui
 from os import path
 
 app = QtGui.QApplication.instance()
@@ -214,7 +214,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         brName, nameUsedBool = self.findBrainName()
         
         if not(brName in self.brains):
-            print(brName + ' not found in rePlot')
+            print((brName + ' not found in rePlot'))
             return
 
         # remove old plots
@@ -269,7 +269,7 @@ class mayBrainGUI(QtGui.QMainWindow):
         labels = ['edges', 'nodes', 'skull', 'isosurf']
         
         for ls in range(len(lists)):
-            names = lists[ls].keys()
+            names = list(lists[ls].keys())
             names.sort()
             lab = labels[ls]
             for p in names:

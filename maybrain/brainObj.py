@@ -11,9 +11,8 @@ import networkx as nx
 import numpy as np
 from networkx.algorithms import components
 import random
-from string import split
-import extraFns
-import highlightObj
+from . import extraFns
+from . import highlightObj
 
 
 class brainObj:
@@ -87,14 +86,14 @@ class brainObj:
         
         lines = []
         try:
-            with open(fname, "rb") as f:
+            with open(fname, "r") as f:
                 for l in f:
                     while l[-1] in ('\n', '\t'):
                         l = l[:-1]
-                    lines.append(map(float, [v if v not in naVals else np.nan for v in split(l, sep=delimiter)]))
+                    lines.append(list(map(float, [v if v not in naVals else np.nan for v in l.split(sep=delimiter)])))
         except IOError as error:
-            print 'Problem with opening file "' + fname + '": ' + error[1]               
-            return
+            print('Problem with opening file "' + fname + '": ' + error.strerror)               
+            return -1
 
         # set adjacency matrix
         self.adjMat = np.array(lines)
@@ -120,7 +119,7 @@ class brainObj:
         try:
             f = open(fname,"rb")
         except IOError as error:
-            print 'Problem with opening 3D position file "' + fname + '": ' + error[1]               
+            print('Problem with opening 3D position file "' + fname + '": ' + error.strerror)               
             return                
                
         # get data from file
@@ -128,9 +127,9 @@ class brainObj:
         nodeCount=0
         for line in lines:
             if delimiter:
-                l = split(line,sep=delimiter)
+                l = line.split(sep=delimiter)
             else:
-                l = split(line)
+                l = line.split()
 
             if convertMNI:
                 l[1] = 45 - (float(l[1])/2)
@@ -180,13 +179,13 @@ class brainObj:
         for l in data[1:]:
             # determine if it should apply to edges or nodes (by length)
             try:
-                value = split(l)
+                value = l.split()
                 if len(value)==2:
                     mode = 'nodes'
                 elif len(value)==3:
                     mode =  'edges'
             except:
-                print('couldn\'t parse data line. Please check property file', l)
+                print(('couldn\'t parse data line. Please check property file', l))
                 
             # make last entry of value a float or string (property value)
             try:
@@ -194,7 +193,7 @@ class brainObj:
             except ValueError:
                 value[-1] = str(value[-1])
                 value[-1] = extraFns.stripString(value[-1])
-                print(value[-1])
+                print((value[-1]))
             
             # get data
             if mode=='nodes':
@@ -224,7 +223,7 @@ class brainObj:
             try:
                 self.G.node[n][propertyName] = p
             except:
-                print('property assignment failed: ' + propertyName + ' ' + str(n) + ' ' + str(p))
+                print(('property assignment failed: ' + propertyName + ' ' + str(n) + ' ' + str(p)))
 
 
     def addEdgeProperty(self, propertyName, edgeList, propList):
@@ -236,7 +235,7 @@ class brainObj:
             try:
                 self.G.edge[e[0]][e[1]][propertyName] = p
             except KeyError:
-                print('edge property assignment failed: ' + propertyName + ' ' + str(e) + ' ' + str(p))
+                print(('edge property assignment failed: ' + propertyName + ' ' + str(e) + ' ' + str(p)))
 
         
     ### supplementary structures
@@ -295,7 +294,7 @@ class brainObj:
         import nibabel as nb
         if valueDict: # creates a numpy array based on the dictionary provided
             outMat = np.zeros(self.nbiso.get_data().shape, dtype="float64")
-            for n in valueDict.keys():
+            for n in list(valueDict.keys()):
                 outMat[np.where(self.nbiso.get_data()==n+1)] = valueDict[n]
         else:
             outMat = self.parcelList
@@ -332,9 +331,9 @@ class brainObj:
         # Finding threshold value for each type
         if not(thresholdType):
             self.threshold = np.nanmin(self.adjMat)
-            print('None thresholding', self.threshold)
+            print(('None thresholding', self.threshold))
         elif thresholdType == 'tVal':
-            print('tVal case', value)
+            print(('tVal case', value))
             self.threshold = value
         else: # 'edgePC' or 'totalEdges'
             if not self.directed:
@@ -371,10 +370,10 @@ class brainObj:
                 self.threshold = weights[-1]+0.5
             else:
                 # case where some edges are included
-                print weights
+                print(weights)
                 self.threshold = weights[-edgeNum]
             
-            print("edgeNum and threshold", edgeNum, self.threshold)
+            print(("edgeNum and threshold", edgeNum, self.threshold))
 
             
         ##### carry out thresholding on adjacency matrix
@@ -444,7 +443,7 @@ class brainObj:
             # correct for diagonal if graph is undirected
             if not self.directed:
                 edgeNum -= len([self.adjMat[x,x] for x in range(len(self.adjMat[0,:])) if not np.isnan(self.adjMat[x,x])])
-            print edgeNum
+            print(edgeNum)
 
             self.edgePC=edgePC
             
@@ -460,16 +459,16 @@ class brainObj:
         T = self.minimum_spanning_tree(self)
         lenEdges = len(T.edges())
         if lenEdges > edgeNum:
-            print "The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges."
+            print("The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges.")
         
         while lenEdges<edgeNum:
-            print "NNG degree: "+str(k)
+            print("NNG degree: "+str(k))
             # create nearest neighbour graph
             nng = self.NNG(k)
             
             # failsafe in case there are no more edges to add
             if len(nng.edges())==0:
-                print "There are no edges in the nearest neighbour graph - check you have set the delimiter appropriately"
+                print("There are no edges in the nearest neighbour graph - check you have set the delimiter appropriately")
                 break
             
             # remove edges from the NNG that exist already in the new graph/MST
@@ -545,14 +544,14 @@ class brainObj:
         h.edgeIndices = []
         h.nodeIndices = []
         
-        print(prop, rel, val, label, mode)
+        print((prop, rel, val, label, mode))
         
         # extract lists from edges  
         if mode in ['edge', 'node or edge']:
             ind = -1
             for e in self.G.edges(data = True):
                 ind = ind +1
-                print(self.G.edge[e[0]][e[1]])
+                print((self.G.edge[e[0]][e[1]]))
                 try:
                     d = self.G.edge[e[0]][e[1]][prop]
                 except KeyError:
@@ -560,7 +559,7 @@ class brainObj:
                 
                 # match properties
                 boolval = self.propCompare(d, rel, val)
-                print(d, rel, val, boolval)
+                print((d, rel, val, boolval))
                 
                 # save data in highlight
                 if boolval:
@@ -645,7 +644,7 @@ class brainObj:
         elif rel == 'contains':
             b = d in val
         else:
-            print('relation not recognised: ' + rel )
+            print(('relation not recognised: ' + rel ))
         
         return b        
 
@@ -659,7 +658,7 @@ class brainObj:
         
         # make label and print
         label = 'plot ' + num
-        print('automatically generated label: '+ label)
+        print(('automatically generated label: '+ label))
         
         # iterate label index
         self.labelNo = self.labelNo + 1
@@ -695,7 +694,7 @@ class brainObj:
             
         # set limit
         if weightLossLimit and pcLimit:
-            print "You have asked for both a weight and percentage connectivity limit, using the percentage connectivity limit"
+            print("You have asked for both a weight and percentage connectivity limit, using the percentage connectivity limit")
         
         if threshLimit:
             pcLimit = self.thresholdToPercentage(threshLimit)
@@ -710,7 +709,7 @@ class brainObj:
                 
             newEdgeNum = int(round(pcLimit * maxEdges))
             if newEdgeNum > lenEdges:
-                print "The percentage threshold set is lower than the current graph, please choose a larger value"
+                print("The percentage threshold set is lower than the current graph, please choose a larger value")
             
             limit = lenEdges - newEdgeNum
             weightLossLimit = False
@@ -738,7 +737,7 @@ class brainObj:
         # check if there are enough weights left
         riskEdgeWtSum = np.sum([self.G.edge[v[0]][v[1]]['weight'] for v in self.riskEdges])
         if limit > riskEdgeWtSum:
-            print "Not enough weight left to remove"
+            print("Not enough weight left to remove")
             return nodeList
             
         while limit>0.:
@@ -748,11 +747,11 @@ class brainObj:
                 # choose node first, then calculated spatially nearest of a single node
                 newNode = self.findSpatiallyNearest(nodeList)
                 if newNode:
-                    print "Found spatially nearest node"
+                    print("Found spatially nearest node")
                     nodeList.append(newNode)
                     self.riskEdges = nx.edges(self.G, nodeList)
                 else:
-                    print "No further edges to degenerate"
+                    print("No further edges to degenerate")
                     break
             # choose at risk edge to degenerate from           
             dyingEdge = random.choice(self.riskEdges)            
@@ -800,7 +799,7 @@ class brainObj:
         ## Update adjacency matrix to reflect changes
         #self.reconstructAdjMat()
         
-        print "Number of toxic nodes: "+str(len(nodeList))
+        print("Number of toxic nodes: "+str(len(nodeList)))
         
         return nodeList
 
@@ -863,7 +862,7 @@ class brainObj:
             toxicNodes.append(deadNode)
             # make it degenerate
             self.G.node[deadNode]['degenerating'] = True
-            print('deadNode', deadNode)
+            print(('deadNode', deadNode))
             
             
             # add the new at-risk nodes
@@ -904,7 +903,7 @@ class brainObj:
             self.G.remove_edges_from(edges_to_remove)
             
         except ValueError:
-            print "No further edges left"
+            print("No further edges left")
             
         self.iter += 1  
 
@@ -930,7 +929,7 @@ class brainObj:
         ''' '''
         #!! docstring missing
         G = nx.Graph()
-        nodes = range(len(self.adjMat[0]))
+        nodes = list(range(len(self.adjMat[0])))
         
         G.add_nodes_from(nodes)
         
@@ -1058,7 +1057,7 @@ class brainObj:
         T=nx.Graph(self.minimum_spanning_edges(weight="weight", data=True))
         # Add isolated nodes
         if len(T)!=len(self.G):
-            T.add_nodes_from([n for n,d in self.G.degree().items() if d==0])
+            T.add_nodes_from([n for n,d in list(self.G.degree().items()) if d==0])
         # Add node and graph attributes as shallow copy
         for n in T:
             T.node[n] = self.G.node[n].copy()
@@ -1093,7 +1092,7 @@ class brainObj:
             try:
                 distance = np.linalg.norm(np.array(pos - np.array(self.G.node[node]['xyz'])))
             except:
-                print "Finding the spatially nearest node requires x,y,z values"
+                print("Finding the spatially nearest node requires x,y,z values")
                 
             if shortestnode[0]:
                 if distance < shortestnode[1]:
@@ -1167,8 +1166,8 @@ class brainObj:
         
         # find distances
         dists = []
-        print 'newxyzlist'
-        print newxyzList
+        print('newxyzlist')
+        print(newxyzList)
         for l in newxyzList:
             d = np.sqrt((l[1]-xyz0[0])**2 + (l[2]-xyz0[1])**2 + (l[3]-xyz0[2]**2))
             dists = dists + [(d, l[0])]
@@ -1347,7 +1346,7 @@ class brainObj:
             for node in self.G.nodes():
                 if self.G.node[node]['xyz'][0] < midline:
                     self.G.add_node(str(node)+"R")
-                    self.G.node[str(node)+"R"] = {v:w for v,w in self.G.node[node].iteritems()}
+                    self.G.node[str(node)+"R"] = {v:w for v,w in self.G.node[node].items()}
                     pos = self.G.node[node]['xyz']
                     pos = (midline + (midline - pos[0]), pos[1], pos[2])
                     self.G.node[str(node)+"R"]['xyz'] = pos
@@ -1358,7 +1357,7 @@ class brainObj:
             for node in self.G.nodes():
                 if self.G.node[node]['xyz'][0] > midline:
                     self.G.add_node(str(node)+"L")
-                    self.G.node[str(node)+"L"] = {v:w for v,w in self.G.node[node].iteritems()}
+                    self.G.node[str(node)+"L"] = {v:w for v,w in self.G.node[node].items()}
                     pos = self.G.node[node]['xyz']
                     self.G.node[str(node)+"L"]['xyz'] = (midline - (pos[0] - midline), pos[1], pos[2])
                 else:
@@ -1575,9 +1574,9 @@ class brainObj:
         networkx object
         """
         self.bctmat = np.zeros((len(self.G.nodes()),len(self.G.nodes())))
-        nodeIndices = dict(zip(self.G.nodes(), range(len(self.G.nodes()))))
+        nodeIndices = dict(list(zip(self.G.nodes(), list(range(len(self.G.nodes()))))))
         for nn,x in enumerate(self.G.nodes()):
-            for y in self.G.edge[x].keys():
+            for y in list(self.G.edge[x].keys()):
                 try:
                     self.bctmat[nn,nodeIndices[y]] = self.G.edge[x][y]['weight']
                 except:
@@ -1585,7 +1584,7 @@ class brainObj:
         
     def assignbctResult(self, bctRes):
         ''' translate a maybrain connectome into a bct compatible format ''' 
-        out = dict(zip(self.G.nodes(), bctRes))
+        out = dict(list(zip(self.G.nodes(), bctRes)))
         return(out) 
 
     ##### miscellaneous functions

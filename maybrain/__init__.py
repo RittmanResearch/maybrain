@@ -36,10 +36,10 @@ To avoid having to import mayavi you can use, e.g.
 
 # imports to avoid having to import submodules each time
 #from recipes import *
-import brainObj
+from . import brainObj
 #from plot import plotObj
-from extraFns import *
-import mbplot
+from .extraFns import *
+from . import mbplot
 
 #import plot
 #import plotObjs

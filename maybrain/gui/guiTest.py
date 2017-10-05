@@ -14,7 +14,7 @@ Created on Tue Sep 23 07:19:08 2014
 
 import unittest
 #import maybrain as mb
-import mayBrainGUI as gui
+from . import mayBrainGUI as gui
 import sys
 from pyface.qt import QtGui, QtCore
 
