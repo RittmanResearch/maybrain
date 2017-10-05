@@ -16,7 +16,15 @@ class TestBrainObj(unittest.TestCase):
         self.assertIsInstance(self.a.G, nx.Graph)
         self.assertNotIsInstance(self.a.G, nx.DiGraph)
 
-
+    def test_importAdjFile(self):
+        self.assertEqual(self.a.importAdjFile("sdfasdf"), -1)
+        self.a.importAdjFile("data/3d_grid_adj.txt")
+        self.assertEqual(self.a.adjMat.shape, (4,4))
+        self.assertEqual(self.a.adjMat[0][0], 0.802077230054)
+        b = mbt.brainObj()
+        b.importAdjFile("data/3d_grid_adj2.txt", delimiter=",")
+        self.assertEqual(b.adjMat.shape, (15,15))
+        self.assertEqual(b.adjMat[0][0], 0)
 
 if __name__ == '__main__':
     unittest.main()

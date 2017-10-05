@@ -86,14 +86,14 @@ class brainObj:
         
         lines = []
         try:
-            with open(fname, "rb") as f:
+            with open(fname, "r") as f:
                 for l in f:
                     while l[-1] in ('\n', '\t'):
                         l = l[:-1]
                     lines.append(list(map(float, [v if v not in naVals else np.nan for v in l.split(sep=delimiter)])))
         except IOError as error:
-            print('Problem with opening file "' + fname + '": ' + error[1])               
-            return
+            print('Problem with opening file "' + fname + '": ' + error.strerror)               
+            return -1
 
         # set adjacency matrix
         self.adjMat = np.array(lines)
@@ -119,7 +119,7 @@ class brainObj:
         try:
             f = open(fname,"rb")
         except IOError as error:
-            print('Problem with opening 3D position file "' + fname + '": ' + error[1])               
+            print('Problem with opening 3D position file "' + fname + '": ' + error.strerror)               
             return                
                
         # get data from file
