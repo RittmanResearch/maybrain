@@ -19,7 +19,7 @@ def efficiencyfunc(node, G, weight=None):
     pls = nx.shortest_path_length(G, source=node, weight=weight)
     del(pls[node])
                                         
-    invpls = [1/float(v) for v in pls.values()]
+    invpls = [1/float(v) for v in list(pls.values())]
     invpl = np.sum(invpls)
     
     return(invpl)
@@ -151,13 +151,13 @@ def robustness(G, iterLen=500, N=50):
     return(np.mean(fList) / len(G.nodes()))
   
 def edgeLengths(G, nodeWise=False):
-    el =  dict(zip(G.edges(),
-                   [ np.absolute(np.linalg.norm(np.array(G.node[edge[0]]['xyz']) - np.array(G.node[edge[1]]['xyz']))) for edge in G.edges()]))
+    el =  dict(list(zip(G.edges(),
+                   [ np.absolute(np.linalg.norm(np.array(G.node[edge[0]]['xyz']) - np.array(G.node[edge[1]]['xyz']))) for edge in G.edges()])))
     
     if nodeWise:
         eln = {}
         for n in G.nodes():
-            eln[n] = np.sum([el[e] for e in el.keys() if n in e])
+            eln[n] = np.sum([el[e] for e in list(el.keys()) if n in e])
         return(eln)
     else:
         return(el)
@@ -194,7 +194,7 @@ def histograms(brain, outfilebase="brain"):
     # Title for lengths
     if not brain.threshold:
         title = "Lengths at no threshold"
-        print "You have not set a threshold on the graph, so all edge lengths will be included giving a normal distribution"
+        print("You have not set a threshold on the graph, so all edge lengths will be included giving a normal distribution")
     else:
         try:
             title = "Lengths at " + "{0:.1f}".format(brain.edgePC*100) + "% connectivity"
@@ -261,10 +261,10 @@ def writeResults(results, measure,
         results = {v[0]:v[1] for v in results}
 
     if isinstance(results, (dict)):
-        headers = [v for v in results.keys()]
+        headers = [v for v in list(results.keys())]
         headers.sort()
 
-        out = ' '.join([ str(results[v]) if v in results.keys() else 'NA' for v in headers] )
+        out = ' '.join([ str(results[v]) if v in list(results.keys()) else 'NA' for v in headers] )
         
     elif isinstance(results, (list)):
         try:
@@ -281,7 +281,7 @@ def writeResults(results, measure,
 
     # write headers
     if propDict:
-        propHeaders = propDict.keys()
+        propHeaders = list(propDict.keys())
         propHeaders.sort()
 
     if writeHeadFlag:
@@ -321,10 +321,10 @@ def writeResultsOld(results, measure,
     
     # check to see what form the results take
     if isinstance(results, (dict)):
-        headers = [v for v in results.keys()]
+        headers = [v for v in list(results.keys())]
         headers.sort()
 
-        out = ' '.join([ str(results[v]) if v in results.keys() else 'NA' for v in headers] )
+        out = ' '.join([ str(results[v]) if v in list(results.keys()) else 'NA' for v in headers] )
         
     elif isinstance(results, (list)):
         if writeHeadFlag:
@@ -361,7 +361,7 @@ def normalise(G, func, n=500, retNorm=True, inVal=None, weight='weight'):
     """
     vals = []
     for i in range(n):
-        rand = configuration_model(G.degree().values())
+        rand = configuration_model(list(G.degree().values()))
         rand = nx.Graph(rand) # convert to simple graph from multigraph
 
         # check whether the graph is weighted
@@ -382,7 +382,7 @@ def normalise(G, func, n=500, retNorm=True, inVal=None, weight='weight'):
         
         # add spatial information if necessary
         if spatial:
-            print "Adding spatial info"
+            print("Adding spatial info")
             nx.set_node_attributes(rand, 'xyz', {rn:G.node[v]['xyz'] for rn,v in enumerate(G.nodes())}) # copy across spatial information
 
         try:
@@ -406,7 +406,7 @@ def normaliseNodeWise(G, func, inVal={}, n=500, retNorm=True, distance=False, we
     """
     nodesDict = {v:[] for v in G.nodes()}
     for i in range(n):
-        rand = configuration_model(G.degree().values())
+        rand = configuration_model(list(G.degree().values()))
         rand = nx.Graph(rand) # convert to simple graph from multigraph
 
         # check whether the graph is weighted
@@ -439,7 +439,7 @@ def normaliseNodeWise(G, func, inVal={}, n=500, retNorm=True, distance=False, we
 
         # add spatial information if necessary
         if spatial:
-            print "Adding spatial info"
+            print("Adding spatial info")
             nx.set_node_attributes(rand, 'xyz', {rn:G.node[v]['xyz'] for rn,v in enumerate(G.nodes())}) # copy across spatial information
             
         if distance:
@@ -507,8 +507,8 @@ def extractCoordinates(template, outFile="ROI_xyz.txt"):
         tempArr = np.mean(tempArr.reshape([tempArr.shape[0]/3,3]),axis=0)
         outList = [str(int(v))]
         outList.extend(["{:.2f}".format(x) for x in tempArr])
-        outDict = dict(zip(writer.fieldnames,
-                           outList))
+        outDict = dict(list(zip(writer.fieldnames,
+                           outList)))
         writer.writerow(outDict)
         
     out.close()
