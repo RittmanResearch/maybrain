@@ -18,6 +18,10 @@ install:
  - conda install -c conda-forge nibabel
  - conda install pyqt=4
  - python setup.py install
+before_script:
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
+  - sleep 3 # give xvfb some time to start
 script: 
  - python test/testBrainObj.py
 branches:
