@@ -55,7 +55,7 @@ The authors are happy for developers to extend, customise, improve or simply to 
 
 ## Credits
 
-Maybrain has been written by Timothy Rittman and Martyn Rittman.
+Maybrain was originally written by Timothy Rittman and Martyn Rittman, but with substantial improvements and updates from Tiago Azevedo.
 
 ## License
 
