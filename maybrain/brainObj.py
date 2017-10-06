@@ -110,26 +110,23 @@ class brainObj:
 
     def importSpatialInfo(self, fname, delimiter=None, convertMNI=False):
         ''' 
-        Add 3D coordinate information for each node from a given file
+        Add 3D coordinate information for each node from a given file. It needs to be called after importAdjFile()
         fname : file name
         delimiter : the delimiter of the values inside the matrix, like ","
-        convertMNI : Whether you want to convert coordinates to MNI space
+        convertMNI : Whether you want to convert coordinates from voxel-wise to MNI space
         '''
         # open file
         try:
-            f = open(fname,"rb")
+            f = open(fname,"r")
         except IOError as error:
             print('Problem with opening 3D position file "' + fname + '": ' + error.strerror)               
-            return                
+            return -1            
                
         # get data from file
         lines = f.readlines()
         nodeCount=0
         for line in lines:
-            if delimiter:
-                l = line.split(sep=delimiter)
-            else:
-                l = line.split()
+            l = line.split(sep=delimiter)
 
             if convertMNI:
                 l[1] = 45 - (float(l[1])/2)
