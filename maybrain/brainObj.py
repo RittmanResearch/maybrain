@@ -324,6 +324,9 @@ class brainObj:
         if thresholdType not in ["edgePC", "totalEdges", "tVal", None]:
             print("Error: Not a valid thresholdType")
             return
+        
+        #control var to order in the end
+        toOrder = False
 
         # Finding threshold value for each type
         if not(thresholdType):
@@ -366,6 +369,7 @@ class brainObj:
             else:
                 # case where some edges are included
                 self.threshold = weights[-edgeNum]
+                toOrder = True #down there this is used
 
             
         ##### carry out thresholding on adjacency matrix
@@ -383,6 +387,15 @@ class brainObj:
             if not(self.directed) and es[0][ii]>=es[1][ii]: 
                 continue
             self.G.add_edge(es[0][ii],es[1][ii], weight = self.adjMat[es[0][ii],es[1][ii]])
+            
+        # Removing extra edges for repeated elements with the same threshold value
+        #   in the "edgePC" and "totalEdges" cases
+        if(toOrder):
+            orderedWeights = sorted(self.G.edges(data=True), key=lambda x: (x[2]['weight']))
+            orderedWeights = orderedWeights[:-edgeNum]
+            for e in orderedWeights:
+                self.G.remove_edge(e[0], e[1])
+            
 
     def reconstructAdjMat(self):
         ''' redefine the adjacency matrix from the edges and weights '''
