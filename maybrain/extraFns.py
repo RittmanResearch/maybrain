@@ -505,23 +505,6 @@ def extractCoordinates(template, outFile="ROI_xyz.txt"):
         writer.writerow(outDict)
         
     out.close()
-
-def undirectedFlatten(mat):
-    ''' flatten function for an undirected matrix '''
-    
-    s = np.shape(mat)
-    
-    flatMat = []
-    
-    # flatten the upper right section
-    for rows in range(s[0]):
-        try:
-            flatMat = flatMat + list(mat[rows,rows+1:])
-        except:
-            # case where there's more rows than columns, just ignore
-            pass
-        
-    return flatMat
         
 
 def stripString(strIn):

@@ -79,7 +79,7 @@ class brainObj:
         Imports an adjacency matrix from a file.
         fname : file name
         delimiter : the delimiter of the values inside the matrix, like ","
-        exclnodes : Nodes you don't want to load, in an array format
+        exclnodes : Nodes you don't want to load, in an array format (nodes no. starts from zero)
         naVals : How the "Not a Number" values are represented in the file
         '''
         self.exclnodes=exclnodes
@@ -110,26 +110,23 @@ class brainObj:
 
     def importSpatialInfo(self, fname, delimiter=None, convertMNI=False):
         ''' 
-        Add 3D coordinate information for each node from a given file
+        Add 3D coordinate information for each node from a given file. It needs to be called after importAdjFile()
         fname : file name
         delimiter : the delimiter of the values inside the matrix, like ","
-        convertMNI : Whether you want to convert coordinates to MNI space
+        convertMNI : Whether you want to convert coordinates from voxel-wise to MNI space
         '''
         # open file
         try:
-            f = open(fname,"rb")
+            f = open(fname,"r")
         except IOError as error:
             print('Problem with opening 3D position file "' + fname + '": ' + error.strerror)               
-            return                
+            return -1            
                
         # get data from file
         lines = f.readlines()
         nodeCount=0
         for line in lines:
-            if delimiter:
-                l = line.split(sep=delimiter)
-            else:
-                l = line.split()
+            l = line.split(sep=delimiter)
 
             if convertMNI:
                 l[1] = 45 - (float(l[1])/2)
@@ -324,23 +321,26 @@ class brainObj:
         '''
         
         # Controlling input
-        if thresholdType not in ["edgePC", "totalEdges", "tval", None]:
+        if thresholdType not in ["edgePC", "totalEdges", "tVal", None]:
             print("Error: Not a valid thresholdType")
             return
+        
+        #control var to order in the end
+        toOrder = False
 
         # Finding threshold value for each type
         if not(thresholdType):
             self.threshold = np.nanmin(self.adjMat)
-            print(('None thresholding', self.threshold))
         elif thresholdType == 'tVal':
-            print(('tVal case', value))
             self.threshold = value
         else: # 'edgePC' or 'totalEdges'
+            upperValues = np.triu_indices(np.shape(self.adjMat)[0], k= 1)
+            belowValues = np.tril_indices(np.shape(self.adjMat)[0], k= -1)
             if not self.directed:
                 # only flatten the upper right part of the matrix
-                weights = np.array(extraFns.undirectedFlatten(self.adjMat))
+                weights = np.array(self.adjMat[upperValues])
             else:
-                weights = np.array(self.adjMat.flatten())
+                weights = np.concatenate((self.adjMat[upperValues], self.adjMat[belowValues]))
             
             # remove NaNs
             weights = weights[~np.isnan(weights)]
@@ -353,12 +353,10 @@ class brainObj:
                 
             # percentage case
             if thresholdType == 'edgePC':
-                print('edgePC')
                 # get number of edges
                 edgeNum = int( (value/100.) * nEdges)   
             # number of edges case
             elif thresholdType == 'totalEdges':
-                print('num edges case')
                 edgeNum = int(value)
                 
             # get threshold value
@@ -370,19 +368,13 @@ class brainObj:
                 self.threshold = weights[-1]+0.5
             else:
                 # case where some edges are included
-                print(weights)
                 self.threshold = weights[-edgeNum]
-            
-            print(("edgeNum and threshold", edgeNum, self.threshold))
+                toOrder = True #down there this is used
 
             
         ##### carry out thresholding on adjacency matrix
         boolMat = self.adjMat>=self.threshold
-        try:
-            np.fill_diagonal(boolMat, 0)
-        except: # Compatibility for older versions where fill_diagonal doesn't exist
-            for x in range(len(boolMat[0,:])):
-                boolMat[x,x] = 0
+        np.fill_diagonal(boolMat, 0)
 
         es = np.where(boolMat) # lists of where edges should be                 
         
@@ -395,6 +387,15 @@ class brainObj:
             if not(self.directed) and es[0][ii]>=es[1][ii]: 
                 continue
             self.G.add_edge(es[0][ii],es[1][ii], weight = self.adjMat[es[0][ii],es[1][ii]])
+            
+        # Removing extra edges for repeated elements with the same threshold value
+        #   in the "edgePC" and "totalEdges" cases
+        if(toOrder):
+            orderedWeights = sorted(self.G.edges(data=True), key=lambda x: (x[2]['weight']))
+            orderedWeights = orderedWeights[:-edgeNum]
+            for e in orderedWeights:
+                self.G.remove_edge(e[0], e[1])
+            
 
     def reconstructAdjMat(self):
         ''' redefine the adjacency matrix from the edges and weights '''
@@ -1601,3 +1602,4 @@ class brainObj:
         return sn        
         
        
+
