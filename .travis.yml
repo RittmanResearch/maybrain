@@ -25,7 +25,6 @@ before_script:
   - sleep 3 # give xvfb some time to start
 script: 
  - python test/testBrainObj.py
- - coverage run test/testsBrainObj.py
 branches:
   only:
   - gh-pages
