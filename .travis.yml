@@ -18,13 +18,17 @@ install:
  - conda install -c conda-forge nibabel
  - conda install pyqt=4
  - python setup.py install
+ - conda install -c conda-forge codecov
 before_script:
   - "export DISPLAY=:99.0"
   - "sh -e /etc/init.d/xvfb start"
   - sleep 3 # give xvfb some time to start
 script: 
  - python test/testBrainObj.py
+ - coverage run test/testsBrainObj.py
 branches:
   only:
   - gh-pages
   - /.*/
+after_success:
+  - codecov
