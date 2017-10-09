@@ -11,8 +11,8 @@ import networkx as nx
 import numpy as np
 from networkx.algorithms import components
 import random
-from . import extraFns
-from . import highlightObj
+from maybrain import extraFns
+from maybrain import highlightObj
 
 
 class brainObj:

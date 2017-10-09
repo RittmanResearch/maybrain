@@ -26,7 +26,7 @@ before_script:
 script: 
  - python test/testBrainObj.py
  - coverage run maybrain/brainObj.py
- - coverage run maybrain extraFns.py
+ - coverage run maybrain/extraFns.py
 branches:
   only:
   - gh-pages
