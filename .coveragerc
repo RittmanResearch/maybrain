@@ -1,8 +1,5 @@
 [run]
 branch = True
-source = 
-    maybrain
-    /home/travis/miniconda/envs/test-environment/lib/python3.5/site-packages/maybrain/*
 timid=True
 
 [report]
