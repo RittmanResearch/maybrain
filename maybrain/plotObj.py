@@ -44,9 +44,9 @@ class plotObj():
         ''' initialise the Mayavi figure for plotting '''        
         
         # start the engine
-        from mayavi.api import Engine
-        self.engine = Engine()
-        self.engine.start()
+        #from mayavi.api import Engine
+        #self.engine = Engine()
+        #self.engine.start()
         
         if not bg:
             bg=(1., 1., 1.)
@@ -54,7 +54,7 @@ class plotObj():
         # create a Mayavi figure
         self.mfig = mlab.figure(bgcolor = bg,
                                 fgcolor = (0, 0, 0),
-                                engine = self.engine,
+                                #engine = self.engine,
                                 size=(1500, 1500))
         
         # holders for plot objects
