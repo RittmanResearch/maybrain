@@ -13,9 +13,9 @@ install:
  - conda info -a
  - conda create -q -n test-environment python=3.5
  - source activate test-environment
- - conda install -c menpo mayavi
- - conda install networkx
- - conda install -c conda-forge nibabel
+ - conda install -c menpo mayavi=4.5.0
+ - conda install networkx=1.11
+ - conda install -c conda-forge nibabel=2.1.0
  - conda install pyqt=4
  - python setup.py install
  - conda install -c conda-forge codecov
