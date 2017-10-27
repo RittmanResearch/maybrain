@@ -499,10 +499,10 @@ class brainObj:
         
     def binarise(self):
         '''
-            removes weighting from edges 
+        Removes weighting from edges by assigning a weight of 1 to the existing edges
         '''
-        for edge in self.G.edges():
-            self.G.edge[edge[0]][edge[1]]['weight'] = 1        
+        for edge in self.G.edges(data=True):
+            edge[2]['weight'] = 1        
 
     def removeUnconnectedNodes(self):
         '''

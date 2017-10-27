@@ -123,6 +123,13 @@ class TestBrainObj(unittest.TestCase):
         c.applyThreshold(thresholdType="tVal", value=0.5)
         self.assertTrue( all(e[2]['weight'] >= 0.5 for e in c.G.edges(data=True)))
         
+    
+    def test_binarise(self):
+        self.a.importAdjFile("test/data/3d_grid_adj2.txt", delimiter=",")
+        self.a.applyThreshold()
+        self.a.binarise()
+        self.assertTrue( all(e[2]['weight'] == 1 for e in self.a.G.edges(data=True)))
+        
 
 
 if __name__ == '__main__':
