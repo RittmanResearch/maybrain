@@ -307,8 +307,6 @@ class brainObj:
     
     ##### Functions to alter the brain
 
-    ### adjacency matrix and edge thresholding
-
     def applyThreshold(self, thresholdType = None, value = 0.):
         ''' 
         Treshold the adjacency matrix to determine which nodes are linked by edges.
@@ -323,7 +321,7 @@ class brainObj:
         # Controlling input
         if thresholdType not in ["edgePC", "totalEdges", "tVal", None]:
             print("Error: Not a valid thresholdType")
-            return
+            return -1
         
         #control var to order in the end
         toOrder = False
@@ -417,19 +415,34 @@ class brainObj:
 #            print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
             self.adjMat[edge[0], edge[1]] = np.nan
             self.adjMat[edge[1], edge[0]] = np.nan
-            
 
-    #!! added from master is this in the right place?? 
-    def localThresholding(self, totalEdges=None, edgePC=None, removeUnconnected=True):
+
+#TODO: Control Directed graphs input
+    def localThresholding(self, thresholdType=None, value=0., removeUnconnected=True):
         '''
-        Threshold the association matrix by building from the minimum spanning
-        tree and adding successive N-nearest neighbour degree graphs.        
+        Threshold the adjacency matrix by building from the minimum spanning tree and adding successive N-nearest neighbour degree graphs.
+        thresholdType : The type of threshold applied. Three options are available:
+            "edgePC" -> retain the most connected edges as a percentage of the total possible number of edges. "value" must be between 0 and 100
+            "totalEdges" -> retain the most strongly connected edges
+            None -> all possible edges are created
+        value : Value according to thresholdType
+        removeUnconnected : Whether you want unconnected nodes to be removed at the end
         '''
+        
+        # Controlling input
+        if thresholdType not in ["edgePC", "totalEdges", None]:
+            print("Error: Not a valid thresholdType")
+            return 
+        
+        
         self.applyThreshold()
         if removeUnconnected:
             self.removeUnconnectedNodes()
+        
         # get the number of edges to link
-        if not edgePC == None:  # needs to be written this way in case edgePC is 0
+        if not(thresholdType):
+            edgeNum = -1
+        elif thresholdType == 'edgePC':
             # find threshold as a percentage of total possible edges
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
             weights = self.adjMat.flatten()
@@ -439,20 +452,14 @@ class brainObj:
             nEdges = len(weights)
             
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
-            edgeNum = int(edgePC/100. * nEdges)
+            edgeNum = int(value/100. * nEdges)
                 
             # correct for diagonal if graph is undirected
             if not self.directed:
                 edgeNum -= len([self.adjMat[x,x] for x in range(len(self.adjMat[0,:])) if not np.isnan(self.adjMat[x,x])])
             print(edgeNum)
-
-            self.edgePC=edgePC
-            
-        elif totalEdges:
-            # allow a fixed number of edges
-            edgeNum = totalEdges
-        else:
-            edgeNum = -1
+        else: # 'totalEdges' option
+            edgeNum = value
 
         k=1 # number of degrees for NNG
     
@@ -496,6 +503,8 @@ class brainObj:
         #!! are you sure you want to redefine G here??
         self.G = T
         
+        if removeUnconnected:
+            self.removeUnconnectedNodes()
         
     def binarise(self):
         '''

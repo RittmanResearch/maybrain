@@ -130,6 +130,9 @@ class TestBrainObj(unittest.TestCase):
         self.a.binarise()
         self.assertTrue( all(e[2]['weight'] == 1 for e in self.a.G.edges(data=True)))
         
+    def test_localThreshold(self):
+        pass
+        
 
 
 if __name__ == '__main__':
