@@ -426,7 +426,7 @@ class brainObj:
             "totalEdges" -> retain the most strongly connected edges
             None -> all possible edges are created
         value : Value according to thresholdType
-        removeUnconnected : Whether you want unconnected nodes to be removed at the end
+        removeUnconnected : Whether you want unconnected nodes to be removed before the threshold is applied
         '''
         
         # Controlling input
@@ -502,9 +502,6 @@ class brainObj:
         
         #!! are you sure you want to redefine G here??
         self.G = T
-        
-        if removeUnconnected:
-            self.removeUnconnectedNodes()
         
     def binarise(self):
         '''
