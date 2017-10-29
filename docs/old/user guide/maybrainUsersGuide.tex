@@ -1,0 +1,263 @@
+% % % % Instruction book for Maybrain. First draft started by Martyn Rittman 6/5/2014. 
+% % Copyright by the authors under a Creative Commons cc-by v4 license
+\documentclass{report}
+
+\usepackage{hyperref}
+
+
+
+%\author{Timothy Rittman, Martyn Rittman}
+
+%\copyright{Creative commons CC-BY version 4}
+
+
+
+
+%\title{Maybrain Users Guide}
+
+\begin{document}
+%%%% Introduction
+
+%% Front matter
+
+% Acknowledgements
+
+% Preface, backround and motivation
+This guide has been written for Maybrain version 2, released in June 2014. For further information, or to contribute to the project, please contact the authors or see the Maybrain website at XXX.
+
+% How to use this book
+
+
+
+%% Start guide
+\chapter{Getting Started}
+
+% sources and installation
+\section{Installation}
+Maybrain is written in the Python programming language. To run Maybrain you will need a Python2.7 installtion and several other packages on which parts of the code depend. The following are required for analysis:
+
+\begin{itemize}
+\item Numpy 1.8.1 \url{http://www.numpy.org/}
+\item NetworkX 1.8.1, \url{http://networkx.github.io/}
+\end{itemize}
+
+\noindent The following is required for plotting functions:
+
+\begin{itemize}
+\item Mayavi2, as part of Enthought Tool Suite 4.4.2 \url{http://code.enthought.com/projects/mayavi/}
+\end{itemize}
+
+\noindent The following provides some extra functionality for input of certain data types:
+
+\begin{itemize}
+\item NiBabel 1.3.0, \url{http://nipy.org/nibabel/}
+\end{itemize}
+
+\noindent Software versions higher than those given may also work, updates will be given on the project website. If you are not familiar with Python it is recommended that you install a pre-packaged version that will include most of the above, for example pythonxy (\url{http://code.google.com/p/pythonxy/}) or Enthought Canopy (\url{https://www.enthought.com/downloads/}). Installation for each package can be found on the individual websites.
+
+\subsection{Installation of Maybrain}
+Source code can be downloaded from the project website, www.code.google.XXX. Place all the files in one subfolder either in the working folder of the script that calls maybrain or in the site-packages folder of your Python insatllation. The latter allows any script to call the package. If you only want to use the GUI, you can install in any folder and double-click the maybrainGUI.py file to execute.
+
+\subsection{Development}
+The authors are happy for developers to extend, customize, improve and debug our code. You can create a clone from the online project in the normal way using git. If you would like your changes to be incorporated into the master branch, please get in touch. We will create an innovative and meaningful hall of fame for anyone contributing a bug-fix and promise to buy you a beer (or acceptable non-alcoholic alternative) when we meet.
+
+
+
+% principles
+\section{Basic principles}
+The purpose of Maybrain is to allow easy visualisation of brain connectome and related data and perform various analyses. It is coded in Python, an open source and free programming language. We have attempted to create a pythonic, object oriented, user-friendly program. The code is built around two principal classes, brainObj and plotObj. The first contains all the information about the brain and numerous functions to change, measure and highlight those. At its heart is a networkx object, brainObj.G, via which all networkx functions are available. Some have also been incorporated directly into our code for convenience. 
+
+brainObj contains all the information about the brain and numerous functions to change, measure and highlight those. At its heart is a networkx object, brainObj.G, via which all networkx functions are available. Some have also been incorporated directly into our code for convenience. 
+
+The plotObj class is a wrapper to enable easy plotting using Mayavi2. It can plot several brain objects and subsets of them (highlights) simultaneously and change basic plot properties. Other Mayavi commands can be acessed via maybrain.XXX. Plots are shown in the mayavi GUI for easy access to a whole range of other mayavi functions.
+
+% how to input data
+\section{Data Input}
+Several types of data can be input. The basic connectome is made up of two files: a coordinate file and an adjacency matrix. In fact only the second of these is strictly required. % Check that is really the case in the code!!
+
+\begin{description}
+\item[{The coordinate file}] defines the position of each node. It is a text file where each line has four entries: the node index, x, y and z coordinates. e.g.
+
+\begin{verbatim}
+1   0.0   3.1   4.4
+2   5.3   7.6   8.4
+3   3.2   4.4   3.1
+\end{verbatim}
+
+\item[{The adjacency matrix}] defines the strength of connection between each pair of nodes. For $n$ nodes it is an $n \times n$ text matrix. Nodes in maybrain are labelled 1,2,... and the order of the rows and columns in the adjacency matrix is assumed to correspond to this. Entering an adjacency matrix with the wrong dimensions will lead to certain doom. % err, not sure!
+\end{description}
+    
+To load these basic files a few shortcut recipes are available. They will load the files and possibly perform a couple of other functions:
+
+\begin{description}
+\item[\texttt{loadFiles(adjname, coordname)}] Loads the adjacency and coordinate files given in the arguments.
+
+\item[\texttt{loadAndThreshold(adjname, coordname, threshold)}] Loads the given adjacency and coordinate files and applies the (absolute) threshold given.
+
+\item[\texttt{loadAndPlot(adjname, coordname, threshold, opacity = 1.0)}] Loads the files, applies the given (absolute) threshold and plot the connectome with the option to add an opacity value.
+\end{description}
+
+Other data that can be input include the following: 
+
+backgrounds
+
+isosurface
+
+\subsection{Properties and highlights}
+Frequently you may wish to add additional data to a brain network or highlight a sub-network. Maybrain provides a facility for these. You can add properties to nodes or edges from a text file. The format should be as follows:
+
+\begin{verbatim}
+colour
+1 red
+3 blue
+5 red
+6 blue
+1 5 red
+2 4 green
+\end{verbatim}
+
+\noindent Note that the first line contains the property name. Subsequent lines refer to edges if they contain 3 terms and nodes if they contain 2. The above will give node 1 the property `colour' with value `red' and the edge connecting nodes 1 and 5 (only if it exists CHECK) the same property and value. The properties are stored in the networkx objects. An example of the code needed to apply the properties is:
+
+\begin{verbatim}
+brain.importProperties(propertyFilename)
+\end{verbatim}
+
+Properties can be filtered using highlights. A highlight is simply a list of nodes or edges. They can be generated, for example, as follows:
+
+\begin{verbatim}
+highlightFromConds('colour', 'eq', 'red', mode = 'node', colour = (1.,0.,0.))
+\end{verbatim}
+
+\noindent Here, the term is property name, the second is the relation between the property and value and the third is the value (or range of values) the highlight will cover. The relations can be one of the following, the first few of which are based on the equivalent \LaTeX  markup:
+
+\begin{description}
+\item[`eq'] equal to, value is a single number/string.
+\item[`gt'] greater than, value is a single number
+\item[`lt'] less than, value is a single number
+\item[`leq'] less than or equal to, value is a single number
+\item[`geq'] greater than or equal to, value is a single number
+\item[`in()'] in the exclusive interval, value is two numbers
+\item[`in\lbrack\rbrack'] in the inclusive interval, value is two numbers. Note that in this case the end-points are considered part of the interval, unlike the previous case. You can also mix brackets, so '(]' '[)' are also acceptable.
+\item['contains'] the property of the node contains the given string, applies to strings only.
+\end{description} 
+
+
+%% Ways to change the brain
+
+\section{Changing the Network}
+Once the data have been input, you can modify things in a number of ways, outlined in this section.
+
+\subsection{Rethresholding the adjacency matrix}
+
+\noindent \texttt{applyThreshold(edgePC = None, totalEdges = None, tVal = -1.1)}
+
+\vspace{12pt}
+
+Use this to apply a new threshold to the edge weights that are defined as linked. The options are: only take weights above a certain value (define \texttt{tVal}), have a percentage of connectivity (define \texttt{edgePC}) or give a number of edges that should be connected (define \texttt{totalEdges}). 
+
+\subsection{Modifying a single data point}
+
+Do this by accessing the node properties via the NetworkX graph (\texttt{brainObj.G}) and modifying the desired property. See the NetworkX documentation for how to do this.
+
+\subsection{Degenerate}
+
+\noindent \texttt{degenerate(weightloss=0.1, edgesRemovedLimit=1, threshLimit=None,
+                   pcLimit=None, weightLossLimit=None, toxicNodes=None,
+                   riskEdges=None, spread=False, updateAdjmat=True,
+                   distances=False, spatialSearch=False)}
+
+\vspace{12pt}
+
+Simulation of a degenerating brain. Edges are randomly removed from connections of a set of nodes denoted \texttt{toxicNodes}, or from a set of edges denoted \texttt{riskEdges}. This occurs either until a set number of edges (\texttt{edgesRemovedLimit}) is reached or until the weight loss limit has been reached (for a weighted graph). The limit can also be determined by a given weight threshold (\texttt{threshLimit}) or percentage connectivity (\texttt{pclimit}).  For a binary graph, weight loss should left at the default value of 1.
+\begin{itemize}      
+\item The spread option recruits connected nodes of degenerating edges to the toxic nodes list.
+\item By default this function will enact a random attack model, with a weight loss of 0.1 each iteration.
+\item  Weights are taken as absolute values, so the weight in any affected edge is  set to 0.    
+\item Spread can either be False, or a number specifying the weight above which to add
+        nodes to the list of at-risk nodes.
+\item The \texttt{distances} option records the edge length of edges lost.
+\item The adjacency matrix can optionally be updated to record lost edges by setting \texttt{updateAdjmat} to be True (the default option).
+\end{itemize}
+
+\subsection{Contiguous spread degeneration}
+
+\noindent \texttt{contiguousspread(edgeloss, startNodes = None)} 
+
+\vspace{12pt}
+
+Degenerate nodes in a continuous fashion. The starting node is chosen at random, or from a set \texttt{startnodes}. The maximum number of nodes lost is \texttt{edgeloss}. It returns a list of the nodes degenerated and a list containing the degenerated nodes at each step, e.g.
+
+\begin{verbatim}
+a, b = brain.contiguoussppread(5)
+print(a)
+    [5,3,7,6,2]
+print(b)
+    [[5],[5,3],[5,3,7],[5,3,7,6],[5,3,7,6,2]]
+\end{verbatim}
+
+\subsection{NNG}
+\texttt{NNG} text ???
+
+%% Metrics
+\section{Metrics}
+Access is provided to a bewildering number of metrics via links to the brain connectivity toolbox (WEBLINK) and XXX. Some measures are also natively included.
+
+
+\subsection{The Brain Connectivity Toolbox}
+How?
+
+\texttt{makebctmat}
+
+\texttt{assignbctmatResult}
+
+
+\subsection{Minimum spanning edges/tree}
+\texttt{minimum\_spanning\_edges(weight=`weight')}
+
+\texttt{minimum\_spanning\_tree(}
+
+\vspace{12pt}
+
+This code (like the following description) is based on that written by David Eppstein 2006 (\url{http://www.ics.uci.edu/~eppstein/PADS/}). It generates edges in a minimum spanning forest of an undirected weighted graph. A minimum spanning tree is a subgraph of the graph (a tree) with the minimum sum of edge weights.  A spanning forest is a union of the spanning trees for each connected component of the graph.
+    
+The input parameter is:
+        \begin{itemize}
+\item       weight : a string, the edge data key to use for weight.
+\end{itemize}
+        The edges version returns
+\begin{itemize}
+\item  edges : an iterator type object, a generator that produces edges in the minimum spanning tree.
+The edges are triples (u,v,w) where w is the weight.
+\end{itemize}        
+
+The tree incarnation returns:
+
+\begin{itemize}
+\item G : A NetworkX Graph, a minimum spanning tree or forest. 
+\end{itemize}
+
+        The code uses Kruskal's algorithm.
+    
+        If the graph edges do not have a weight attribute, a default weight of 1
+        will be used.
+
+\subsection{Other ways to modify (explanations coming soon...)}
+
+\texttt{hubidentifier}
+
+\texttt{pseudohubIdentifier}
+
+\texttt{modularity}
+
+\texttt{robustness}
+
+
+\section{Graphical user interface}
+A limited funtionality is available via the GUI. This can be a good way to dive in and test out the program. The GUI can log commands that can be used in a Python script, see the logging tab once the GUI is running.
+
+To run the GUI, click on the maybrainGUI.py file. The opening view is for inputting data.
+
+%% annotated figure
+
+
+\end{document}

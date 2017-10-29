@@ -1,7 +1,7 @@
 # Maybrain
 
 
-[![Python v3.5](https://img.shields.io/badge/python-v3.5-blue.svg)]() [![Build Status](https://travis-ci.org/RittmanResearch/maybrain.svg?branch=master)](https://travis-ci.org/RittmanResearch/maybrain) [![codecov](https://codecov.io/gh/RittmanResearch/maybrain/branch/master/graph/badge.svg)](https://codecov.io/gh/RittmanResearch/maybrain) [![Release](https://img.shields.io/github/release/rittman/maybrain/all.svg)](https://github.com/rittman/maybrain/releases) [![License CC-BY-4.0](https://img.shields.io/badge/license-CC--BY--4.0-lightgrey.svg)](https://github.com/rittman/maybrain/blob/master/LICENSE)
+[![Python v3.5](https://img.shields.io/badge/python-v3.5-blue.svg)]() [![Build Status](https://travis-ci.org/RittmanResearch/maybrain.svg?branch=master)](https://travis-ci.org/RittmanResearch/maybrain) [![codecov](https://codecov.io/gh/RittmanResearch/maybrain/branch/master/graph/badge.svg)](https://codecov.io/gh/RittmanResearch/maybrain) [![Release](https://img.shields.io/github/release/RittmanResearch/maybrain/all.svg)](https://github.com/RittmanResearch/maybrain/releases) [![License Apache-2.0](https://img.shields.io/github/license/RittmanResearch/maybrain.svg)](https://github.com/rittman/maybrain/blob/master/LICENSE)
 
 
 Maybrain is a module written in Python for visualising brain connectivity data. Its purpose is to allow easy visualisation of brain connectome and related data, and perform various analyses. 
@@ -57,6 +57,3 @@ The authors are happy for developers to extend, customise, improve or simply to 
 
 Maybrain was originally written by Timothy Rittman and Martyn Rittman, but with substantial improvements and updates from Tiago Azevedo.
 
-## License
-
-<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.

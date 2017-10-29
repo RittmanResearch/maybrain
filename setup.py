@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
     name='Maybrain', 
-    version='0.3.0',
+    version='0.4.0',
     author='Martyn Rittman and Timothy Rittman',
     author_email='mrittman@physics.org',
     packages=['maybrain', 'maybrain.gui'],
