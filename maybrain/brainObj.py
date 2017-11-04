@@ -308,6 +308,7 @@ class brainObj:
     def applyThreshold(self, thresholdType = None, value = 0.):
         ''' 
         Treshold the adjacency matrix to determine which nodes are linked by edges.
+        
         thresholdType : The type of threshold applied. Four options are available:
             "edgePC" -> retain the most connected edges as a percentage of the total possible number of edges. "value" must be between 0 and 100
             "totalEdges" -> retain the most strongly connected edges
@@ -319,6 +320,9 @@ class brainObj:
         # Controlling input
         if thresholdType not in ["edgePC", "totalEdges", "tVal", None]:
             print("Error: Not a valid thresholdType")
+            return -1
+        if thresholdType == "edgePC" and (value < 0 or value > 100):
+            print("Error: Invalid value for edgePC")
             return -1
         
         #control var to order in the end
@@ -414,21 +418,17 @@ class brainObj:
             self.adjMat[edge[0], edge[1]] = np.nan
             self.adjMat[edge[1], edge[0]] = np.nan
 
-
-#TODO: test whether properties(?) are maintaining after thresholds
-#TODO: save the last threshold so when applying the local one and we have an error, it comes back to the last state
-    def localThresholding(self, thresholdType=None, value=0., removeUnconnected=True):
+    def localThresholding(self, thresholdType=None, value=0.):
         '''
         Threshold the adjacency matrix by building from the minimum spanning tree (MST) and adding successive N-nearest neighbour degree graphs.
-        Thus, if you want to have a local thresholding of N edges when the MST has more than N edges, thresholding is not possible
+        Thus, if you want to have a local thresholding of N edges when the MST has more than N edges, thresholding will retain the MST
         It only works for undirected graphs
         
         thresholdType : The type of threshold applied. Three options are available:
             "edgePC" -> retain the most connected edges as a percentage of the total possible number of edges. "value" must be between 0 and 100
             "totalEdges" -> retain the most strongly connected edges
-            None -> all possible edges are created
+            None -> retain the minimum spanning tree
         value : Value according to thresholdType
-        removeUnconnected : Whether you want unconnected nodes to be removed before the threshold is applied
         '''
         
         # Controlling input
@@ -437,6 +437,9 @@ class brainObj:
             return -1
         if self.directed:
             print("Error: Not available for directed graphs")
+            return -1
+        if thresholdType == "edgePC" and (value < 0 or value > 100):
+            print("Error: Invalid value for edgePC")
             return -1
         
         
@@ -447,10 +450,12 @@ class brainObj:
             print("Adjacency Matrix is not connected. Impossible to create a minimum spanning tree")
             return -1
             
+        # create minimum spanning tree
+        T = nx.minimum_spanning_tree(self.G)
         
-        # get the number of edges to link
         if not(thresholdType):
-            edgeNum = -1
+            self.G = T
+            return #Nothing else to do, just return
         elif thresholdType == 'edgePC':
             # find threshold as a percentage of total possible edges
             # note this works for undirected graphs because it is applied to the whole adjacency matrix
@@ -466,30 +471,28 @@ class brainObj:
             # correct for diagonal if graph is undirected
             if not self.directed:
                 edgeNum -= len([self.adjMat[x,x] for x in range(len(self.adjMat[0,:])) if not np.isnan(self.adjMat[x,x])])
-            print(edgeNum)
         else: # 'totalEdges' option
             edgeNum = value
 
-        k=1 # number of degrees for NNG
-    
-        # create minimum spanning tree
-        T = nx.minimum_spanning_tree(self.G)
+        
         lenEdges = len(T.edges())
         if lenEdges > edgeNum:
-            print("The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges.")
-        
-        while lenEdges<edgeNum:
-            print("NNG degree: "+str(k))
+            print("The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges.",
+                  "Local Threshold will be applied by just retaining the Minimum Spanning Tree")
+            self.localThresholding()
+            return
+ 
+        k=1 # number of degrees for NNG
+        while lenEdges < edgeNum:
             # create nearest neighbour graph
-            nng = self.NNG(k)
-            
-            # failsafe in case there are no more edges to add
-            if len(nng.edges())==0:
-                print("There are no edges in the nearest neighbour graph - check you have set the delimiter appropriately")
-                break
+            nng = self.__NNG(k)
             
             # remove edges from the NNG that exist already in the new graph/MST
             nng.remove_edges_from(T.edges())
+            
+            # Ending condition. No more edges to add so break the cycle
+            if len(nng.edges())==0:
+                break
             
             # add weights to NNG
             for e in nng.edges():
@@ -935,8 +938,8 @@ class brainObj:
     
     ##### Analysis functions
 
-    def NNG(self, k):
-        ''' TODO: doc'''
+    def __NNG(self, k):
+        ''' Private method to help local thresholding by creating a k-nearest neighbour graph'''
         G = nx.Graph()
         nodes = list(range(len(self.adjMat[0])))
         
