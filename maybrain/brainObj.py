@@ -58,6 +58,8 @@ class brainObj:
         self.highlights = {} # highlights items consist of a list contating a name, a highlight object and a colour
         
         self.riskEdges = None
+        
+        self.WEIGHT = 'weight' #Weight property in edges
 
         # create a new networkX graph object
         if self.directed:
@@ -391,7 +393,7 @@ class brainObj:
         # Removing extra edges for repeated elements with the same threshold value
         #   in the "edgePC" and "totalEdges" cases
         if(toOrder):
-            orderedWeights = sorted(self.G.edges(data=True), key=lambda x: (x[2]['weight']))
+            orderedWeights = sorted(self.G.edges(data=True), key=lambda x: (x[2][self.WEIGHT]))
             orderedWeights = orderedWeights[:-edgeNum]
             for e in orderedWeights:
                 self.G.remove_edge(e[0], e[1])
@@ -410,7 +412,7 @@ class brainObj:
         ''' update the adjacency matrix for a single edge '''
         
         try:
-            w = self.G.edge[edge[0]][edge[1]]['weight']
+            w = self.G.edge[edge[0]][edge[1]][self.WEIGHT]
             self.adjMat[edge[0], edge[1]] = w
             self.adjMat[edge[1], edge[0]] = w
         except:
@@ -496,10 +498,10 @@ class brainObj:
             
             # add weights to NNG
             for e in nng.edges():
-                nng.edge[e[0]][e[1]]['weight'] = self.adjMat[e[0],e[1]]
+                nng.edge[e[0]][e[1]][self.WEIGHT] = self.adjMat[e[0],e[1]]
             
             # get a list of edges from the NNG in order of weight
-            edgeList = sorted(nng.edges(data=True), key=lambda t: t[2]['weight'], reverse=True)
+            edgeList = sorted(nng.edges(data=True), key=lambda t: t[2][self.WEIGHT], reverse=True)
             
             # add edges to graph in order of connectivity strength
             for edge in edgeList:
@@ -517,7 +519,7 @@ class brainObj:
         Removes weighting from edges by assigning a weight of 1 to the existing edges
         '''
         for edge in self.G.edges(data=True):
-            edge[2]['weight'] = 1        
+            edge[2][self.WEIGHT] = 1        
 
     def removeUnconnectedNodes(self):
         '''
@@ -743,7 +745,7 @@ class brainObj:
                 nodeList = self.G.nodes()
             
             # generate list of at risk edges
-            self.riskEdges = [v for v in nx.edges(self.G, nodeList) if self.G.edge[v[0]][v[1]]['weight'] != 0.]
+            self.riskEdges = [v for v in nx.edges(self.G, nodeList) if self.G.edge[v[0]][v[1]][self.WEIGHT] != 0.]
         else:
             reDefineEdges=False
             
@@ -751,7 +753,7 @@ class brainObj:
             nodeList = []
         
         # check if there are enough weights left
-        riskEdgeWtSum = np.sum([self.G.edge[v[0]][v[1]]['weight'] for v in self.riskEdges])
+        riskEdgeWtSum = np.sum([self.G.edge[v[0]][v[1]][self.WEIGHT] for v in self.riskEdges])
         if limit > riskEdgeWtSum:
             print("Not enough weight left to remove")
             return nodeList
@@ -773,7 +775,7 @@ class brainObj:
             dyingEdge = random.choice(self.riskEdges)            
                         
             # remove specified weight from edge
-            w = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
+            w = self.G[dyingEdge[0]][dyingEdge[1]][self.WEIGHT]
             
             if np.absolute(w) < weightloss:
                 loss = np.absolute(w)
@@ -784,11 +786,11 @@ class brainObj:
             
             elif w>0:
                 loss = weightloss
-                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] -= weightloss
+                self.G[dyingEdge[0]][dyingEdge[1]][self.WEIGHT] -= weightloss
                 
             else:
                 loss = weightloss
-                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] += weightloss
+                self.G[dyingEdge[0]][dyingEdge[1]][self.WEIGHT] += weightloss
             
             # record the edge length of edges lost
             if distances:
@@ -1104,7 +1106,7 @@ class brainObj:
     def weightToDistance(self):
         #!! docstring added
         ''' convert weights to a positive distance '''
-        edgeList = [self.G.edge[v[0]][v[1]]['weight'] for v in self.G.edges() ]
+        edgeList = [self.G.edge[v[0]][v[1]][self.WEIGHT] for v in self.G.edges() ]
         
         # get the maximum edge value, plus any negative correction required
         # and a small correction to keep the values above zero
@@ -1113,7 +1115,7 @@ class brainObj:
         eMax = np.max(edgeList) + 1/float(len(self.G.nodes()))
         
         for edge in self.G.edges():
-                self.G.edge[edge[0]][edge[1]]["distance"] = eMax - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
+                self.G.edge[edge[0]][edge[1]]["distance"] = eMax - self.G.edge[edge[0]][edge[1]][self.WEIGHT] # convert weights to a positive distance
                 
     def copyHemisphere(self, hSphere="R", midline=44.5):
         """
@@ -1357,7 +1359,7 @@ class brainObj:
         for nn,x in enumerate(self.G.nodes()):
             for y in list(self.G.edge[x].keys()):
                 try:
-                    self.bctmat[nn,nodeIndices[y]] = self.G.edge[x][y]['weight']
+                    self.bctmat[nn,nodeIndices[y]] = self.G.edge[x][y][self.WEIGHT]
                 except:
                     pass
         
