@@ -487,7 +487,7 @@ class brainObj:
         k=1 # number of degrees for NNG
         while lenEdges < edgeNum:
             # create nearest neighbour graph
-            nng = self.__NNG(k)
+            nng = self._NNG(k)
             
             # remove edges from the NNG that exist already in the new graph/MST
             nng.remove_edges_from(T.edges())
@@ -940,7 +940,7 @@ class brainObj:
     
     ##### Analysis functions
 
-    def __NNG(self, k):
+    def _NNG(self, k):
         ''' Private method to help local thresholding by creating a k-nearest neighbour graph'''
         G = nx.Graph()
         nodes = list(range(len(self.adjMat[0])))
