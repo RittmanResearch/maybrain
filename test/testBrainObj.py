@@ -51,7 +51,7 @@ class TestBrainObj(unittest.TestCase):
     def test_importSpatialInfo(self):
         self.assertEqual(self.a.importSpatialInfo("sdfasdf"), -1)
         self.a.importAdjFile(self.SMALL_FILE)
-        self.a.importSpatialInfo("test/data/3d_grid_coords.txt")
+        self.a.importSpatialInfo(self.COORD_FILE)
        
         attrs = mbt.nx.get_node_attributes(self.a.G, "xyz")
         self.assertEqual(self.a.G.number_of_nodes(), 4)
@@ -159,19 +159,16 @@ class TestBrainObj(unittest.TestCase):
         self.assertTrue(nx.is_connected(self.a.G))
         
         ### edgePC
+        self.a.applyThreshold()
+        allEdges = self.a.G.number_of_edges()        
+        
         self.a.localThresholding(thresholdType="edgePC", value = 100)
+        self.assertEqual(self.a.G.number_of_edges(), allEdges)
         self.assertTrue(nx.is_connected(self.a.G))
-        #allEdges = self.a.G.number_of_edges()
         
-        #self.a.applyThreshold()
-        #allEdges = self.a.G.number_of_edges()
-        #self.a.localThresholding(thresholdType="edgePC", value = 100)
-        #self.assertEqual(self.a.G.number_of_edges(), allEdges)
-        
-        #self.a.localThresholding(thresholdType="edgePC", value = 20)
-        #self.assertEqual(self.a.G.number_of_edges(), 0.2*allEdges)
-        #self.assertTrue(nx.is_connected(self.a.G))
-        
+        self.a.localThresholding(thresholdType="edgePC", value = 20)
+        self.assertEqual(self.a.G.number_of_edges(), int(0.2*allEdges))
+        self.assertTrue(nx.is_connected(self.a.G))
 
 
 if __name__ == '__main__':

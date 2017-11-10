@@ -4,7 +4,7 @@ Created on Fri Mar 16 18:10:07 2012
 
 @authors: Timothy Rittman, Martyn Rittman
 
-Documentation available at https://github.com/rittman/maybrain
+Documentation available at https://github.com/RittmanResearch/maybrain
 
 """
 import networkx as nx
@@ -17,14 +17,12 @@ from maybrain import highlightObj
 
 class brainObj:
     """
-    A class that defines a brain network created from an adjacency matrix and spatial inforamtion 
+    A class that defines a brain network created from an adjacency matrix and spatial information 
     with certain properties. The added extras are:
-        - a list of hub nodes
         - spatial xyz information for each nodes (if input files available)
         - actual length information for each edge
         - layout for plotting
-        - counter for iterations of any subsequent process
-        
+        - counter for iterations of any subsequent process       
     """
     
     def __init__(self, directed=False):
@@ -40,8 +38,6 @@ class brainObj:
         self.adjMat = None # adjacency matrix, containing weighting of edges. Should be square.
      
         # TODO: need to define the following, what do they do???
-        self.bigconnG = None
-
         self.dyingEdges = {}
         
         # background info imported by nibabel
@@ -454,25 +450,20 @@ class brainObj:
             
         # create minimum spanning tree
         T = nx.minimum_spanning_tree(self.G)
-        
+
         if not(thresholdType):
             self.G = T
             return #Nothing else to do, just return
         elif thresholdType == 'edgePC':
             # find threshold as a percentage of total possible edges
-            # note this works for undirected graphs because it is applied to the whole adjacency matrix
-            weights = self.adjMat.flatten()
-            weights.sort()
-            while (str(weights[-1]) == 'nan'):
-                weights = weights[:-1]
-            nEdges = len(weights)
+            upperValues = np.triu_indices(np.shape(self.adjMat)[0], k= 1)
+            # only flatten the upper right part of the matrix
+            weights = np.array(self.adjMat[upperValues])
             
-            # note this works for undirected graphs because it is applied to the whole adjacency matrix
-            edgeNum = int(value/100. * nEdges)
-                
-            # correct for diagonal if graph is undirected
-            if not self.directed:
-                edgeNum -= len([self.adjMat[x,x] for x in range(len(self.adjMat[0,:])) if not np.isnan(self.adjMat[x,x])])
+            # remove NaNs
+            weights = weights[~np.isnan(weights)]
+            # calculate percentage
+            edgeNum = int(value/100. * len(weights))
         else: # 'totalEdges' option
             edgeNum = value
 
@@ -683,8 +674,6 @@ class brainObj:
         
         return label     
 
-
-    ### edge removal/degeneration
             
     def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, threshLimit=None,
                    pcLimit=None, weightLossLimit=None, nodeList=[],
@@ -821,9 +810,7 @@ class brainObj:
         
         return nodeList
 
-    #!! degenerateNew function removed
-
-    def contiguousspread(self, edgeloss, startNodes = None):
+    def contiguousSpread(self, edgeloss, startNodes = None):
         ''' degenerate nodes in a continuous fashion. Doesn't currently include spreadratio '''
 
         # make sure nodes have the linkedNodes attribute
@@ -908,33 +895,7 @@ class brainObj:
         self.reconstructAdjMat()
             
         return toxicNodes, toxicNodeRecord              
-            
-    #!! neuronsusceptibility removed            
-
-
-    #!! added from master branch. Which other function uses this one? Can it be removed (randomly, or otherwise?)            
-    def randomremove(self,edgeloss):
-        if not self.iter:
-            self.iter=0
-        try:
-            edges_to_remove = random.sample(self.G.edges(), edgeloss)
-            self.G.remove_edges_from(edges_to_remove)
-            
-        except ValueError:
-            print("No further edges left")
-            
-        self.iter += 1  
-
-    ### other modifying functions
-
-    #!! added direct from master branch        
-    def randomiseGraph(self, largestconnectedcomp = False):
-        self.G = nx.gnm_random_graph(len(self.G.nodes()), len(self.G.edges()))
-        if largestconnectedcomp:
-            self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
-
-
-        
+    
    
     # =============================================================
     
@@ -1102,9 +1063,7 @@ class brainObj:
                 self.G.node[l[1]]['linkedNodes'] = [l[0]]     
 
                 
-    #!! new function from master
     def weightToDistance(self):
-        #!! docstring added
         ''' convert weights to a positive distance '''
         edgeList = [self.G.edge[v[0]][v[1]][self.WEIGHT] for v in self.G.edges() ]
         
@@ -1288,23 +1247,28 @@ class brainObj:
         if hierarchy:
             return(Ci, Q)            
             
-    #!! clusters function removed
             
     def thresholdToPercentage(self, threshold):
         '''
-        Functional to convert a threshold to a percentage connectivity.
+        It returns a ratio between the edges on adjMat above a certain threshold value \
+        and the total possible edges of adjMat
         
-        As this is returns a ratio between nodes and edges, it doesn't matter
-        whether the graph is directed (ie an asymmetric association matrix)
+        threshold : The threshold value
         '''
-        lenNodes = float(len(self.G.nodes()))
-        maxEdges = float(lenNodes) * (lenNodes-1)
+        upperValues = np.triu_indices(np.shape(self.adjMat)[0], k= 1)
+        belowValues = np.tril_indices(np.shape(self.adjMat)[0], k= -1)
+        if not self.directed:
+            # only flatten the upper right part of the matrix
+            weights = np.array(self.adjMat[upperValues])
+        else:
+            weights = np.concatenate((self.adjMat[upperValues], self.adjMat[belowValues]))
+        # remove NaNs
+        weights = weights[~np.isnan(weights)]
         
-        lenEdges = len(self.adjMat.flatten()[self.adjMat.flatten()>threshold])
-
-        pc = lenEdges / maxEdges
-        return(pc)
-
+        maxEdges = len(weights)
+        lenEdges = len(weights[weights>threshold])
+        
+        return lenEdges / maxEdges
         
     def percentConnected(self):
         '''
@@ -1315,15 +1279,11 @@ class brainObj:
             totalConnections = len(self.G.nodes()*(len(self.G.nodes())-1))
         else:
             totalConnections = len(self.G.nodes()*(len(self.G.nodes())-1)) / 2
-        self.percentConnections = float(len(self.G.edges()))/float(totalConnections)
+        percentConnections = float(len(self.G.edges()))/float(totalConnections)
         
-        return self.percentConnections
+        return percentConnections
         
-        
-    def largestConnComp(self):
-        self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
-
-                
+         
     def checkrobustness(self, conVal, step):
         ''' Robustness is a measure that starts with a fully connected graph, \
         then reduces the threshold incrementally until the graph breaks up in \
