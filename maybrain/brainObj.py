@@ -4,7 +4,7 @@ Created on Fri Mar 16 18:10:07 2012
 
 @authors: Timothy Rittman, Martyn Rittman
 
-Documentation available at https://github.com/rittman/maybrain
+Documentation available at https://github.com/RittmanResearch/maybrain
 
 """
 import networkx as nx
@@ -17,14 +17,12 @@ from maybrain import highlightObj
 
 class brainObj:
     """
-    A class that defines a brain network created from an adjacency matrix and spatial inforamtion 
+    A class that defines a brain network created from an adjacency matrix and spatial information 
     with certain properties. The added extras are:
-        - a list of hub nodes
         - spatial xyz information for each nodes (if input files available)
         - actual length information for each edge
         - layout for plotting
-        - counter for iterations of any subsequent process
-        
+        - counter for iterations of any subsequent process       
     """
     
     def __init__(self, directed=False):
@@ -40,11 +38,7 @@ class brainObj:
         self.adjMat = None # adjacency matrix, containing weighting of edges. Should be square.
      
         # TODO: need to define the following, what do they do???
-        self.hubs = []
-        self.bigconnG = None
-
         self.dyingEdges = {}
-        self.nodesRemoved = None
         
         # background info imported by nibabel
         self.nbbackground = None # the nibabel object
@@ -60,6 +54,8 @@ class brainObj:
         self.highlights = {} # highlights items consist of a list contating a name, a highlight object and a colour
         
         self.riskEdges = None
+        
+        self.WEIGHT = 'weight' #Weight property in edges
 
         # create a new networkX graph object
         if self.directed:
@@ -139,7 +135,7 @@ class brainObj:
 
             nodeCount+=1
                         
-    #!! in merge import Properties taken from dev2
+#TODO: When applying threshold, apply properties again.
     def importProperties(self, filename):
         ''' add properties from a file. first lines should contain the property 
             name and the following lines tabulated node indices and property value e.g.:
@@ -310,6 +306,7 @@ class brainObj:
     def applyThreshold(self, thresholdType = None, value = 0.):
         ''' 
         Treshold the adjacency matrix to determine which nodes are linked by edges.
+        
         thresholdType : The type of threshold applied. Four options are available:
             "edgePC" -> retain the most connected edges as a percentage of the total possible number of edges. "value" must be between 0 and 100
             "totalEdges" -> retain the most strongly connected edges
@@ -321,6 +318,9 @@ class brainObj:
         # Controlling input
         if thresholdType not in ["edgePC", "totalEdges", "tVal", None]:
             print("Error: Not a valid thresholdType")
+            return -1
+        if thresholdType == "edgePC" and (value < 0 or value > 100):
+            print("Error: Invalid value for edgePC")
             return -1
         
         #control var to order in the end
@@ -389,7 +389,7 @@ class brainObj:
         # Removing extra edges for repeated elements with the same threshold value
         #   in the "edgePC" and "totalEdges" cases
         if(toOrder):
-            orderedWeights = sorted(self.G.edges(data=True), key=lambda x: (x[2]['weight']))
+            orderedWeights = sorted(self.G.edges(data=True), key=lambda x: (x[2][self.WEIGHT]))
             orderedWeights = orderedWeights[:-edgeNum]
             for e in orderedWeights:
                 self.G.remove_edge(e[0], e[1])
@@ -408,7 +408,7 @@ class brainObj:
         ''' update the adjacency matrix for a single edge '''
         
         try:
-            w = self.G.edge[edge[0]][edge[1]]['weight']
+            w = self.G.edge[edge[0]][edge[1]][self.WEIGHT]
             self.adjMat[edge[0], edge[1]] = w
             self.adjMat[edge[1], edge[0]] = w
         except:
@@ -416,80 +416,83 @@ class brainObj:
             self.adjMat[edge[0], edge[1]] = np.nan
             self.adjMat[edge[1], edge[0]] = np.nan
 
-
-#TODO: Control Directed graphs input
-    def localThresholding(self, thresholdType=None, value=0., removeUnconnected=True):
+    def localThresholding(self, thresholdType=None, value=0.):
         '''
-        Threshold the adjacency matrix by building from the minimum spanning tree and adding successive N-nearest neighbour degree graphs.
+        Threshold the adjacency matrix by building from the minimum spanning tree (MST) and adding successive N-nearest neighbour degree graphs.
+        Thus, if you want to have a local thresholding of N edges when the MST has more than N edges, thresholding will retain the MST
+        It only works for undirected graphs
+        
         thresholdType : The type of threshold applied. Three options are available:
             "edgePC" -> retain the most connected edges as a percentage of the total possible number of edges. "value" must be between 0 and 100
             "totalEdges" -> retain the most strongly connected edges
-            None -> all possible edges are created
+            None -> retain the minimum spanning tree
         value : Value according to thresholdType
-        removeUnconnected : Whether you want unconnected nodes to be removed before the threshold is applied
         '''
         
         # Controlling input
         if thresholdType not in ["edgePC", "totalEdges", None]:
             print("Error: Not a valid thresholdType")
-            return 
+            return -1
+        if self.directed:
+            print("Error: Not available for directed graphs")
+            return -1
+        if thresholdType == "edgePC" and (value < 0 or value > 100):
+            print("Error: Invalid value for edgePC")
+            return -1
         
         
+        # Putting all the edges in the G object for local thresholding
         self.applyThreshold()
-        if removeUnconnected:
-            self.removeUnconnectedNodes()
         
-        # get the number of edges to link
+        if not nx.is_connected(self.G):
+            print("Adjacency Matrix is not connected. Impossible to create a minimum spanning tree")
+            return -1
+            
+        # create minimum spanning tree
+        T = nx.minimum_spanning_tree(self.G)
+
         if not(thresholdType):
-            edgeNum = -1
+            self.G = T
+            return #Nothing else to do, just return
         elif thresholdType == 'edgePC':
             # find threshold as a percentage of total possible edges
-            # note this works for undirected graphs because it is applied to the whole adjacency matrix
-            weights = self.adjMat.flatten()
-            weights.sort()
-            while (str(weights[-1]) == 'nan'):
-                weights = weights[:-1]
-            nEdges = len(weights)
+            upperValues = np.triu_indices(np.shape(self.adjMat)[0], k= 1)
+            # only flatten the upper right part of the matrix
+            weights = np.array(self.adjMat[upperValues])
             
-            # note this works for undirected graphs because it is applied to the whole adjacency matrix
-            edgeNum = int(value/100. * nEdges)
-                
-            # correct for diagonal if graph is undirected
-            if not self.directed:
-                edgeNum -= len([self.adjMat[x,x] for x in range(len(self.adjMat[0,:])) if not np.isnan(self.adjMat[x,x])])
-            print(edgeNum)
+            # remove NaNs
+            weights = weights[~np.isnan(weights)]
+            # calculate percentage
+            edgeNum = int(value/100. * len(weights))
         else: # 'totalEdges' option
             edgeNum = value
 
-        k=1 # number of degrees for NNG
-    
-        # create minimum spanning tree
-        T = self.minimum_spanning_tree(self)
+        
         lenEdges = len(T.edges())
         if lenEdges > edgeNum:
-            print("The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges.")
-        
-        while lenEdges<edgeNum:
-            print("NNG degree: "+str(k))
+            print("The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges.",
+                  "Local Threshold will be applied by just retaining the Minimum Spanning Tree")
+            self.localThresholding()
+            return
+ 
+        k=1 # number of degrees for NNG
+        while lenEdges < edgeNum:
             # create nearest neighbour graph
-            nng = self.NNG(k)
-            
-            # failsafe in case there are no more edges to add
-            if len(nng.edges())==0:
-                print("There are no edges in the nearest neighbour graph - check you have set the delimiter appropriately")
-                break
+            nng = self._NNG(k)
             
             # remove edges from the NNG that exist already in the new graph/MST
             nng.remove_edges_from(T.edges())
             
+            # Ending condition. No more edges to add so break the cycle
+            if len(nng.edges())==0:
+                break
+            
             # add weights to NNG
             for e in nng.edges():
-                nng.edge[e[0]][e[1]]['weight'] = self.adjMat[e[0],e[1]]
-            
-            nng.edges(data=True)
+                nng.edge[e[0]][e[1]][self.WEIGHT] = self.adjMat[e[0],e[1]]
             
             # get a list of edges from the NNG in order of weight
-            edgeList = sorted(nng.edges(data=True), key=lambda t: t[2]['weight'], reverse=True)
+            edgeList = sorted(nng.edges(data=True), key=lambda t: t[2][self.WEIGHT], reverse=True)
             
             # add edges to graph in order of connectivity strength
             for edge in edgeList:
@@ -500,7 +503,6 @@ class brainObj:
             
             k+=1
         
-        #!! are you sure you want to redefine G here??
         self.G = T
         
     def binarise(self):
@@ -508,7 +510,7 @@ class brainObj:
         Removes weighting from edges by assigning a weight of 1 to the existing edges
         '''
         for edge in self.G.edges(data=True):
-            edge[2]['weight'] = 1        
+            edge[2][self.WEIGHT] = 1        
 
     def removeUnconnectedNodes(self):
         '''
@@ -672,8 +674,6 @@ class brainObj:
         
         return label     
 
-
-    ### edge removal/degeneration
             
     def degenerate(self, weightloss=0.1, edgesRemovedLimit=1, threshLimit=None,
                    pcLimit=None, weightLossLimit=None, nodeList=[],
@@ -734,7 +734,7 @@ class brainObj:
                 nodeList = self.G.nodes()
             
             # generate list of at risk edges
-            self.riskEdges = [v for v in nx.edges(self.G, nodeList) if self.G.edge[v[0]][v[1]]['weight'] != 0.]
+            self.riskEdges = [v for v in nx.edges(self.G, nodeList) if self.G.edge[v[0]][v[1]][self.WEIGHT] != 0.]
         else:
             reDefineEdges=False
             
@@ -742,7 +742,7 @@ class brainObj:
             nodeList = []
         
         # check if there are enough weights left
-        riskEdgeWtSum = np.sum([self.G.edge[v[0]][v[1]]['weight'] for v in self.riskEdges])
+        riskEdgeWtSum = np.sum([self.G.edge[v[0]][v[1]][self.WEIGHT] for v in self.riskEdges])
         if limit > riskEdgeWtSum:
             print("Not enough weight left to remove")
             return nodeList
@@ -764,7 +764,7 @@ class brainObj:
             dyingEdge = random.choice(self.riskEdges)            
                         
             # remove specified weight from edge
-            w = self.G[dyingEdge[0]][dyingEdge[1]]['weight']
+            w = self.G[dyingEdge[0]][dyingEdge[1]][self.WEIGHT]
             
             if np.absolute(w) < weightloss:
                 loss = np.absolute(w)
@@ -775,11 +775,11 @@ class brainObj:
             
             elif w>0:
                 loss = weightloss
-                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] -= weightloss
+                self.G[dyingEdge[0]][dyingEdge[1]][self.WEIGHT] -= weightloss
                 
             else:
                 loss = weightloss
-                self.G[dyingEdge[0]][dyingEdge[1]]['weight'] += weightloss
+                self.G[dyingEdge[0]][dyingEdge[1]][self.WEIGHT] += weightloss
             
             # record the edge length of edges lost
             if distances:
@@ -810,9 +810,7 @@ class brainObj:
         
         return nodeList
 
-    #!! degenerateNew function removed
-
-    def contiguousspread(self, edgeloss, startNodes = None):
+    def contiguousSpread(self, edgeloss, startNodes = None):
         ''' degenerate nodes in a continuous fashion. Doesn't currently include spreadratio '''
 
         # make sure nodes have the linkedNodes attribute
@@ -897,44 +895,14 @@ class brainObj:
         self.reconstructAdjMat()
             
         return toxicNodes, toxicNodeRecord              
-            
-    #!! neuronsusceptibility removed            
-
-
-    #!! added from master branch. Which other function uses this one? Can it be removed (randomly, or otherwise?)            
-    def randomremove(self,edgeloss):
-        if not self.iter:
-            self.iter=0
-        try:
-            edges_to_remove = random.sample(self.G.edges(), edgeloss)
-            self.G.remove_edges_from(edges_to_remove)
-            
-        except ValueError:
-            print("No further edges left")
-            
-        self.iter += 1  
-
-    ### other modifying functions
-
-    #!! added direct from master branch        
-    def randomiseGraph(self, largestconnectedcomp = False):
-        self.G = nx.gnm_random_graph(len(self.G.nodes()), len(self.G.edges()))
-        if largestconnectedcomp:
-            self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
-
-
-        
+    
    
     # =============================================================
     
     ##### Analysis functions
 
-    ### Minimum spanning tree functions
-
-    #!! This and following functions added during merge. Need explanation.
-    def NNG(self, k):
-        ''' '''
-        #!! docstring missing
+    def _NNG(self, k):
+        ''' Private method to help local thresholding by creating a k-nearest neighbour graph'''
         G = nx.Graph()
         nodes = list(range(len(self.adjMat[0])))
         
@@ -953,123 +921,6 @@ class brainObj:
                 l.mask[node] = True
         
         return(G)
-
-
-    def minimum_spanning_edges(self, weight='weight', data=True):
-        """Generate edges in a minimum spanning forest of an undirected 
-        weighted graph.
-    
-        A minimum spanning tree is a subgraph of the graph (a tree)
-        with the minimum sum of edge weights.  A spanning forest is a
-        union of the spanning trees for each connected component of the graph.
-    
-        Parameters
-        ----------
-        G : NetworkX Graph
-        
-        weight : string
-           Edge data key to use for weight (default 'weight').
-    
-        data : bool, optional
-           If True yield the edge data along with the edge.
-           
-        Returns
-        -------
-        edges : iterator
-           A generator that produces edges in the minimum spanning tree.
-           The edges are three-tuples (u,v,w) where w is the weight.
-        
-        Examples
-        --------
-        >>> G=nx.cycle_graph(4)
-        >>> G.add_edge(0,3,weight=2) # assign weight 2 to edge 0-3
-        >>> mst=nx.minimum_spanning_edges(G,data=False) # a generator of MST edges
-        >>> edgelist=list(mst) # make a list of the edges
-        >>> print(sorted(edgelist))
-        [(0, 1), (1, 2), (2, 3)]
-    
-        Notes
-        -----
-        Uses Kruskal's algorithm.
-    
-        If the graph edges do not have a weight attribute a default weight of 1
-        will be used.
-    
-        Modified code from David Eppstein, April 2006
-        http://www.ics.uci.edu/~eppstein/PADS/
-        """
-        # Modified code from David Eppstein, April 2006
-        # http://www.ics.uci.edu/~eppstein/PADS/
-        # Kruskal's algorithm: sort edges by weight, and add them one at a time.
-        # We use Kruskal's algorithm, first because it is very simple to
-        # implement once UnionFind exists, and second, because the only slow
-        # part (the sort) is sped up by being built in to Python.
-        from networkx.utils import UnionFind
-        if self.G.is_directed():
-            raise nx.NetworkXError(
-                "Mimimum spanning tree not defined for directed graphs.")
-    
-        subtrees = UnionFind()
-        edges = sorted(self.G.edges(data=True),key=lambda t: t[2][weight], reverse=True)
-    #    print edges[0]    
-    #    edges = [ v for v in edges if not isnan(v[2]) ]
-        
-        for u,v,d in edges:
-            if subtrees[u] != subtrees[v]:
-                if data:
-                    yield (u,v,d)
-                else:
-                    yield (u,v)
-                subtrees.union(u,v)
-
-                
-    def minimum_spanning_tree(self, weight='weight'):
-        """Return a minimum spanning tree or forest of an undirected 
-        weighted graph.
-    
-        A minimum spanning tree is a subgraph of the graph (a tree) with
-        the minimum sum of edge weights.
-    
-        If the graph is not connected a spanning forest is constructed.  A
-        spanning forest is a union of the spanning trees for each
-        connected component of the graph.
-    
-        Parameters
-        ----------
-        G : NetworkX Graph
-        
-        weight : string
-           Edge data key to use for weight (default 'weight').
-    
-        Returns
-        -------
-        G : NetworkX Graph
-           A minimum spanning tree or forest. 
-        
-        Examples
-        --------
-        >>> G=nx.cycle_graph(4)
-        >>> G.add_edge(0,3,weight=2) # assign weight 2 to edge 0-3
-        >>> T=nx.minimum_spanning_tree(G)
-        >>> print(sorted(T.edges(data=True)))
-        [(0, 1, {}), (1, 2, {}), (2, 3, {})]
-    
-        Notes
-        -----
-        Uses Kruskal's algorithm.
-    
-        If the graph edges do not have a weight attribute a default weight of 1
-        will be used.
-        """
-        T=nx.Graph(self.minimum_spanning_edges(weight="weight", data=True))
-        # Add isolated nodes
-        if len(T)!=len(self.G):
-            T.add_nodes_from([n for n,d in list(self.G.degree().items()) if d==0])
-        # Add node and graph attributes as shallow copy
-        for n in T:
-            T.node[n] = self.G.node[n].copy()
-#        T.graph = self.G.graph.copy()
-        return T
 
 
     ### basic proximities
@@ -1212,11 +1063,9 @@ class brainObj:
                 self.G.node[l[1]]['linkedNodes'] = [l[0]]     
 
                 
-    #!! new function from master
     def weightToDistance(self):
-        #!! docstring added
         ''' convert weights to a positive distance '''
-        edgeList = [self.G.edge[v[0]][v[1]]['weight'] for v in self.G.edges() ]
+        edgeList = [self.G.edge[v[0]][v[1]][self.WEIGHT] for v in self.G.edges() ]
         
         # get the maximum edge value, plus any negative correction required
         # and a small correction to keep the values above zero
@@ -1225,7 +1074,7 @@ class brainObj:
         eMax = np.max(edgeList) + 1/float(len(self.G.nodes()))
         
         for edge in self.G.edges():
-                self.G.edge[edge[0]][edge[1]]["distance"] = eMax - self.G.edge[edge[0]][edge[1]]["weight"] # convert weights to a positive distance
+                self.G.edge[edge[0]][edge[1]]["distance"] = eMax - self.G.edge[edge[0]][edge[1]][self.WEIGHT] # convert weights to a positive distance
                 
     def copyHemisphere(self, hSphere="R", midline=44.5):
         """
@@ -1398,23 +1247,28 @@ class brainObj:
         if hierarchy:
             return(Ci, Q)            
             
-    #!! clusters function removed
             
     def thresholdToPercentage(self, threshold):
         '''
-        Functional to convert a threshold to a percentage connectivity.
+        It returns a ratio between the edges on adjMat above a certain threshold value \
+        and the total possible edges of adjMat
         
-        As this is returns a ratio between nodes and edges, it doesn't matter
-        whether the graph is directed (ie an asymmetric association matrix)
+        threshold : The threshold value
         '''
-        lenNodes = float(len(self.G.nodes()))
-        maxEdges = float(lenNodes) * (lenNodes-1)
+        upperValues = np.triu_indices(np.shape(self.adjMat)[0], k= 1)
+        belowValues = np.tril_indices(np.shape(self.adjMat)[0], k= -1)
+        if not self.directed:
+            # only flatten the upper right part of the matrix
+            weights = np.array(self.adjMat[upperValues])
+        else:
+            weights = np.concatenate((self.adjMat[upperValues], self.adjMat[belowValues]))
+        # remove NaNs
+        weights = weights[~np.isnan(weights)]
         
-        lenEdges = len(self.adjMat.flatten()[self.adjMat.flatten()>threshold])
-
-        pc = lenEdges / maxEdges
-        return(pc)
-
+        maxEdges = len(weights)
+        lenEdges = len(weights[weights>threshold])
+        
+        return lenEdges / maxEdges
         
     def percentConnected(self):
         '''
@@ -1425,15 +1279,11 @@ class brainObj:
             totalConnections = len(self.G.nodes()*(len(self.G.nodes())-1))
         else:
             totalConnections = len(self.G.nodes()*(len(self.G.nodes())-1)) / 2
-        self.percentConnections = float(len(self.G.edges()))/float(totalConnections)
+        percentConnections = float(len(self.G.edges()))/float(totalConnections)
         
-        return self.percentConnections
+        return percentConnections
         
-        
-    def largestConnComp(self):
-        self.bigconnG = components.connected.connected_component_subgraphs(self.G)[0]  # identify largest connected component
-
-                
+         
     def checkrobustness(self, conVal, step):
         ''' Robustness is a measure that starts with a fully connected graph, \
         then reduces the threshold incrementally until the graph breaks up in \
@@ -1469,27 +1319,12 @@ class brainObj:
         for nn,x in enumerate(self.G.nodes()):
             for y in list(self.G.edge[x].keys()):
                 try:
-                    self.bctmat[nn,nodeIndices[y]] = self.G.edge[x][y]['weight']
+                    self.bctmat[nn,nodeIndices[y]] = self.G.edge[x][y][self.WEIGHT]
                 except:
                     pass
         
     def assignbctResult(self, bctRes):
         ''' translate a maybrain connectome into a bct compatible format ''' 
         out = dict(list(zip(self.G.nodes(), bctRes)))
-        return(out) 
-
-    ##### miscellaneous functions
-
-
-    
-    def strnum(num, length=5):
-        ''' convert a number into a string of a given length'''
-        
-        sn = str(num)
-        lenzeros = length - len(sn)
-        sn = lenzeros*'0' + sn
-        
-        return sn        
-        
-       
+        return(out)
 

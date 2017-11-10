@@ -57,3 +57,8 @@ The authors are happy for developers to extend, customise, improve or simply to 
 
 Maybrain was originally written by Timothy Rittman and Martyn Rittman, but with substantial improvements and updates from Tiago Azevedo.
 
+
+## Licence
+
+Maybrain is licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/RittmanResearch/maybrain/blob/master/LICENSE) for the full license text.
+
