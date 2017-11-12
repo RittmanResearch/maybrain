@@ -87,9 +87,9 @@ class brainObj:
                     while l[-1] in ('\n', '\t'):
                         l = l[:-1]
                     lines.append(list(map(float, [v if v not in naVals else np.nan for v in l.split(sep=delimiter)])))
-        except IOError as error:
-            print('Problem with opening file "' + fname + '": ' + error.strerror)               
-            return -1
+        except IOError as error:            
+            error.strerror = 'Problem with opening file "' + fname + '": ' + error.strerror
+            raise error
 
         # set adjacency matrix
         self.adjMat = np.array(lines)
@@ -114,9 +114,9 @@ class brainObj:
         # open file
         try:
             f = open(fname,"r")
-        except IOError as error:
-            print('Problem with opening 3D position file "' + fname + '": ' + error.strerror)               
-            return -1            
+        except IOError as error:    
+            error.strerror = 'Problem with opening 3D position file "' + fname + '": ' + error.strerror
+            raise error   
                
         # get data from file
         lines = f.readlines()
@@ -248,11 +248,12 @@ class brainObj:
         self.backgroundHeader = self.nbbackground.get_header()        
                 
     def importISO(self, fname):
-        ''' Import a file for isosurface info using nibabel
-            gives a 3D array with data range 0 to 255 for test data
-            could be 4d??
-            defines an nibabel object, plus ndarrays with data and header info in
+        ''' 
+        Imports an isosurface info using nibabel
+        gives a 3D array with data range 0 to 255 for test data
+        defines an nibabel object, plus ndarrays with data and header info in
         
+        fname: File Name with the isosurface
         '''
         import nibabel as nb
         self.nbiso = nb.load(fname)
@@ -272,7 +273,8 @@ class brainObj:
         
         for n in nodeList:
             n = float(n)
-            nArr = np.ma.masked_where(self.iso !=n, self.iso)
+            # parcel files start from 1, zero is for background
+            nArr = np.ma.masked_where(self.iso != (n+1), self.iso)
             nArr.fill_value=0.0
             zeroArr = zeroArr + nArr
             zeroArr.mask=None
@@ -317,11 +319,9 @@ class brainObj:
         
         # Controlling input
         if thresholdType not in ["edgePC", "totalEdges", "tVal", None]:
-            print("Error: Not a valid thresholdType")
-            return -1
+            raise TypeError("Not a valid thresholdType for applyThreshold()")
         if thresholdType == "edgePC" and (value < 0 or value > 100):
-            print("Error: Invalid value for edgePC")
-            return -1
+            raise TypeError("Invalid value for edgePC in applyThreshold()")
         
         #control var to order in the end
         toOrder = False
@@ -396,25 +396,34 @@ class brainObj:
             
 
     def reconstructAdjMat(self):
-        ''' redefine the adjacency matrix from the edges and weights '''
-        s = self.adjMat.shape
-        self.adjMat = np.zeros(s)
+        '''
+        It redefines the adjacency matrix from the edges' weights of G
+        It assumes that size of adjMat is maintained
+        '''
         self.adjMat[:] = np.nan        
         
         for e in self.G.edges():
             self.updateAdjMat(e)
                 
     def updateAdjMat(self, edge):
-        ''' update the adjacency matrix for a single edge '''
+        ''' 
+        It updates the adjacency matrix by bringing the weight of an edge in G \
+        to the adjacency matrix
+        
+        edge : The edge in G to bring to adjMat'''
         
         try:
             w = self.G.edge[edge[0]][edge[1]][self.WEIGHT]
             self.adjMat[edge[0], edge[1]] = w
-            self.adjMat[edge[1], edge[0]] = w
-        except:
-#            print("no weight found for edge " + str(edge[0]) + " " + str(edge[1]) + ", skipped" )
-            self.adjMat[edge[0], edge[1]] = np.nan
-            self.adjMat[edge[1], edge[0]] = np.nan
+            
+            if not self.directed:
+                self.adjMat[edge[1], edge[0]] = w
+        except KeyError as error:
+            error.strerror = "Edge does not exist in G or doesn't have WEIGHT property"
+            raise error
+        except IndexError as error:
+            error.strerror = "adjMat too small to have such an edge"
+            raise error
 
     def localThresholding(self, thresholdType=None, value=0.):
         '''
@@ -431,22 +440,18 @@ class brainObj:
         
         # Controlling input
         if thresholdType not in ["edgePC", "totalEdges", None]:
-            print("Error: Not a valid thresholdType")
-            return -1
+            raise TypeError("Not a valid thresholdType for localThresholding()")
         if self.directed:
-            print("Error: Not available for directed graphs")
-            return -1
+            raise TypeError("localThresholding() not available for directed graphs")
         if thresholdType == "edgePC" and (value < 0 or value > 100):
-            print("Error: Invalid value for edgePC")
-            return -1
+            raise TypeError("Invalid value for edgePC for localThresholding()")
         
         
         # Putting all the edges in the G object for local thresholding
         self.applyThreshold()
         
         if not nx.is_connected(self.G):
-            print("Adjacency Matrix is not connected. Impossible to create a minimum spanning tree")
-            return -1
+            raise TypeError("Adjacency Matrix is not connected. Impossible to execute localThresholding()")
             
         # create minimum spanning tree
         T = nx.minimum_spanning_tree(self.G)
@@ -470,7 +475,7 @@ class brainObj:
         
         lenEdges = len(T.edges())
         if lenEdges > edgeNum:
-            print("The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges.",
+            print("Warning: The minimum spanning tree already has: "+ str(lenEdges) + " edges, select more edges.",
                   "Local Threshold will be applied by just retaining the Minimum Spanning Tree")
             self.localThresholding()
             return

@@ -25,7 +25,7 @@ class TestBrainObj(unittest.TestCase):
         self.assertEqual(self.a.adjMat, None)
 
     def test_importAdjFile(self):
-        self.assertEqual(self.a.importAdjFile("sdfasdf"), -1)
+        self.assertRaises(IOError, self.a.importAdjFile, "sdfasdf")
         self.a.importAdjFile(self.SMALL_FILE)
         self.assertEqual(self.a.adjMat.shape, (4,4))
         self.assertEqual(self.a.adjMat[0][0], 0.802077230054)
@@ -49,7 +49,7 @@ class TestBrainObj(unittest.TestCase):
         self.assertTrue(all(np.isnan(x) for x in b.adjMat[4,:]))
     
     def test_importSpatialInfo(self):
-        self.assertEqual(self.a.importSpatialInfo("sdfasdf"), -1)
+        self.assertRaises(FileNotFoundError, self.a.importSpatialInfo, "sdfasdf")
         self.a.importAdjFile(self.SMALL_FILE)
         self.a.importSpatialInfo(self.COORD_FILE)
        
@@ -169,6 +169,20 @@ class TestBrainObj(unittest.TestCase):
         self.a.localThresholding(thresholdType="edgePC", value = 20)
         self.assertEqual(self.a.G.number_of_edges(), int(0.2*allEdges))
         self.assertTrue(nx.is_connected(self.a.G))
+
+    def test_AdjMat(self):
+        self.a.importAdjFile(self.MODIF_FILE, delimiter=",")
+        self.a.applyThreshold(thresholdType="totalEdges", value = 1)
+        self.a.reconstructAdjMat()
+        # Size must be 2 because adjMat is undirected
+        self.assertEqual(len([e for e in self.a.adjMat.flatten() if not np.isnan(e)]), 2)
+        
+        self.assertRaises(KeyError, self.a.updateAdjMat, (1,1))
+        
+        self.a.G.add_edge(50,50) #dummy
+        self.assertRaises(KeyError, self.a.updateAdjMat, (50,50))
+        self.a.G.edge[50][50][self.a.WEIGHT] = 12
+        self.assertRaises(IndexError, self.a.updateAdjMat, (50,50))
 
 
 if __name__ == '__main__':
