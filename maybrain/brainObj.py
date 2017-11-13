@@ -55,18 +55,19 @@ class brainObj:
         
         self.riskEdges = None
         
-        self.WEIGHT = 'weight' #Weight property in edges
+        # Properties in edges/nodes
+        self.WEIGHT       = 'weight'
+        self.LINKED_NODES = 'linkedNodes'
+        self.XYZ          = 'xyz'
+        self.ANAT_LABEL   = 'anatlabel'
 
         # create a new networkX graph object
         if self.directed:
-            # directional case
             self.G = nx.DiGraph()
         else:
-            # non-directional case
             self.G = nx.Graph()
 
     ## ================================================
-
     ##### File inputs and outputs
 
     ### edges and nodes        
@@ -130,8 +131,8 @@ class brainObj:
                 l[3] = 36 + (float(l[3])/2)
 
             if nodeCount in self.G.nodes():
-                self.G.node[nodeCount]["xyz"]=(float(l[1]),float(l[2]),float(l[3]))
-                self.G.node[nodeCount]["anatlabel"]=l[0]
+                self.G.node[nodeCount][self.XYZ]=(float(l[1]),float(l[2]),float(l[3]))
+                self.G.node[nodeCount][self.ANAT_LABEL]=l[0]
 
             nodeCount+=1
                         
@@ -519,7 +520,7 @@ class brainObj:
 
     def removeUnconnectedNodes(self):
         '''
-         Remove nodes with no connections
+        Removes nodes with no connections
         '''
         nodeList = [v for v in self.G.nodes() if self.G.degree(v)==0]
         self.G.remove_nodes_from(nodeList)
@@ -587,11 +588,11 @@ class brainObj:
 
                 # special treatment for 'x', 'y' and 'z'
                 if prop=='x':
-                    d = self.G.node[c]['xyz'][0]
+                    d = self.G.node[c][self.XYZ][0]
                 elif prop=='y':
-                    d = self.G.node[c]['xyz'][1]
+                    d = self.G.node[c][self.XYZ][1]
                 elif prop=='z':
-                    d = self.G.node[c]['xyz'][2]
+                    d = self.G.node[c][self.XYZ][2]
                 else:
                     # any other property
                     try:
@@ -789,7 +790,7 @@ class brainObj:
             # record the edge length of edges lost
             if distances:
                 self.dyingEdges[dyingEdge] = self.G[dyingEdge[0]][dyingEdge[1]]
-                self.dyingEdges[dyingEdge]['distance'] =  np.linalg.norm( np.array((self.G.node[dyingEdge[0]]['xyz'])) - np.array((self.G.node[dyingEdge[1]]['xyz']))  )
+                self.dyingEdges[dyingEdge]['distance'] =  np.linalg.norm( np.array((self.G.node[dyingEdge[0]][self.XYZ])) - np.array((self.G.node[dyingEdge[1]][self.XYZ]))  )
             
             # update the adjacency matrix (essential if robustness is to be calculated)            
             if updateAdjmat:
@@ -820,7 +821,7 @@ class brainObj:
 
         # make sure nodes have the linkedNodes attribute
         try:
-            self.G.node[0]['linkedNodes']
+            self.G.node[0][self.LINKED_NODES]
         except:
             self.findLinkedNodes()
             
@@ -845,7 +846,7 @@ class brainObj:
         # put at-risk nodes into a list
         riskNodes = []
         for t in toxicNodes:
-            l = self.G.node[t]['linkedNodes']
+            l = self.G.node[t][self.LINKED_NODES]
             newl = []
             # check the new indices aren't already toxic
             for a in l:
@@ -876,7 +877,7 @@ class brainObj:
             
             
             # add the new at-risk nodes
-            l = self.G.node[deadNode]['linkedNodes']
+            l = self.G.node[deadNode][self.LINKED_NODES]
             newl = []
             # check the new indices aren't already toxic
             for a in l:
@@ -943,7 +944,7 @@ class brainObj:
         shortestnode = (None, None)
         
         # get the contralaterally closest node if desired
-        pos = [v for v in self.G.node[duffNode]['xyz']]
+        pos = [v for v in self.G.node[duffNode][self.XYZ]]
         if contra:
             if pos[0] < midline:
                 pos[0] = midline + (midline - pos[0])
@@ -953,7 +954,7 @@ class brainObj:
             
         for node in nodes:
             try:
-                distance = np.linalg.norm(np.array(pos - np.array(self.G.node[node]['xyz'])))
+                distance = np.linalg.norm(np.array(pos - np.array(self.G.node[node][self.XYZ])))
             except:
                 print("Finding the spatially nearest node requires x,y,z values")
                 
@@ -990,11 +991,11 @@ class brainObj:
         xyzList = []
         count = 0
         for node in nodes:
-            xyzList.append([count] + list(self.G.node[node]['xyz']))
+            xyzList.append([count] + list(self.G.node[node][self.XYZ]))
             count = count  + 1
 
         # cut down in x,y and z coords
-        xyz0 = self.G.node[randNode]['xyz']
+        xyz0 = self.G.node[randNode][self.XYZ]
         xyzmax = [0, xyz0[0] + threshold, xyz0[1] + threshold, xyz0[2] + threshold]
         xyzmin = [0, xyz0[0] - threshold, xyz0[1] - threshold, xyz0[2] - threshold]
         
@@ -1052,34 +1053,47 @@ class brainObj:
         
         
     def findLinkedNodes(self):
-        ''' give each node a list containing the linked nodes '''
+        ''' 
+        It gives to each node a list containing the linked nodes.
+        This property can be accessed through self.LINKED_NODES
+        '''
         
         for l in self.G.edges():
-            
             # add to list of connecting nodes for each participating node
             try:
-                self.G.node[l[0]]['linkedNodes'] = self.G.node[l[0]]['linkedNodes'] + [l[1]]
+                self.G.node[l[0]][self.LINKED_NODES] = self.G.node[l[0]][self.LINKED_NODES] + [l[1]]
             except:
-                self.G.node[l[0]]['linkedNodes'] = [l[1]]
+                self.G.node[l[0]][self.LINKED_NODES] = [l[1]]
                         
             try:
-                self.G.node[l[1]]['linkedNodes'] = self.G.node[l[1]]['linkedNodes'] + [l[0]]
+                self.G.node[l[1]][self.LINKED_NODES] = self.G.node[l[1]][self.LINKED_NODES] + [l[0]]
             except:
-                self.G.node[l[1]]['linkedNodes'] = [l[0]]     
+                self.G.node[l[1]][self.LINKED_NODES] = [l[0]]
+                
+            # Removing repeated elements
+            if self.directed:
+                self.G.node[l[0]][self.LINKED_NODES] = list(set(self.G.node[l[0]][self.LINKED_NODES]))
+                self.G.node[l[1]][self.LINKED_NODES] = list(set(self.G.node[l[1]][self.LINKED_NODES]))
 
                 
     def weightToDistance(self):
-        ''' convert weights to a positive distance '''
+        '''
+        It inverts all the edges' weights so they become equivalent to a distance measure. \ 
+        With a weight the higher the value the stronger the connection. With a distance \ 
+        the higher the value the "weaker" the connection. 
+        In this case there is no measurement unit for the distance, as it is just \
+        a conversion from the weights.
+        '''
         edgeList = [self.G.edge[v[0]][v[1]][self.WEIGHT] for v in self.G.edges() ]
         
         # get the maximum edge value, plus any negative correction required
         # and a small correction to keep the values above zero
         # the correction is the inverse of the number of nodes - designed to keep
         # calculations of efficiency sensible
-        eMax = np.max(edgeList) + 1/float(len(self.G.nodes()))
+        eMax = np.max(edgeList) + 1/float(self.G.number_of_nodes())
         
         for edge in self.G.edges():
-                self.G.edge[edge[0]][edge[1]]["distance"] = eMax - self.G.edge[edge[0]][edge[1]][self.WEIGHT] # convert weights to a positive distance
+            self.G.edge[edge[0]][edge[1]]["distance"] = eMax - self.G.edge[edge[0]][edge[1]][self.WEIGHT] # convert weights to a positive distance
                 
     def copyHemisphere(self, hSphere="R", midline=44.5):
         """
@@ -1089,22 +1103,22 @@ class brainObj:
         """
         if hSphere=="L":
             for node in self.G.nodes():
-                if self.G.node[node]['xyz'][0] < midline:
+                if self.G.node[node][self.XYZ][0] < midline:
                     self.G.add_node(str(node)+"R")
                     self.G.node[str(node)+"R"] = {v:w for v,w in self.G.node[node].items()}
-                    pos = self.G.node[node]['xyz']
+                    pos = self.G.node[node][self.XYZ]
                     pos = (midline + (midline - pos[0]), pos[1], pos[2])
-                    self.G.node[str(node)+"R"]['xyz'] = pos
+                    self.G.node[str(node)+"R"][self.XYZ] = pos
                 else:
                     self.G.remove_node(node)
                     
         elif hSphere=="R":
             for node in self.G.nodes():
-                if self.G.node[node]['xyz'][0] > midline:
+                if self.G.node[node][self.XYZ][0] > midline:
                     self.G.add_node(str(node)+"L")
                     self.G.node[str(node)+"L"] = {v:w for v,w in self.G.node[node].items()}
-                    pos = self.G.node[node]['xyz']
-                    self.G.node[str(node)+"L"]['xyz'] = (midline - (pos[0] - midline), pos[1], pos[2])
+                    pos = self.G.node[node][self.XYZ]
+                    self.G.node[str(node)+"L"][self.XYZ] = (midline - (pos[0] - midline), pos[1], pos[2])
                 else:
                     self.G.remove_node(node)
 
@@ -1280,13 +1294,13 @@ class brainObj:
         This returns the percentage of the total number of possible connections
         where an edge actually exists.
         '''
-        if self.directed:
-            totalConnections = len(self.G.nodes()*(len(self.G.nodes())-1))
-        else:
-            totalConnections = len(self.G.nodes()*(len(self.G.nodes())-1)) / 2
-        percentConnections = float(len(self.G.edges()))/float(totalConnections)
+        nodes = self.G.number_of_nodes()
         
-        return percentConnections
+        if self.directed:
+            totalConnections = nodes * (nodes - 1)
+        else:
+            totalConnections = nodes * (nodes - 1) / 2
+        return float(self.G.number_of_edges()) / float(totalConnections)
         
          
     def checkrobustness(self, conVal, step):

@@ -184,6 +184,63 @@ class TestBrainObj(unittest.TestCase):
         self.a.G.edge[50][50][self.a.WEIGHT] = 12
         self.assertRaises(IndexError, self.a.updateAdjMat, (50,50))
 
+    def test_removeUnconnectedNodes(self):
+        self.a.importAdjFile(self.MODIF_FILE, delimiter=",")
+        self.a.applyThreshold(thresholdType="totalEdges", value = 1)
+        self.assertEqual(self.a.G.number_of_nodes(), 15) #info from the file
+        self.a.removeUnconnectedNodes()
+        #There is only 2 nodes left connecting the only existing edge 
+        self.assertEqual(self.a.G.number_of_nodes(), 2)
+        
+    def test_percentages(self):
+        self.a.importAdjFile(self.SMALL_FILE)
+        self.a.applyThreshold(thresholdType="totalEdges", value = 1)
+        self.assertEqual(self.a.thresholdToPercentage(0.6), 3/6) # from the file
+        
+        self.assertEqual(self.a.percentConnected(), 1/6)
+        self.a.applyThreshold()
+        self.assertEqual(self.a.percentConnected(), 1)
+        
+        ### directed
+        c = mbt.brainObj(directed=True)
+        c.importAdjFile(self.SMALL_FILE)
+        self.assertEqual(c.thresholdToPercentage(0.6), 5/12)
+        
+        c.applyThreshold(thresholdType="totalEdges", value = 1)
+        self.assertEqual(c.percentConnected(), 1/12)
+        c.applyThreshold()
+        self.assertEqual(c.percentConnected(), 1)
+        c.applyThreshold(thresholdType="totalEdges", value = 0)
+        self.assertEqual(c.percentConnected(), 0)
+
+    def test_linkedNodes(self):
+        self.a.importAdjFile(self.SMALL_FILE)
+        self.a.applyThreshold()
+        for n in self.a.G.nodes(data=True):
+            self.assertRaises(KeyError, lambda: n[1][self.a.LINKED_NODES])
+
+        self.a.findLinkedNodes()
+        for n in self.a.G.nodes(data=True):
+            n[1][self.a.LINKED_NODES] #it should not raise any exception
+        
+        self.assertTrue(sorted(self.a.G.node[0][self.a.LINKED_NODES]) == [1,2,3])
+        self.assertTrue(sorted(self.a.G.node[1][self.a.LINKED_NODES]) == [0,2,3])
+        
+        ### directed
+        c = mbt.brainObj(directed=True)
+        c.importAdjFile(self.SMALL_FILE)
+        c.applyThreshold()
+        c.findLinkedNodes()
+        for n in c.G.nodes(data=True):
+            n[1][c.LINKED_NODES] #it should not raise any exception
+        
+        self.assertTrue(sorted(c.G.node[0][c.LINKED_NODES]) == [1,2,3])
+        self.assertTrue(sorted(c.G.node[1][c.LINKED_NODES]) == [0,2,3])
+        
+        
+    def test_weightToDistance(self):
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()
