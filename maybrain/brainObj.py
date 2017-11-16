@@ -60,6 +60,7 @@ class brainObj:
         self.LINKED_NODES = 'linkedNodes'
         self.XYZ          = 'xyz'
         self.ANAT_LABEL   = 'anatlabel'
+        self.DISTANCE     = 'distance'
 
         # create a new networkX graph object
         if self.directed:
@@ -354,8 +355,7 @@ class brainObj:
             if thresholdType == 'edgePC':
                 # get number of edges
                 edgeNum = int( (value/100.) * nEdges)   
-            # number of edges case
-            elif thresholdType == 'totalEdges':
+            else: #totalEdges
                 edgeNum = int(value)
                 
             # get threshold value
@@ -371,8 +371,10 @@ class brainObj:
                 toOrder = True #down there this is used
 
             
-        ##### carry out thresholding on adjacency matrix
-        boolMat = self.adjMat>=self.threshold
+        # Carrying out thresholding on adjacency matrix, without the NaNs
+        boolMat = ~np.isnan(self.adjMat)
+        boolMat[boolMat] = self.adjMat[boolMat] >= self.threshold
+
         np.fill_diagonal(boolMat, 0)
 
         es = np.where(boolMat) # lists of where edges should be                 
@@ -420,11 +422,13 @@ class brainObj:
             if not self.directed:
                 self.adjMat[edge[1], edge[0]] = w
         except KeyError as error:
-            error.strerror = "Edge does not exist in G or doesn't have WEIGHT property"
-            raise error
+            import sys
+            _, _, tb = sys.exc_info()
+            raise KeyError(error, "Edge does not exist in G or doesn't have WEIGHT property").with_traceback(tb)
         except IndexError as error:
-            error.strerror = "adjMat too small to have such an edge"
-            raise error
+            import sys
+            _, _, tb = sys.exc_info()
+            raise IndexError("adjMat too small to have such an edge").with_traceback(tb).with_traceback(tb)
 
     def localThresholding(self, thresholdType=None, value=0.):
         '''
@@ -550,7 +554,7 @@ class brainObj:
             return
         # check if label given
         if not label:
-            label = self.getAutoLabel()
+            label = self._getAutoLabel()
             
         # make a highlight object
         h = highlightObj()
@@ -664,7 +668,7 @@ class brainObj:
         return b        
 
 
-    def getAutoLabel(self):
+    def _getAutoLabel(self):
         ''' generate an automatic label for a highlight object if none given '''
         
         # get index of label
@@ -790,7 +794,7 @@ class brainObj:
             # record the edge length of edges lost
             if distances:
                 self.dyingEdges[dyingEdge] = self.G[dyingEdge[0]][dyingEdge[1]]
-                self.dyingEdges[dyingEdge]['distance'] =  np.linalg.norm( np.array((self.G.node[dyingEdge[0]][self.XYZ])) - np.array((self.G.node[dyingEdge[1]][self.XYZ]))  )
+                self.dyingEdges[dyingEdge][self.DISTANCE] =  np.linalg.norm( np.array((self.G.node[dyingEdge[0]][self.XYZ])) - np.array((self.G.node[dyingEdge[1]][self.XYZ]))  )
             
             # update the adjacency matrix (essential if robustness is to be calculated)            
             if updateAdjmat:
@@ -1083,17 +1087,17 @@ class brainObj:
         the higher the value the "weaker" the connection. 
         In this case there is no measurement unit for the distance, as it is just \
         a conversion from the weights.
+        The distances can be accessed in each node's property with self.DISTANCE
         '''
-        edgeList = [self.G.edge[v[0]][v[1]][self.WEIGHT] for v in self.G.edges() ]
+        edgeList = [v[2][self.WEIGHT] for v in self.G.edges(data=True) ]
         
-        # get the maximum edge value, plus any negative correction required
-        # and a small correction to keep the values above zero
+        # get the maximum edge value, plus a small correction to keep the values above zero
         # the correction is the inverse of the number of nodes - designed to keep
         # calculations of efficiency sensible
         eMax = np.max(edgeList) + 1/float(self.G.number_of_nodes())
         
         for edge in self.G.edges():
-            self.G.edge[edge[0]][edge[1]]["distance"] = eMax - self.G.edge[edge[0]][edge[1]][self.WEIGHT] # convert weights to a positive distance
+            self.G.edge[edge[0]][edge[1]][self.DISTANCE] = eMax - self.G.edge[edge[0]][edge[1]][self.WEIGHT] # convert weights to a positive distance
                 
     def copyHemisphere(self, hSphere="R", midline=44.5):
         """
