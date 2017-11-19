@@ -1059,31 +1059,29 @@ class brainObj:
     def findLinkedNodes(self):
         ''' 
         It gives to each node a list containing the linked nodes.
+        If Graph is undirected, and there is an edge (1,2), node 1 is linked \
+         to node 2, and vice-versa. If Graph is directed, thus node 1 is linked \
+         to node 2, but not the other way around
         This property can be accessed through self.LINKED_NODES
+        Be sure to call this method again if you threshold your brainObj again
         '''
+    
+        # Resetting all nodes from some past information (few edges might not \
+        #  be able to reset this field in all nodes)
+        for n in self.G.nodes(data=True):
+            n[1][self.LINKED_NODES] = []
         
-        for l in self.G.edges():
+        for l in self.G.edges():            
             # add to list of connecting nodes for each participating node
-            try:
-                self.G.node[l[0]][self.LINKED_NODES] = self.G.node[l[0]][self.LINKED_NODES] + [l[1]]
-            except:
-                self.G.node[l[0]][self.LINKED_NODES] = [l[1]]
-                        
-            try:
-                self.G.node[l[1]][self.LINKED_NODES] = self.G.node[l[1]][self.LINKED_NODES] + [l[0]]
-            except:
-                self.G.node[l[1]][self.LINKED_NODES] = [l[0]]
-                
-            # Removing repeated elements
-            if self.directed:
-                self.G.node[l[0]][self.LINKED_NODES] = list(set(self.G.node[l[0]][self.LINKED_NODES]))
-                self.G.node[l[1]][self.LINKED_NODES] = list(set(self.G.node[l[1]][self.LINKED_NODES]))
+            self.G.node[l[0]][self.LINKED_NODES].append(l[1])
+            
+            if not self.directed:
+                self.G.node[l[1]][self.LINKED_NODES].append(l[0])
 
-                
     def weightToDistance(self):
         '''
         It inverts all the edges' weights so they become equivalent to a distance measure. \ 
-        With a weight the higher the value the stronger the connection. With a distance \ 
+        With a weight, the higher the value the stronger the connection. With a distance, \ 
         the higher the value the "weaker" the connection. 
         In this case there is no measurement unit for the distance, as it is just \
         a conversion from the weights.
@@ -1274,7 +1272,11 @@ class brainObj:
     def thresholdToPercentage(self, threshold):
         '''
         It returns a ratio between the edges on adjMat above a certain threshold value \
-        and the total possible edges of adjMat
+        and the total possible edges of adjMat.
+        In an unidrected graph, the total possible edges are the upper right \
+        part elements of adjMat different from np.nan. In a directed graph, the total \
+        possible edges are all the elements of adjMat except the diagonal and \
+        np.nan
         
         threshold : The threshold value
         '''
@@ -1295,8 +1297,12 @@ class brainObj:
         
     def percentConnected(self):
         '''
-        This returns the percentage of the total number of possible connections
-        where an edge actually exists.
+        This returns the ratio of the current number of edges in our `G` object \
+        and the total number of possible connections.
+        If N is the number of nodes in our `G` object, the total number of \
+        possible connections is (N * (N - 1))/2 for an undirected graph, and \
+        N * (N-1) for a directed graph.
+        
         '''
         nodes = self.G.number_of_nodes()
         
