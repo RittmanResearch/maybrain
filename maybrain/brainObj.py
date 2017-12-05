@@ -136,7 +136,8 @@ class brainObj:
                 self.G.node[nodeCount][self.ANAT_LABEL]=l[0]
 
             nodeCount+=1
-                        
+
+        f.close()
 #TODO: When applying threshold, apply properties again.
     def importProperties(self, filename):
         ''' add properties from a file. first lines should contain the property 
@@ -314,13 +315,13 @@ class brainObj:
         thresholdType : The type of threshold applied. Four options are available:
             "edgePC" -> retain the most connected edges as a percentage of the total possible number of edges. "value" must be between 0 and 100
             "totalEdges" -> retain the most strongly connected edges
-            "tVal" -> retain edges with a weight greater than value
+            "tVal" -> retain edges with a weight greater or equal than value
             None -> all possible edges are created
         value : Value according to thresholdType
         useAbsolute : Thresholding by absolute value. For example, if this is set to False, a \
             weight of 1 is stronger than -1. If this is set to True, these values are equally \
             strong. This affects thresholding with "edgePC", "totalEdges" and "tVal". In case of \
-            "tVal", it will threshold for weights greater than abs(tVal) and less than -abs(tVal)
+            "tVal", it will threshold for weights >= abs(tVal) and <= -abs(tVal)
         '''
         
         # Controlling input
@@ -370,7 +371,7 @@ class brainObj:
             elif edgeNum > len(weights):
                 pass #include all weights
             else:
-                weights = weights[-edgeNum]
+                weights = weights[-edgeNum:]
             
         # remove previous edges
         self.G.remove_edges_from(self.G.edges())   
@@ -378,13 +379,14 @@ class brainObj:
         # Adding the edges
         for e in weights:
             if thresholdType == 'tVal' and useAbsolute:
-                if e[2] > abs(value) or e[2] < -abs(value):
+                if e[2] >= abs(value) or e[2] <= -abs(value):
                     self.G.add_edge(e[0], e[1], weight = e[2])
             elif thresholdType == 'tVal' and not useAbsolute:
-                if e[2] > value:
+                if e[2] >= value:
                     self.G.add_edge(e[0], e[1], weight = e[2])
             else: # None, edgePC, totalEdges
                 self.G.add_edge(e[0], e[1], weight = e[2])
+                        
 
     def reconstructAdjMat(self):
         '''
