@@ -36,6 +36,8 @@ class brainObj:
         
         # initialise global variables
         self.adjMat = None # adjacency matrix, containing weighting of edges. Should be square.
+        self.subject = None # identification of the subject to which this brain object belongs
+        self.scan = None # information about the scan which generated this brain object
      
         # TODO: need to define the following, what do they do???
         self.dyingEdges = {}
