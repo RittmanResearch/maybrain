@@ -18,6 +18,7 @@ The following is required for plotting functions:
 
 The following provides some extra functionality for input of certain data types:
 * [NiBabel](http://nipy.org/nibabel/) 2.1.0
+* [Matplotlib](http://matplotlib.org/) 1.5
 
 Software versions higher than those given may also work. If you are not familiar with Python, or you don't want to manually install and deal with each package separately, it is recommended that you install a pre-packaged version that will include most of the above, for example [Anaconda](https://www.anaconda.com). Installation for each package can be found on the individual websites, but if you want to use [Anaconda](https://www.anaconda.com) you will find instructions in our [documentation page](https://github.com/RittmanResearch/maybrain/wiki).
 

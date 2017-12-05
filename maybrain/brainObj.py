@@ -307,7 +307,7 @@ class brainObj:
     
     ##### Functions to alter the brain
 
-    def applyThreshold(self, thresholdType = None, value = 0.):
+    def applyThreshold(self, thresholdType = None, value = 0., useAbsolute=False):
         ''' 
         Treshold the adjacency matrix to determine which nodes are linked by edges.
         
@@ -317,6 +317,10 @@ class brainObj:
             "tVal" -> retain edges with a weight greater than value
             None -> all possible edges are created
         value : Value according to thresholdType
+        useAbsolute : Thresholding by absolute value. For example, if this is set to False, a \
+            weight of 1 is stronger than -1. If this is set to True, these values are equally \
+            strong. This affects thresholding with "edgePC", "totalEdges" and "tVal". In case of \
+            "tVal", it will threshold for weights greater than abs(tVal) and less than -abs(tVal)
         '''
         
         # Controlling input
@@ -325,78 +329,62 @@ class brainObj:
         if thresholdType == "edgePC" and (value < 0 or value > 100):
             raise TypeError("Invalid value for edgePC in applyThreshold()")
         
-        #control var to order in the end
-        toOrder = False
 
-        # Finding threshold value for each type
-        if not(thresholdType):
-            self.threshold = np.nanmin(self.adjMat)
-        elif thresholdType == 'tVal':
-            self.threshold = value
-        else: # 'edgePC' or 'totalEdges'
-            upperValues = np.triu_indices(np.shape(self.adjMat)[0], k= 1)
+        # Creating the array with weights and edges
+        upperValues = np.triu_indices(np.shape(self.adjMat)[0], k= 1)
+        weights = []
+        
+        # Creating weights in which each element is (node1, node2, weight)
+        for x in np.nditer(upperValues):
+            if not np.isnan(self.adjMat[x[0]][x[1]]):
+                weights.append((int(x[0]), 
+                                int(x[1]),
+                                self.adjMat[x[0]][x[1]]))
+    
+        # If directed, also add the lower down part of the adjacency matrix
+        if self.directed:
             belowValues = np.tril_indices(np.shape(self.adjMat)[0], k= -1)
-            if not self.directed:
-                # only flatten the upper right part of the matrix
-                weights = np.array(self.adjMat[upperValues])
+            for x in np.nditer(belowValues):
+                if not np.isnan(self.adjMat[x[0]][x[1]]):
+                    weights.append((int(x[0]),
+                                    int(x[1]),
+                                    self.adjMat[x[0]][x[1]]))
+
+        # Filtering weights when with thresholdType of "edgePC" or "totalEdges"
+        if thresholdType in ["edgePC", "totalEdges"]:
+            # Sorting ascending
+            if useAbsolute:
+                weights.sort(key=lambda x: abs(x[2]))
             else:
-                weights = np.concatenate((self.adjMat[upperValues], self.adjMat[belowValues]))
+                weights.sort(key=lambda x: x[2])
             
-            # remove NaNs
-            weights = weights[~np.isnan(weights)]
-            
-            # sort in to ascending orders
-            weights.sort()
-            
-            # get number of edges
-            nEdges = len(weights)
-                
-            # percentage case
+            # Getting the number of edges to include
             if thresholdType == 'edgePC':
-                # get number of edges
-                edgeNum = int( (value/100.) * nEdges)   
+                edgeNum = int( (value/100.) * len(weights))   
             else: #totalEdges
                 edgeNum = int(value)
-                
-            # get threshold value
-            if edgeNum > len(weights):
-                # case where all edges are included
-                self.threshold = weights[0]
-            elif edgeNum <=0:
-                # case where number of edges is 0 or less
-                self.threshold = weights[-1]+0.5
+            
+            # Removing weak edges
+            if edgeNum <= 0:
+                weights = []
+            elif edgeNum > len(weights):
+                pass #include all weights
             else:
-                # case where some edges are included
-                self.threshold = weights[-edgeNum]
-                toOrder = True #down there this is used
-
+                weights = weights[-edgeNum]
             
-        # Carrying out thresholding on adjacency matrix, without the NaNs
-        boolMat = ~np.isnan(self.adjMat)
-        boolMat[boolMat] = self.adjMat[boolMat] >= self.threshold
-
-        np.fill_diagonal(boolMat, 0)
-
-        es = np.where(boolMat) # lists of where edges should be                 
-        
         # remove previous edges
-        self.G.remove_edges_from(self.G.edges())
+        self.G.remove_edges_from(self.G.edges())   
         
-        # add new edges
-        for ii in range(len(es[0])):
-            # Don't add the lower half of matrix in undirected matrices
-            if not(self.directed) and es[0][ii]>=es[1][ii]: 
-                continue
-            self.G.add_edge(es[0][ii],es[1][ii], weight = self.adjMat[es[0][ii],es[1][ii]])
-            
-        # Removing extra edges for repeated elements with the same threshold value
-        #   in the "edgePC" and "totalEdges" cases
-        if(toOrder):
-            orderedWeights = sorted(self.G.edges(data=True), key=lambda x: (x[2][self.WEIGHT]))
-            orderedWeights = orderedWeights[:-edgeNum]
-            for e in orderedWeights:
-                self.G.remove_edge(e[0], e[1])
-            
+        # Adding the edges
+        for e in weights:
+            if thresholdType == 'tVal' and useAbsolute:
+                if e[2] > abs(value) or e[2] < -abs(value):
+                    self.G.add_edge(e[0], e[1], weight = e[2])
+            elif thresholdType == 'tVal' and not useAbsolute:
+                if e[2] > value:
+                    self.G.add_edge(e[0], e[1], weight = e[2])
+            else: # None, edgePC, totalEdges
+                self.G.add_edge(e[0], e[1], weight = e[2])
 
     def reconstructAdjMat(self):
         '''
