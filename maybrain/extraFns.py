@@ -505,32 +505,4 @@ def extractCoordinates(template, outFile="ROI_xyz.txt"):
         writer.writerow(outDict)
         
     out.close()
-        
 
-def stripString(strIn):
-    ''' remove unwanted characters from beginning and end of a string '''
-
-    chars = [' ', '\n', '\t', '.']
-    
-    strOut = strIn
-    if strOut == '':
-        return ''
-        
-    while strOut[0] in chars:
-        strOut = strOut[1:]
-        
-        if len(strOut)==0:
-            return ''
-        
-    while strOut[-1] in chars:
-        strOut = strOut[:-1]
-        
-        if len(strOut) ==0:
-            return ''
-            
-    return strOut
-        
-    
-    
-    
-    return np.array(flatMat)
