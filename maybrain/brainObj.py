@@ -92,8 +92,7 @@ class brainObj:
         try:
             with open(fname, "r") as f:
                 for l in f:
-                    while l[-1] in ('\n', '\t'):
-                        l = l[:-1]
+                    l = l.strip()
                     lines.append(list(map(float, [v if v not in naVals else np.nan for v in l.split(sep=delimiter)])))
         except IOError as error:            
             error.strerror = 'Problem with opening file "' + fname + '": ' + error.strerror
@@ -130,7 +129,7 @@ class brainObj:
         lines = f.readlines()
         nodeCount=0
         for line in lines:
-            l = line.split(sep=delimiter)
+            l = line.strip().split(sep=delimiter)
 
             if convertMNI:
                 l[1] = 45 - (float(l[1])/2)
