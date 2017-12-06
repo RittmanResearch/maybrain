@@ -11,7 +11,6 @@ import networkx as nx
 import numpy as np
 from networkx.algorithms import components
 import random
-from maybrain import extraFns
 from maybrain import highlightObj
 
 
@@ -63,6 +62,11 @@ class brainObj:
         self.XYZ          = 'xyz'
         self.ANAT_LABEL   = 'anatlabel'
         self.DISTANCE     = 'distance'
+        
+        # For the properties features
+        self.nodeProperties = []
+        self.edgeProperties = []
+        self.update_properties_after_threshold = False
 
         # create a new networkX graph object
         if self.directed:
@@ -140,102 +144,60 @@ class brainObj:
             nodeCount+=1
 
         f.close()
-#TODO: When applying threshold, apply properties again.
+
     def importProperties(self, filename):
-        ''' add properties from a file. first lines should contain the property 
-            name and the following lines tabulated node indices and property value e.g.:
+        ''' 
+        Add properties from a file. First line should contain the property name and the following \
+        lines spaced node indices and property value e.g.:
                 
             colour
             1 red
             2 white    
-            2   4   green
+            2 4 green
             
-            if 2 indices are given, the property is applied to edges instead. Can mix nodes and edges in the same file.
-            
-            
+        Not that if 2 indices are given, the property is applied to edges instead.
+        Properties will be treated as strings.
+        You can mix nodes and edges in the same file.
         ''' 
-        
-        # load file from data
-        f = open(filename)
-        data = f.readlines()
-        
-        # check that there are enough lines to read
-        if len(data)<2:
-            print('no data in properties file')
-            return
-        
-        # get the proprety name
-        prop = data[0][:-1]       
-
-        # initialise output        
-        nodes = []
-        propValsNodes = []
-        edges = []
-        propValsEdges = []
-        
-        # extract data from file
-        for l in data[1:]:
-            # determine if it should apply to edges or nodes (by length)
-            try:
-                value = l.split()
-                if len(value)==2:
-                    mode = 'nodes'
-                elif len(value)==3:
-                    mode =  'edges'
-            except:
-                print(('couldn\'t parse data line. Please check property file', l))
+        edges_p = []
+        nodes_p = []
+        with open(filename, 'r') as file:
+            prop = file.readline().strip()
+            for line in file:
+                info = line.strip().split(' ')
                 
-            # make last entry of value a float or string (property value)
-            try:
-                value[-1] = float(value[-1])
-            except ValueError:
-                value[-1] = str(value[-1])
-                value[-1] = extraFns.stripString(value[-1])
-                print((value[-1]))
+                if len(info) == 2:
+                    nodes_p.append([prop, int(info[0]), info[1]])
+                elif len(info) == 3:
+                    edges_p.append([prop, int(info[0]), int(info[1]), info[2]])
+                else:
+                    raise ValueError('Problem in parsing %s, it has an invalid structure at line %d' % (filename, file.tell()))
+
+        self._addProperties(edges_p)
+        self._addProperties(nodes_p)
+        
+        self.nodeProperties.extend(nodes_p)
+        self.edgeProperties.extend(edges_p)
+
+
+    def _addProperties(self, properties):
+        '''
+        It receives a list with properties and add them to either the nodes or edges according to the structure.
+        For nodes properties, the format is:
+            [ [property_name, node_id, property_value], [property_name, node_id, property_value], ...]
             
-            # get data
-            if mode=='nodes':
-                nodes.append(int(value[0]))
-                propValsNodes.append(value[1])
-                
-            elif mode=='edges':
-                edges.append([int(value[0]),int(value[1])])
-                propValsEdges.append(value[2])
-        
-        # add data to brain
-        if len(nodes)>0:
-            self.addNodeProperties(prop, nodes, propValsNodes)
-        if len(edges)>0:
-            self.addEdgeProperty(prop, edges, propValsEdges)
-
-        return prop # required for GUI
-                    
-        
-    def addNodeProperties(self, propertyName, nodeList, propList):
-        ''' add properties to nodes, reading from a list of nodes and a list of 
-            corresponding properties '''
-        
-        for ind in range(len(nodeList)):
-            n = nodeList[ind]
-            p = propList[ind]
+        For edges properties, the format is:
+            [ [property_name, edge1, edge2, property_value], [property_name, edge1, edge2, property_value], ...]
+        '''
+        for prop in properties:
             try:
-                self.G.node[n][propertyName] = p
+                if len(prop) == 3: #nodes
+                    self.G.node[prop[1]][prop[0]] = prop[2]
+                elif len(prop) == 4: #edges
+                    self.G.edge[prop[1]][prop[2]][prop[0]] = prop[3]
             except:
-                print(('property assignment failed: ' + propertyName + ' ' + str(n) + ' ' + str(p)))
+                print('Warning! Unable to process property %s' % prop)
 
-
-    def addEdgeProperty(self, propertyName, edgeList, propList):
-        ''' add a property to a selection of edges '''
-        
-        for ind in range(len(edgeList)):
-            e = edgeList[ind]
-            p = propList[ind]
-            try:
-                self.G.edge[e[0]][e[1]][propertyName] = p
-            except KeyError:
-                print(('edge property assignment failed: ' + propertyName + ' ' + str(e) + ' ' + str(p)))
-
-        
     ### supplementary structures
 
     #!! rename background to template
@@ -389,6 +351,10 @@ class brainObj:
             else: # None, edgePC, totalEdges
                 self.G.add_edge(e[0], e[1], weight = e[2])
                         
+        # Apply existing properties 
+        if self.update_properties_after_threshold:
+            self._addProperties(self.nodeProperties)
+            self._addProperties(self.edgeProperties)
 
     def reconstructAdjMat(self):
         '''
@@ -506,6 +472,11 @@ class brainObj:
             k+=1
         
         self.G = T
+        
+        # Apply existing properties 
+        if self.update_properties_after_threshold:
+            self._addProperties(self.nodeProperties)
+            self._addProperties(self.edgeProperties)
         
     def binarise(self):
         '''

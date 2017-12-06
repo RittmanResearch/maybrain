@@ -15,6 +15,7 @@ class TestBrainObj(unittest.TestCase):
         self.SMALL_NEG_FILE = "test/data/3d_grid_adj_neg.txt"
         self.MODIF_FILE = "test/data/3d_grid_adj2.txt"
         self.COORD_FILE = "test/data/3d_grid_coords.txt"
+        self.PROPS_FILE = "test/data/3d_grid_properties.txt"
 
     def test_constructor(self):
         self.assertIsInstance(self.a, mbt.brainObj)
@@ -278,7 +279,29 @@ class TestBrainObj(unittest.TestCase):
         self.assertTrue(all(eMax == e[2][self.a.DISTANCE] + e[2][self.a.WEIGHT] for e in self.a.G.edges(data=True)))
         self.assertTrue(all(e[2][self.a.DISTANCE] > 0  for e in self.a.G.edges(data=True)))
         
+    def test_properties(self):
+        self.a.importAdjFile(self.SMALL_FILE)
+        self.a.applyThreshold()
+        self.a.importProperties(self.PROPS_FILE)
+        
+        for e in range(2):
+            # 2nd iteration
+            if e == 1:
+                self.a.applyThreshold(thresholdType="totalEdges", value=0)
+                self.a.update_properties_after_threshold = True
+                self.a.applyThreshold()
+            
+            self.assertRaises(KeyError, lambda: self.a.G.node[2]['colour'])
+            self.assertRaises(KeyError, lambda: self.a.G.node[6]) # testing node 6 is not created
+            self.assertTrue(self.a.G.node[1]['colour'], 'red')
+            self.assertTrue(self.a.G.node[0]['colour'], 'blue')
+            self.assertTrue(self.a.G.node[3]['colour'], 'red')
+            # edges
+            self.assertTrue(self.a.G.edge[0][2]['colour'], 'red')
+            self.assertTrue(self.a.G.edge[2][0]['colour'], 'red')
+            self.assertTrue(self.a.G.edge[1][3]['colour'], 'green')
 
+        
 
 if __name__ == '__main__':
     unittest.main()
