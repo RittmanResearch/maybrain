@@ -12,8 +12,10 @@ class TestBrainObj(unittest.TestCase):
     def setUp(self):
         self.a = mbt.brainObj() 
         self.SMALL_FILE = "test/data/3d_grid_adj.txt"
+        self.SMALL_NEG_FILE = "test/data/3d_grid_adj_neg.txt"
         self.MODIF_FILE = "test/data/3d_grid_adj2.txt"
         self.COORD_FILE = "test/data/3d_grid_coords.txt"
+        self.PROPS_FILE = "test/data/3d_grid_properties.txt"
 
     def test_constructor(self):
         self.assertIsInstance(self.a, mbt.brainObj)
@@ -88,20 +90,22 @@ class TestBrainObj(unittest.TestCase):
         ### edgePC 
         b = mbt.brainObj()
         b.importAdjFile(self.MODIF_FILE, delimiter=",", exclnodes = [2,4])
-        b.applyThreshold(thresholdType="edgePC", value=10.5)
-        self.assertEqual(b.G.number_of_edges(), int(0.105*allEdges))
-        self.assertTrue((1,12) in b.G.edges())
-        b.applyThreshold(thresholdType="edgePC", value=0)
-        self.assertEqual(b.G.number_of_edges(), 0) 
+        for val in [True, False]:
+            b.applyThreshold(thresholdType="edgePC", value=10.5, useAbsolute=val)
+            self.assertEqual(b.G.number_of_edges(), int(0.105*allEdges))
+            self.assertTrue((1,12) in b.G.edges())
+            b.applyThreshold(thresholdType="edgePC", value=0, useAbsolute=val)
+            self.assertEqual(b.G.number_of_edges(), 0) 
         
         ### totalEdges
-        b.applyThreshold(thresholdType="totalEdges", value=3)
-        self.assertEqual(b.G.number_of_edges(), 3) 
-        self.assertTrue((1,12) in b.G.edges())
-        b.applyThreshold(thresholdType="totalEdges", value=1000)
-        self.assertEqual(b.G.number_of_edges(), 76)
-        b.applyThreshold(thresholdType="totalEdges", value=0)
-        self.assertEqual(b.G.number_of_edges(), 0) 
+        for val in [True, False]:
+            b.applyThreshold(thresholdType="totalEdges", value=3, useAbsolute=val)
+            self.assertEqual(b.G.number_of_edges(), 3) 
+            self.assertTrue((1,12) in b.G.edges())
+            b.applyThreshold(thresholdType="totalEdges", value=1000, useAbsolute=val)
+            self.assertEqual(b.G.number_of_edges(), 76)
+            b.applyThreshold(thresholdType="totalEdges", value=0, useAbsolute=val)
+            self.assertEqual(b.G.number_of_edges(), 0) 
         
         ### tVal
         b.applyThreshold(thresholdType="tVal", value=3)
@@ -116,18 +120,33 @@ class TestBrainObj(unittest.TestCase):
         ### directed
         c = mbt.brainObj(directed=True)
         c.importAdjFile(self.MODIF_FILE, delimiter=",")
-        c.applyThreshold()
-        allEdges = c.G.number_of_edges()
-        self.assertEqual(c.G.number_of_edges(), 207) #15*15 - 15 -3NAs
-        c.applyThreshold(thresholdType="edgePC", value=10.5)
-        self.assertEqual(c.G.number_of_edges(), int(0.105*allEdges))
-        c.applyThreshold(thresholdType="totalEdges", value=76)
-        self.assertEqual(c.G.number_of_edges(), 76)
-        c.applyThreshold(thresholdType="totalEdges", value=10000)
-        self.assertEqual(c.G.number_of_edges(), 207)
+        for val in [True, False]:
+            c.applyThreshold(useAbsolute=val)
+            allEdges = c.G.number_of_edges()
+            self.assertEqual(c.G.number_of_edges(), 207) #15*15 - 15 -3NAs
+            c.applyThreshold(thresholdType="edgePC", value=10.5, useAbsolute=val)
+            self.assertEqual(c.G.number_of_edges(), int(0.105*allEdges))
+            c.applyThreshold(thresholdType="totalEdges", value=76, useAbsolute=val)
+            self.assertEqual(c.G.number_of_edges(), 76)
+            c.applyThreshold(thresholdType="totalEdges", value=10000, useAbsolute=val)
+            self.assertEqual(c.G.number_of_edges(), 207)
         c.applyThreshold(thresholdType="tVal", value=0.5)
         self.assertTrue( all(e[2][c.WEIGHT] >= 0.5 for e in c.G.edges(data=True)))
         
+        ## Absolute thresholding
+        c.importAdjFile(self.SMALL_NEG_FILE)
+        c.applyThreshold(thresholdType="totalEdges", value=2, useAbsolute=True)
+        self.assertTrue(c.G.edge[1][2][c.WEIGHT] == -0.843798947781)
+        self.assertTrue(c.G.edge[2][0][c.WEIGHT] == 0.858463902674)
+        c.applyThreshold(thresholdType="tVal", value=0.5, useAbsolute=True)
+        self.assertTrue( all(e[2][c.WEIGHT] >= 0.5 or e[2][c.WEIGHT] <= -0.5
+                             for e in c.G.edges(data=True)))
+        b.importAdjFile(self.SMALL_NEG_FILE)
+        b.applyThreshold(thresholdType="totalEdges", value=1, useAbsolute=True)
+        self.assertTrue(b.G.edge[1][2][b.WEIGHT] == -0.843798947781)
+        b.applyThreshold(thresholdType="edgePC", value=20, useAbsolute=True)
+        self.assertTrue(b.G.edge[1][2][c.WEIGHT] == -0.843798947781)
+        self.assertEqual(b.G.number_of_edges(), 1)
     
     def test_binarise(self):
         self.a.importAdjFile(self.MODIF_FILE, delimiter=",")
@@ -260,7 +279,29 @@ class TestBrainObj(unittest.TestCase):
         self.assertTrue(all(eMax == e[2][self.a.DISTANCE] + e[2][self.a.WEIGHT] for e in self.a.G.edges(data=True)))
         self.assertTrue(all(e[2][self.a.DISTANCE] > 0  for e in self.a.G.edges(data=True)))
         
+    def test_properties(self):
+        self.a.importAdjFile(self.SMALL_FILE)
+        self.a.applyThreshold()
+        self.a.importProperties(self.PROPS_FILE)
+        
+        for e in range(2):
+            # 2nd iteration
+            if e == 1:
+                self.a.applyThreshold(thresholdType="totalEdges", value=0)
+                self.a.update_properties_after_threshold = True
+                self.a.applyThreshold()
+            
+            self.assertRaises(KeyError, lambda: self.a.G.node[2]['colour'])
+            self.assertRaises(KeyError, lambda: self.a.G.node[6]) # testing node 6 is not created
+            self.assertTrue(self.a.G.node[1]['colour'], 'red')
+            self.assertTrue(self.a.G.node[0]['colour'], 'blue')
+            self.assertTrue(self.a.G.node[3]['colour'], 'red')
+            # edges
+            self.assertTrue(self.a.G.edge[0][2]['colour'], 'red')
+            self.assertTrue(self.a.G.edge[2][0]['colour'], 'red')
+            self.assertTrue(self.a.G.edge[1][3]['colour'], 'green')
 
+        
 
 if __name__ == '__main__':
     unittest.main()

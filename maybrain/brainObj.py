@@ -11,7 +11,6 @@ import networkx as nx
 import numpy as np
 from networkx.algorithms import components
 import random
-from maybrain import extraFns
 from maybrain import highlightObj
 
 
@@ -36,6 +35,8 @@ class brainObj:
         
         # initialise global variables
         self.adjMat = None # adjacency matrix, containing weighting of edges. Should be square.
+        self.subject = None # identification of the subject to which this brain object belongs
+        self.scan = None # information about the scan which generated this brain object
      
         # TODO: need to define the following, what do they do???
         self.dyingEdges = {}
@@ -61,6 +62,11 @@ class brainObj:
         self.XYZ          = 'xyz'
         self.ANAT_LABEL   = 'anatlabel'
         self.DISTANCE     = 'distance'
+        
+        # For the properties features
+        self.nodeProperties = []
+        self.edgeProperties = []
+        self.update_properties_after_threshold = False
 
         # create a new networkX graph object
         if self.directed:
@@ -86,8 +92,7 @@ class brainObj:
         try:
             with open(fname, "r") as f:
                 for l in f:
-                    while l[-1] in ('\n', '\t'):
-                        l = l[:-1]
+                    l = l.strip()
                     lines.append(list(map(float, [v if v not in naVals else np.nan for v in l.split(sep=delimiter)])))
         except IOError as error:            
             error.strerror = 'Problem with opening file "' + fname + '": ' + error.strerror
@@ -124,7 +129,7 @@ class brainObj:
         lines = f.readlines()
         nodeCount=0
         for line in lines:
-            l = line.split(sep=delimiter)
+            l = line.strip().split(sep=delimiter)
 
             if convertMNI:
                 l[1] = 45 - (float(l[1])/2)
@@ -136,103 +141,62 @@ class brainObj:
                 self.G.node[nodeCount][self.ANAT_LABEL]=l[0]
 
             nodeCount+=1
-                        
-#TODO: When applying threshold, apply properties again.
+
+        f.close()
+
     def importProperties(self, filename):
-        ''' add properties from a file. first lines should contain the property 
-            name and the following lines tabulated node indices and property value e.g.:
+        ''' 
+        Add properties from a file. First line should contain the property name and the following \
+        lines spaced node indices and property value e.g.:
                 
             colour
             1 red
             2 white    
-            2   4   green
+            2 4 green
             
-            if 2 indices are given, the property is applied to edges instead. Can mix nodes and edges in the same file.
-            
-            
+        Not that if 2 indices are given, the property is applied to edges instead.
+        Properties will be treated as strings.
+        You can mix nodes and edges in the same file.
         ''' 
-        
-        # load file from data
-        f = open(filename)
-        data = f.readlines()
-        
-        # check that there are enough lines to read
-        if len(data)<2:
-            print('no data in properties file')
-            return
-        
-        # get the proprety name
-        prop = data[0][:-1]       
-
-        # initialise output        
-        nodes = []
-        propValsNodes = []
-        edges = []
-        propValsEdges = []
-        
-        # extract data from file
-        for l in data[1:]:
-            # determine if it should apply to edges or nodes (by length)
-            try:
-                value = l.split()
-                if len(value)==2:
-                    mode = 'nodes'
-                elif len(value)==3:
-                    mode =  'edges'
-            except:
-                print(('couldn\'t parse data line. Please check property file', l))
+        edges_p = []
+        nodes_p = []
+        with open(filename, 'r') as file:
+            prop = file.readline().strip()
+            for line in file:
+                info = line.strip().split(' ')
                 
-            # make last entry of value a float or string (property value)
-            try:
-                value[-1] = float(value[-1])
-            except ValueError:
-                value[-1] = str(value[-1])
-                value[-1] = extraFns.stripString(value[-1])
-                print((value[-1]))
+                if len(info) == 2:
+                    nodes_p.append([prop, int(info[0]), info[1]])
+                elif len(info) == 3:
+                    edges_p.append([prop, int(info[0]), int(info[1]), info[2]])
+                else:
+                    raise ValueError('Problem in parsing %s, it has an invalid structure at line %d' % (filename, file.tell()))
+
+        self._addProperties(edges_p)
+        self._addProperties(nodes_p)
+        
+        self.nodeProperties.extend(nodes_p)
+        self.edgeProperties.extend(edges_p)
+
+
+    def _addProperties(self, properties):
+        '''
+        It receives a list with properties and add them to either the nodes or edges according to the structure.
+        For nodes properties, the format is:
+            [ [property_name, node_id, property_value], [property_name, node_id, property_value], ...]
             
-            # get data
-            if mode=='nodes':
-                nodes.append(int(value[0]))
-                propValsNodes.append(value[1])
-                
-            elif mode=='edges':
-                edges.append([int(value[0]),int(value[1])])
-                propValsEdges.append(value[2])
-        
-        # add data to brain
-        if len(nodes)>0:
-            self.addNodeProperties(prop, nodes, propValsNodes)
-        if len(edges)>0:
-            self.addEdgeProperty(prop, edges, propValsEdges)
-
-        return prop # required for GUI
-                    
-        
-    def addNodeProperties(self, propertyName, nodeList, propList):
-        ''' add properties to nodes, reading from a list of nodes and a list of 
-            corresponding properties '''
-        
-        for ind in range(len(nodeList)):
-            n = nodeList[ind]
-            p = propList[ind]
+        For edges properties, the format is:
+            [ [property_name, edge1, edge2, property_value], [property_name, edge1, edge2, property_value], ...]
+        '''
+        for prop in properties:
             try:
-                self.G.node[n][propertyName] = p
+                if len(prop) == 3: #nodes
+                    self.G.node[prop[1]][prop[0]] = prop[2]
+                elif len(prop) == 4: #edges
+                    self.G.edge[prop[1]][prop[2]][prop[0]] = prop[3]
             except:
-                print(('property assignment failed: ' + propertyName + ' ' + str(n) + ' ' + str(p)))
+                print('Warning! Unable to process property %s' % prop)
 
-
-    def addEdgeProperty(self, propertyName, edgeList, propList):
-        ''' add a property to a selection of edges '''
-        
-        for ind in range(len(edgeList)):
-            e = edgeList[ind]
-            p = propList[ind]
-            try:
-                self.G.edge[e[0]][e[1]][propertyName] = p
-            except KeyError:
-                print(('edge property assignment failed: ' + propertyName + ' ' + str(e) + ' ' + str(p)))
-
-        
     ### supplementary structures
 
     #!! rename background to template
@@ -307,16 +271,20 @@ class brainObj:
     
     ##### Functions to alter the brain
 
-    def applyThreshold(self, thresholdType = None, value = 0.):
+    def applyThreshold(self, thresholdType = None, value = 0., useAbsolute=False):
         ''' 
         Treshold the adjacency matrix to determine which nodes are linked by edges.
         
         thresholdType : The type of threshold applied. Four options are available:
             "edgePC" -> retain the most connected edges as a percentage of the total possible number of edges. "value" must be between 0 and 100
             "totalEdges" -> retain the most strongly connected edges
-            "tVal" -> retain edges with a weight greater than value
+            "tVal" -> retain edges with a weight greater or equal than value
             None -> all possible edges are created
         value : Value according to thresholdType
+        useAbsolute : Thresholding by absolute value. For example, if this is set to False, a \
+            weight of 1 is stronger than -1. If this is set to True, these values are equally \
+            strong. This affects thresholding with "edgePC", "totalEdges" and "tVal". In case of \
+            "tVal", it will threshold for weights >= abs(tVal) and <= -abs(tVal)
         '''
         
         # Controlling input
@@ -325,78 +293,67 @@ class brainObj:
         if thresholdType == "edgePC" and (value < 0 or value > 100):
             raise TypeError("Invalid value for edgePC in applyThreshold()")
         
-        #control var to order in the end
-        toOrder = False
 
-        # Finding threshold value for each type
-        if not(thresholdType):
-            self.threshold = np.nanmin(self.adjMat)
-        elif thresholdType == 'tVal':
-            self.threshold = value
-        else: # 'edgePC' or 'totalEdges'
-            upperValues = np.triu_indices(np.shape(self.adjMat)[0], k= 1)
+        # Creating the array with weights and edges
+        upperValues = np.triu_indices(np.shape(self.adjMat)[0], k= 1)
+        weights = []
+        
+        # Creating weights in which each element is (node1, node2, weight)
+        for x in np.nditer(upperValues):
+            if not np.isnan(self.adjMat[x[0]][x[1]]):
+                weights.append((int(x[0]), 
+                                int(x[1]),
+                                self.adjMat[x[0]][x[1]]))
+    
+        # If directed, also add the lower down part of the adjacency matrix
+        if self.directed:
             belowValues = np.tril_indices(np.shape(self.adjMat)[0], k= -1)
-            if not self.directed:
-                # only flatten the upper right part of the matrix
-                weights = np.array(self.adjMat[upperValues])
+            for x in np.nditer(belowValues):
+                if not np.isnan(self.adjMat[x[0]][x[1]]):
+                    weights.append((int(x[0]),
+                                    int(x[1]),
+                                    self.adjMat[x[0]][x[1]]))
+
+        # Filtering weights when with thresholdType of "edgePC" or "totalEdges"
+        if thresholdType in ["edgePC", "totalEdges"]:
+            # Sorting ascending
+            if useAbsolute:
+                weights.sort(key=lambda x: abs(x[2]))
             else:
-                weights = np.concatenate((self.adjMat[upperValues], self.adjMat[belowValues]))
+                weights.sort(key=lambda x: x[2])
             
-            # remove NaNs
-            weights = weights[~np.isnan(weights)]
-            
-            # sort in to ascending orders
-            weights.sort()
-            
-            # get number of edges
-            nEdges = len(weights)
-                
-            # percentage case
+            # Getting the number of edges to include
             if thresholdType == 'edgePC':
-                # get number of edges
-                edgeNum = int( (value/100.) * nEdges)   
+                edgeNum = int( (value/100.) * len(weights))   
             else: #totalEdges
                 edgeNum = int(value)
-                
-            # get threshold value
-            if edgeNum > len(weights):
-                # case where all edges are included
-                self.threshold = weights[0]
-            elif edgeNum <=0:
-                # case where number of edges is 0 or less
-                self.threshold = weights[-1]+0.5
+            
+            # Removing weak edges
+            if edgeNum <= 0:
+                weights = []
+            elif edgeNum > len(weights):
+                pass #include all weights
             else:
-                # case where some edges are included
-                self.threshold = weights[-edgeNum]
-                toOrder = True #down there this is used
-
+                weights = weights[-edgeNum:]
             
-        # Carrying out thresholding on adjacency matrix, without the NaNs
-        boolMat = ~np.isnan(self.adjMat)
-        boolMat[boolMat] = self.adjMat[boolMat] >= self.threshold
-
-        np.fill_diagonal(boolMat, 0)
-
-        es = np.where(boolMat) # lists of where edges should be                 
-        
         # remove previous edges
-        self.G.remove_edges_from(self.G.edges())
+        self.G.remove_edges_from(self.G.edges())   
         
-        # add new edges
-        for ii in range(len(es[0])):
-            # Don't add the lower half of matrix in undirected matrices
-            if not(self.directed) and es[0][ii]>=es[1][ii]: 
-                continue
-            self.G.add_edge(es[0][ii],es[1][ii], weight = self.adjMat[es[0][ii],es[1][ii]])
-            
-        # Removing extra edges for repeated elements with the same threshold value
-        #   in the "edgePC" and "totalEdges" cases
-        if(toOrder):
-            orderedWeights = sorted(self.G.edges(data=True), key=lambda x: (x[2][self.WEIGHT]))
-            orderedWeights = orderedWeights[:-edgeNum]
-            for e in orderedWeights:
-                self.G.remove_edge(e[0], e[1])
-            
+        # Adding the edges
+        for e in weights:
+            if thresholdType == 'tVal' and useAbsolute:
+                if e[2] >= abs(value) or e[2] <= -abs(value):
+                    self.G.add_edge(e[0], e[1], weight = e[2])
+            elif thresholdType == 'tVal' and not useAbsolute:
+                if e[2] >= value:
+                    self.G.add_edge(e[0], e[1], weight = e[2])
+            else: # None, edgePC, totalEdges
+                self.G.add_edge(e[0], e[1], weight = e[2])
+                        
+        # Apply existing properties 
+        if self.update_properties_after_threshold:
+            self._addProperties(self.nodeProperties)
+            self._addProperties(self.edgeProperties)
 
     def reconstructAdjMat(self):
         '''
@@ -514,6 +471,11 @@ class brainObj:
             k+=1
         
         self.G = T
+        
+        # Apply existing properties 
+        if self.update_properties_after_threshold:
+            self._addProperties(self.nodeProperties)
+            self._addProperties(self.edgeProperties)
         
     def binarise(self):
         '''
