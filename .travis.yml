@@ -16,6 +16,7 @@ install:
  - conda install -c menpo mayavi=4.5.0
  - conda install networkx=1.11
  - conda install -c conda-forge nibabel=2.1.0
+ - conda install matplotlib=2.1
  - conda install pyqt=4
  - python setup.py install
  - conda install -c conda-forge codecov
