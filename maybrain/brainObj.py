@@ -925,7 +925,7 @@ class brainObj:
 
     ### basic proximities
    
-    def findSpatiallyNearest(self, nodeList, contra=False, midline=44.5, connected=True):
+    def findSpatiallyNearest(self, nodeList, contra=False, midline=44.5, connected=True, threshold=None):
         # find the spatially closest node as no topologically close nodes exist
         if isinstance(nodeList, list):
             duffNode = random.choice(nodeList)
@@ -936,6 +936,9 @@ class brainObj:
         nodes = [v for v in nodes if not v in nodeList]
 
         shortestnode = (None, None)
+        tList = [] # list of closest nodes according to threshold
+        if not threshold:
+            tVal = 0.
         
         # get the contralaterally closest node if desired
         pos = [v for v in self.G.node[duffNode]['xyz']]
@@ -949,6 +952,9 @@ class brainObj:
         for node in nodes:
             try:
                 distance = np.linalg.norm(np.array(pos - np.array(self.G.node[node]['xyz'])))
+                if distance<tVal:
+                    tList.append(node)
+
             except:
                 print("Finding the spatially nearest node requires x,y,z values")
                 
@@ -967,84 +973,10 @@ class brainObj:
                 else:
                     shortestnode = (node, distance)
                     
-        return shortestnode[0]
-        
-    
-    def findSpatiallyNearestNew(self, nodeList, threshold=1.):
-        ''' find the spatially nearest nodes to each node within a treshold 
-        
-        Comment - did you have something in mind for this?
-        '''
-        
-        randNode = random.choice(nodeList)
-            
-        nodes = [v for v in self.G.nodes() if v!=randNode]
-        nodes = [v for v in nodes if not v in nodeList]
-        
-        # get list of node positions
-        xyzList = []
-        count = 0
-        for node in nodes:
-            xyzList.append([count] + list(self.G.node[node]['xyz']))
-            count = count  + 1
-
-        # cut down in x,y and z coords
-        xyz0 = self.G.node[randNode]['xyz']
-        xyzmax = [0, xyz0[0] + threshold, xyz0[1] + threshold, xyz0[2] + threshold]
-        xyzmin = [0, xyz0[0] - threshold, xyz0[1] - threshold, xyz0[2] - threshold]
-        
-        # check so that you don't get an empty answer
-        count = 0
-        countmax = 10
-        newxyzList = []
-        while (newxyzList==[]) & (count <countmax):           
-            # see if it's close to orig point            
-            for l in xyzList:
-                cond = 1
-                # check x, y and z coords
-                for ind in [1,2,3]:
-                    cond = (l[ind]>xyzmin[ind]) & (l[ind]<xyzmax[ind])
-                    
-                    if cond==0:
-                        break
-                    
-                # append to new list if close
-                if cond:
-                    newxyzList.append(l)
-                    cond = False
-                    
-            # increase threshold for next run, if solution is empty
-            threshold = threshold * 2
-
-        if newxyzList == []:
-            print('unable to find a spatially nearest node')
-            return -1, 0
-        
-        # find shortest distance
-        
-        # find distances
-        dists = []
-        print('newxyzlist')
-        print(newxyzList)
-        for l in newxyzList:
-            d = np.sqrt((l[1]-xyz0[0])**2 + (l[2]-xyz0[1])**2 + (l[3]-xyz0[2]**2))
-            dists = dists + [(d, l[0])]
-        
-        print('presort')
-        print(dists)
-        # sort distances
-        dtype = [('d', float), ('ind', int)]
-        dists = np.array(dists, dtype = dtype)
-        dists = np.sort(dists, order = ['d', 'ind'])
-        print('postsort')
-        print(dists)
-        
-        # get shortest node
-        nodeIndex = dists[0][1]        
-        closestNode = self.G.node[nodeIndex]
-
-        return nodeIndex, closestNode        
-        
+        if threshold:
+            return tList
+        else:
+            return shortestnode[0]
         
     def findLinkedNodes(self):
         ''' give each node a list containing the linked nodes '''

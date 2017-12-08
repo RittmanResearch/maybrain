@@ -170,6 +170,8 @@ class TestBrainObj(unittest.TestCase):
         self.assertEqual(self.a.G.number_of_edges(), int(0.2*allEdges))
         self.assertTrue(nx.is_connected(self.a.G))
 
+#    def test_spatiallyNearest(self):
+        
 
 if __name__ == '__main__':
     unittest.main()
