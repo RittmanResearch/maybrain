@@ -1,3 +1,7 @@
+import numpy as np
+import random
+
+
 def modularity(brain, hierarchy=False, diag_val=0., nodes_to_exclude=None):
     """
     Modularity function borrowed (after asking nicely!) from

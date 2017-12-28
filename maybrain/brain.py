@@ -4,7 +4,6 @@ Module which contains the definition of Brain class.
 """
 import networkx as nx
 import numpy as np
-from networkx.algorithms import components
 import random
 from maybrain import highlightObj
 from maybrain import constants as ct
@@ -750,47 +749,3 @@ class Brain:
                     self.G.node[str(node) + "L"][ct.XYZ] = (midline - (pos[0] - midline), pos[1], pos[2])
                 else:
                     self.G.remove_node(node)
-
-    def checkrobustness(self, con_val, step):
-        """ Robustness is a measure that starts with a fully connected graph, \
-        then reduces the threshold incrementally until the graph breaks up in \
-        to more than one connected component. The robustness level is the \
-        threshold at which this occurs. """
-
-        self.adjMatThresholding(edgePC=con_val)
-        con_val -= step
-
-        sg_len_start = len(components.connected.connected_component_subgraphs(self.G))
-        # print "Starting sg_len: "+str(sg_len_start)
-        sg_len = sg_len_start
-
-        while sg_len == sg_len_start and con_val > 0.:
-            self.adjMatThresholding(edgePC=con_val)
-            sg_len = len(
-                components.connected.connected_component_subgraphs(self.G))  # identify largest connected component
-            con_val -= step
-            # print "New connectivity:" +str(con_val)+ " Last sg_len:" + str(sg_len)
-        return con_val + (2 * step)
-
-    def makebctmat(self):
-        """
-        Create a matrix for use with brain connectivity toolbox measures.
-        See https://pypi.python.org/pypi/bctpy
-
-        Note that missing nodes are not included, so the matrix order in
-        the resulting matrix may not match the node number in the maybrain
-        networkx object
-        """
-        self.bctmat = np.zeros((len(self.G.nodes()), len(self.G.nodes())))
-        node_indices = dict(list(zip(self.G.nodes(), list(range(len(self.G.nodes()))))))
-        for nn, x in enumerate(self.G.nodes()):
-            for y in list(self.G.edge[x].keys()):
-                try:
-                    self.bctmat[nn, node_indices[y]] = self.G.edge[x][y][ct.WEIGHT]
-                except:
-                    pass
-
-    def assignbctresult(self, bct_res):
-        """ translate a maybrain connectome into a bct compatible format """
-        out = dict(list(zip(self.G.nodes(), bct_res)))
-        return out

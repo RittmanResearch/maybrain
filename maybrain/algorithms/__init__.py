@@ -5,3 +5,6 @@ Initialisation file for algorithms module
 """
 
 from .degeneration import *
+from .modularity import *
+from .robustness import *
+from .normalisation import *
