@@ -2,6 +2,7 @@ import unittest
 
 from maybrain import brain as mbt
 from maybrain import constants as ct
+from maybrain import utils
 import networkx as nx
 import numpy as np
 
@@ -227,23 +228,23 @@ class TestBrainObj(unittest.TestCase):
     def test_percentages(self):
         self.a.import_adj_file(self.SMALL_FILE)
         self.a.apply_threshold(threshold_type="totalEdges", value=1)
-        self.assertEqual(self.a.threshold_to_percentage(0.6), 3 / 6)  # from the file
+        self.assertEqual(utils.threshold_to_percentage(self.a, 0.6), 3 / 6)  # from the file
 
-        self.assertEqual(self.a.percent_connected(), 1 / 6)
+        self.assertEqual(utils.percent_connected(self.a), 1 / 6)
         self.a.apply_threshold()
-        self.assertEqual(self.a.percent_connected(), 1)
+        self.assertEqual(utils.percent_connected(self.a), 1)
 
         # directed
         c = mbt.Brain(directed=True)
         c.import_adj_file(self.SMALL_FILE)
-        self.assertEqual(c.threshold_to_percentage(0.6), 5 / 12)
+        self.assertEqual(utils.threshold_to_percentage(c, 0.6), 5 / 12)
 
         c.apply_threshold(threshold_type="totalEdges", value=1)
-        self.assertEqual(c.percent_connected(), 1 / 12)
+        self.assertEqual(utils.percent_connected(c), 1 / 12)
         c.apply_threshold()
-        self.assertEqual(c.percent_connected(), 1)
+        self.assertEqual(utils.percent_connected(c), 1)
         c.apply_threshold(threshold_type="totalEdges", value=0)
-        self.assertEqual(c.percent_connected(), 0)
+        self.assertEqual(utils.percent_connected(c), 0)
 
     def test_linkedNodes(self):
         self.a.import_adj_file(self.SMALL_FILE)
