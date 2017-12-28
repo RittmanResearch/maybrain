@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Module which basically just contains the definition of Brain class.
+Module which contains the definition of Brain class.
 
 """
 import networkx as nx
@@ -46,7 +46,7 @@ class Brain:
         self.labelNo = 0 # index for autolabeling of highlights
         self.highlights = {} # highlights items consist of a list contating a name, a highlight object and a colour
 
-        self.riskEdges = None
+        self.risk_edges = None
 
         # For the properties features
         self.nodeProperties = []
@@ -119,8 +119,8 @@ class Brain:
                 l[3] = 36 + (float(l[3])/2)
 
             if nodeCount in self.G.nodes():
-                self.G.node[nodeCount][self.XYZ]=(float(l[1]),float(l[2]),float(l[3]))
-                self.G.node[nodeCount][self.ANAT_LABEL]=l[0]
+                self.G.node[nodeCount][ct.XYZ]=(float(l[1]),float(l[2]),float(l[3]))
+                self.G.node[nodeCount][ct.ANAT_LABEL]=l[0]
 
             nodeCount+=1
 
@@ -347,7 +347,7 @@ class Brain:
         edge : The edge in G to bring to adjMat'''
 
         try:
-            w = self.G.edge[edge[0]][edge[1]][self.WEIGHT]
+            w = self.G.edge[edge[0]][edge[1]][ct.WEIGHT]
             self.adjMat[edge[0], edge[1]] = w
 
             if not self.directed:
@@ -430,10 +430,10 @@ class Brain:
 
             # add weights to NNG
             for e in nng.edges():
-                nng.edge[e[0]][e[1]][self.WEIGHT] = self.adjMat[e[0],e[1]]
+                nng.edge[e[0]][e[1]][ct.WEIGHT] = self.adjMat[e[0],e[1]]
 
             # get a list of edges from the NNG in order of weight
-            edgeList = sorted(nng.edges(data=True), key=lambda t: t[2][self.WEIGHT], reverse=True)
+            edgeList = sorted(nng.edges(data=True), key=lambda t: t[2][ct.WEIGHT], reverse=True)
 
             # add edges to graph in order of connectivity strength
             for edge in edgeList:
@@ -456,7 +456,7 @@ class Brain:
         Removes weighting from edges by assigning a weight of 1 to the existing edges
         '''
         for edge in self.G.edges(data=True):
-            edge[2][self.WEIGHT] = 1
+            edge[2][ct.WEIGHT] = 1
 
     def removeUnconnectedNodes(self):
         '''
@@ -526,11 +526,11 @@ class Brain:
 
                 # special treatment for 'x', 'y' and 'z'
                 if prop=='x':
-                    d = self.G.node[c][self.XYZ][0]
+                    d = self.G.node[c][ct.XYZ][0]
                 elif prop=='y':
-                    d = self.G.node[c][self.XYZ][1]
+                    d = self.G.node[c][ct.XYZ][1]
                 elif prop=='z':
-                    d = self.G.node[c][self.XYZ][2]
+                    d = self.G.node[c][ct.XYZ][2]
                 else:
                     # any other property
                     try:
@@ -659,7 +659,7 @@ class Brain:
             tVal = 0.
 
         # get the contralaterally closest node if desired
-        pos = [v for v in self.G.node[duffNode][self.XYZ]]
+        pos = [v for v in self.G.node[duffNode][ct.XYZ]]
         if contra:
             if pos[0] < midline:
                 pos[0] = midline + (midline - pos[0])
@@ -701,21 +701,21 @@ class Brain:
         If Graph is undirected, and there is an edge (1,2), node 1 is linked \
          to node 2, and vice-versa. If Graph is directed, thus node 1 is linked \
          to node 2, but not the other way around
-        This property can be accessed through self.LINKED_NODES
+        This property can be accessed through ct.LINKED_NODES
         Be sure to call this method again if you threshold your brainObj again
         '''
 
         # Resetting all nodes from some past information (few edges might not \
         #  be able to reset this field in all nodes)
         for n in self.G.nodes(data=True):
-            n[1][self.LINKED_NODES] = []
+            n[1][ct.LINKED_NODES] = []
 
         for l in self.G.edges():
             # add to list of connecting nodes for each participating node
-            self.G.node[l[0]][self.LINKED_NODES].append(l[1])
+            self.G.node[l[0]][ct.LINKED_NODES].append(l[1])
 
             if not self.directed:
-                self.G.node[l[1]][self.LINKED_NODES].append(l[0])
+                self.G.node[l[1]][ct.LINKED_NODES].append(l[0])
 
     def weightToDistance(self):
         '''
@@ -724,9 +724,9 @@ class Brain:
         the higher the value the "weaker" the connection.
         In this case there is no measurement unit for the distance, as it is just \
         a conversion from the weights.
-        The distances can be accessed in each node's property with self.DISTANCE
+        The distances can be accessed in each node's property with ct.DISTANCE
         '''
-        edgeList = [v[2][self.WEIGHT] for v in self.G.edges(data=True) ]
+        edgeList = [v[2][ct.WEIGHT] for v in self.G.edges(data=True) ]
 
         # get the maximum edge value, plus a small correction to keep the values above zero
         # the correction is the inverse of the number of nodes - designed to keep
@@ -734,7 +734,7 @@ class Brain:
         eMax = np.max(edgeList) + 1/float(self.G.number_of_nodes())
 
         for edge in self.G.edges():
-            self.G.edge[edge[0]][edge[1]][self.DISTANCE] = eMax - self.G.edge[edge[0]][edge[1]][self.WEIGHT] # convert weights to a positive distance
+            self.G.edge[edge[0]][edge[1]][ct.DISTANCE] = eMax - self.G.edge[edge[0]][edge[1]][ct.WEIGHT] # convert weights to a positive distance
 
     def copyHemisphere(self, hSphere="R", midline=44.5):
         """
@@ -744,22 +744,22 @@ class Brain:
         """
         if hSphere=="L":
             for node in self.G.nodes():
-                if self.G.node[node][self.XYZ][0] < midline:
+                if self.G.node[node][ct.XYZ][0] < midline:
                     self.G.add_node(str(node)+"R")
                     self.G.node[str(node)+"R"] = {v:w for v,w in self.G.node[node].items()}
-                    pos = self.G.node[node][self.XYZ]
+                    pos = self.G.node[node][ct.XYZ]
                     pos = (midline + (midline - pos[0]), pos[1], pos[2])
-                    self.G.node[str(node)+"R"][self.XYZ] = pos
+                    self.G.node[str(node)+"R"][ct.XYZ] = pos
                 else:
                     self.G.remove_node(node)
 
         elif hSphere=="R":
             for node in self.G.nodes():
-                if self.G.node[node][self.XYZ][0] > midline:
+                if self.G.node[node][ct.XYZ][0] > midline:
                     self.G.add_node(str(node)+"L")
                     self.G.node[str(node)+"L"] = {v:w for v,w in self.G.node[node].items()}
-                    pos = self.G.node[node][self.XYZ]
-                    self.G.node[str(node)+"L"][self.XYZ] = (midline - (pos[0] - midline), pos[1], pos[2])
+                    pos = self.G.node[node][ct.XYZ]
+                    self.G.node[str(node)+"L"][ct.XYZ] = (midline - (pos[0] - midline), pos[1], pos[2])
                 else:
                     self.G.remove_node(node)
 
@@ -987,7 +987,7 @@ class Brain:
         for nn,x in enumerate(self.G.nodes()):
             for y in list(self.G.edge[x].keys()):
                 try:
-                    self.bctmat[nn,nodeIndices[y]] = self.G.edge[x][y][self.WEIGHT]
+                    self.bctmat[nn,nodeIndices[y]] = self.G.edge[x][y][ct.WEIGHT]
                 except:
                     pass
 

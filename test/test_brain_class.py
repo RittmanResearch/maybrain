@@ -1,16 +1,17 @@
 import unittest
 
-from maybrain import brainObj as mbt
+from maybrain import brain as mbt
+from maybrain import constants as ct
 import networkx as nx
 import numpy as np
 
 class TestBrainObj(unittest.TestCase):
     """
-    Test brainObj class from maybrain
+    Test Brain class from maybrain
     """
     
     def setUp(self):
-        self.a = mbt.brainObj() 
+        self.a = mbt.Brain() 
         self.SMALL_FILE = "test/data/3d_grid_adj.txt"
         self.SMALL_NEG_FILE = "test/data/3d_grid_adj_neg.txt"
         self.MODIF_FILE = "test/data/3d_grid_adj2.txt"
@@ -18,7 +19,7 @@ class TestBrainObj(unittest.TestCase):
         self.PROPS_FILE = "test/data/3d_grid_properties.txt"
 
     def test_constructor(self):
-        self.assertIsInstance(self.a, mbt.brainObj)
+        self.assertIsInstance(self.a, mbt.Brain)
         self.assertIsInstance(self.a.G, nx.Graph)
         self.assertNotIsInstance(self.a.G, nx.DiGraph)
         self.assertFalse(self.a.directed)
@@ -35,7 +36,7 @@ class TestBrainObj(unittest.TestCase):
         self.assertEqual(self.a.G.nodes()[0], 0)
         self.assertEqual(len(self.a.G.edges()), 0)
         
-        b = mbt.brainObj()
+        b = mbt.Brain()
         b.importAdjFile(self.MODIF_FILE, delimiter=",", exclnodes = [2,4])
         ### Confirm general info
         self.assertEqual(b.adjMat.shape, (15,15))
@@ -55,7 +56,7 @@ class TestBrainObj(unittest.TestCase):
         self.a.importAdjFile(self.SMALL_FILE)
         self.a.importSpatialInfo(self.COORD_FILE)
        
-        attrs = mbt.nx.get_node_attributes(self.a.G, self.a.XYZ)
+        attrs = mbt.nx.get_node_attributes(self.a.G, ct.XYZ)
         self.assertEqual(self.a.G.number_of_nodes(), 4)
         self.assertEqual(self.a.G.number_of_edges(), 0)
         self.assertEqual(attrs[0][0], 0)
@@ -65,7 +66,7 @@ class TestBrainObj(unittest.TestCase):
         self.assertEqual(attrs[3][1], 2.)
         self.assertEqual(attrs[3][2], 0)
         
-        attrs2 = mbt.nx.get_node_attributes(self.a.G, self.a.ANAT_LABEL)
+        attrs2 = mbt.nx.get_node_attributes(self.a.G, ct.ANAT_LABEL)
         self.assertEqual(attrs2[0], '0')
         self.assertEqual(attrs2[3], '3')
     
@@ -88,7 +89,7 @@ class TestBrainObj(unittest.TestCase):
         self.assertEqual(self.a.G.number_of_edges(),76) #(15*15 - 15) /2 - 2 - 27
         
         ### edgePC 
-        b = mbt.brainObj()
+        b = mbt.Brain()
         b.importAdjFile(self.MODIF_FILE, delimiter=",", exclnodes = [2,4])
         for val in [True, False]:
             b.applyThreshold(thresholdType="edgePC", value=10.5, useAbsolute=val)
@@ -109,16 +110,16 @@ class TestBrainObj(unittest.TestCase):
         
         ### tVal
         b.applyThreshold(thresholdType="tVal", value=3)
-        self.assertTrue( all(e[2][b.WEIGHT] >= 3 for e in b.G.edges(data=True)))
+        self.assertTrue( all(e[2][ct.WEIGHT] >= 3 for e in b.G.edges(data=True)))
         self.assertEqual(b.G.number_of_edges(), 0) 
         b.applyThreshold(thresholdType="tVal", value=6.955292039622642530e-01)
-        self.assertTrue( all(e[2][b.WEIGHT] >= 6.955292039622642530e-01 for e in b.G.edges(data=True)))
+        self.assertTrue( all(e[2][ct.WEIGHT] >= 6.955292039622642530e-01 for e in b.G.edges(data=True)))
         self.assertEqual(b.G.number_of_edges(), 1) 
         b.applyThreshold(thresholdType="tVal", value=0.5)
-        self.assertTrue( all(e[2][b.WEIGHT] >= 0.5 for e in b.G.edges(data=True)))
+        self.assertTrue( all(e[2][ct.WEIGHT] >= 0.5 for e in b.G.edges(data=True)))
         
         ### directed
-        c = mbt.brainObj(directed=True)
+        c = mbt.Brain(directed=True)
         c.importAdjFile(self.MODIF_FILE, delimiter=",")
         for val in [True, False]:
             c.applyThreshold(useAbsolute=val)
@@ -131,28 +132,28 @@ class TestBrainObj(unittest.TestCase):
             c.applyThreshold(thresholdType="totalEdges", value=10000, useAbsolute=val)
             self.assertEqual(c.G.number_of_edges(), 207)
         c.applyThreshold(thresholdType="tVal", value=0.5)
-        self.assertTrue( all(e[2][c.WEIGHT] >= 0.5 for e in c.G.edges(data=True)))
+        self.assertTrue( all(e[2][ct.WEIGHT] >= 0.5 for e in c.G.edges(data=True)))
         
         ## Absolute thresholding
         c.importAdjFile(self.SMALL_NEG_FILE)
         c.applyThreshold(thresholdType="totalEdges", value=2, useAbsolute=True)
-        self.assertTrue(c.G.edge[1][2][c.WEIGHT] == -0.843798947781)
-        self.assertTrue(c.G.edge[2][0][c.WEIGHT] == 0.858463902674)
+        self.assertTrue(c.G.edge[1][2][ct.WEIGHT] == -0.843798947781)
+        self.assertTrue(c.G.edge[2][0][ct.WEIGHT] == 0.858463902674)
         c.applyThreshold(thresholdType="tVal", value=0.5, useAbsolute=True)
-        self.assertTrue( all(e[2][c.WEIGHT] >= 0.5 or e[2][c.WEIGHT] <= -0.5
+        self.assertTrue( all(e[2][ct.WEIGHT] >= 0.5 or e[2][ct.WEIGHT] <= -0.5
                              for e in c.G.edges(data=True)))
         b.importAdjFile(self.SMALL_NEG_FILE)
         b.applyThreshold(thresholdType="totalEdges", value=1, useAbsolute=True)
-        self.assertTrue(b.G.edge[1][2][b.WEIGHT] == -0.843798947781)
+        self.assertTrue(b.G.edge[1][2][ct.WEIGHT] == -0.843798947781)
         b.applyThreshold(thresholdType="edgePC", value=20, useAbsolute=True)
-        self.assertTrue(b.G.edge[1][2][c.WEIGHT] == -0.843798947781)
+        self.assertTrue(b.G.edge[1][2][ct.WEIGHT] == -0.843798947781)
         self.assertEqual(b.G.number_of_edges(), 1)
     
     def test_binarise(self):
         self.a.importAdjFile(self.MODIF_FILE, delimiter=",")
         self.a.applyThreshold()
         self.a.binarise()
-        self.assertTrue( all(e[2][self.a.WEIGHT] == 1 for e in self.a.G.edges(data=True)))
+        self.assertTrue( all(e[2][ct.WEIGHT] == 1 for e in self.a.G.edges(data=True)))
         
     def test_localThreshold(self):
         self.a.importAdjFile(self.MODIF_FILE, delimiter=",")
@@ -211,7 +212,7 @@ class TestBrainObj(unittest.TestCase):
         self.assertRaises(KeyError, self.a.updateAdjMat, (1,1))
         self.a.G.add_edge(50,50) #dummy
         self.assertRaises(KeyError, self.a.updateAdjMat, (50,50))
-        self.a.G.edge[50][50][self.a.WEIGHT] = 12
+        self.a.G.edge[50][50][ct.WEIGHT] = 12
         self.assertRaises(IndexError, self.a.updateAdjMat, (50,50))
 
     def test_removeUnconnectedNodes(self):
@@ -232,7 +233,7 @@ class TestBrainObj(unittest.TestCase):
         self.assertEqual(self.a.percentConnected(), 1)
         
         ### directed
-        c = mbt.brainObj(directed=True)
+        c = mbt.Brain(directed=True)
         c.importAdjFile(self.SMALL_FILE)
         self.assertEqual(c.thresholdToPercentage(0.6), 5/12)
         
@@ -247,25 +248,25 @@ class TestBrainObj(unittest.TestCase):
         self.a.importAdjFile(self.SMALL_FILE)
         self.a.applyThreshold()
         for n in self.a.G.nodes(data=True):
-            self.assertRaises(KeyError, lambda: n[1][self.a.LINKED_NODES])
+            self.assertRaises(KeyError, lambda: n[1][ct.LINKED_NODES])
 
         self.a.findLinkedNodes()
         for n in self.a.G.nodes(data=True):
-            n[1][self.a.LINKED_NODES] #it should not raise any exception
+            n[1][ct.LINKED_NODES] #it should not raise any exception
         
-        self.assertTrue(sorted(self.a.G.node[0][self.a.LINKED_NODES]) == [1,2,3])
-        self.assertTrue(sorted(self.a.G.node[1][self.a.LINKED_NODES]) == [0,2,3])
+        self.assertTrue(sorted(self.a.G.node[0][ct.LINKED_NODES]) == [1,2,3])
+        self.assertTrue(sorted(self.a.G.node[1][ct.LINKED_NODES]) == [0,2,3])
         
         ### directed
-        c = mbt.brainObj(directed=True)
+        c = mbt.Brain(directed=True)
         c.importAdjFile(self.SMALL_FILE)
         c.applyThreshold()
         c.findLinkedNodes()
         for n in c.G.nodes(data=True):
-            n[1][c.LINKED_NODES] #it should not raise any exception
+            n[1][ct.LINKED_NODES] #it should not raise any exception
         
-        self.assertTrue(sorted(c.G.node[0][c.LINKED_NODES]) == [1,2,3])
-        self.assertTrue(sorted(c.G.node[1][c.LINKED_NODES]) == [0,2,3])
+        self.assertTrue(sorted(c.G.node[0][ct.LINKED_NODES]) == [1,2,3])
+        self.assertTrue(sorted(c.G.node[1][ct.LINKED_NODES]) == [0,2,3])
         
         
     def test_weightToDistance(self):
@@ -273,11 +274,11 @@ class TestBrainObj(unittest.TestCase):
         self.a.applyThreshold()
         self.a.weightToDistance()
         
-        edgeList = [v[2][self.a.WEIGHT] for v in self.a.G.edges(data=True) ]
+        edgeList = [v[2][ct.WEIGHT] for v in self.a.G.edges(data=True) ]
         eMax = np.max(edgeList) + 1/float(self.a.G.number_of_nodes())
 
-        self.assertTrue(all(eMax == e[2][self.a.DISTANCE] + e[2][self.a.WEIGHT] for e in self.a.G.edges(data=True)))
-        self.assertTrue(all(e[2][self.a.DISTANCE] > 0  for e in self.a.G.edges(data=True)))
+        self.assertTrue(all(eMax == e[2][ct.DISTANCE] + e[2][ct.WEIGHT] for e in self.a.G.edges(data=True)))
+        self.assertTrue(all(e[2][ct.DISTANCE] > 0  for e in self.a.G.edges(data=True)))
         
     def test_properties(self):
         self.a.importAdjFile(self.SMALL_FILE)
