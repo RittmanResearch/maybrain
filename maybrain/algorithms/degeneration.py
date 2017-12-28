@@ -10,11 +10,12 @@ import numpy as np
 
 from maybrain import constants as ct
 
+
 def degenerate(brain, weight_loss=0.1, edges_removed_limit=1,
                thresh_limit=None, pc_limit=None, weight_loss_limit=None,
                node_list=[], spread=False, update_adj_mat=True,
                distances=False, spatial_search=False):
-    '''
+    """
     Remove random edges from connections of the toxicNodes set, or from the
     risk_edges set. This occurs either until edgesRemovedLimit number of edges
     have been removed (use this for a thresholded weighted graph), or until the
@@ -33,7 +34,7 @@ def degenerate(brain, weight_loss=0.1, edges_removed_limit=1,
     Spread can either be False, or a number specifying the weight above which
     to add nodes within the list of at-risk nodes.
 
-    '''
+    """
 
     # get rid of the existing list of edges if the node list is specified
     if node_list:
@@ -45,13 +46,13 @@ def degenerate(brain, weight_loss=0.1, edges_removed_limit=1,
               "connectivitylimit, using the percentage connectivity limit")
 
     if thresh_limit:
-        pc_limit = brain.thresholdToPercentage(thresh_limit)
+        pc_limit = brain.threshold_to_percentage(thresh_limit)
 
     if pc_limit:
         len_nodes = len(brain.G.nodes())
         len_edges = len(brain.G.edges())
 
-        max_edges = float(len_nodes * (len_nodes-1))
+        max_edges = float(len_nodes * (len_nodes - 1))
         if not brain.G.is_directed():
             max_edges = max_edges / 2
 
@@ -77,7 +78,7 @@ def degenerate(brain, weight_loss=0.1, edges_removed_limit=1,
 
         # generate list of at risk edges
         brain.risk_edges = [v for v in nx.edges(brain.G, node_list)
-                           if brain.G.edge[v[0]][v[1]][ct.WEIGHT] != 0.]
+                            if brain.G.edge[v[0]][v[1]][ct.WEIGHT] != 0.]
     else:
         redefine_edges = False
 
@@ -93,10 +94,10 @@ def degenerate(brain, weight_loss=0.1, edges_removed_limit=1,
 
     while limit > 0.:
         if not brain.risk_edges and spatial_search:
-        # find spatially closest nodes if no edges exist
-        # is it necessary to do this for all nodes?? - waste of computing power
-        # choose node first, then calculated spatially nearest of a single node
-            new_node = brain.findSpatiallyNearest(node_list)
+            # find spatially closest nodes if no edges exist
+            # is it necessary to do this for all nodes?? - waste of computing power
+            # choose node first, then calculated spatially nearest of a single node
+            new_node = brain.find_spatially_nearest(node_list)
             if new_node:
                 print("Found spatially nearest node")
                 node_list.append(new_node)
@@ -134,13 +135,12 @@ def degenerate(brain, weight_loss=0.1, edges_removed_limit=1,
 
         # update the adjacency matrix (essential if robustness is to be calculated)
         if update_adj_mat:
-            brain.updateAdjMat(dying_edge)
+            brain.update_adj_mat(dying_edge)
 
         # add nodes to toxic list if the spread option is selected
         if spread:
             for node in dying_edge:
-                if (not node in node_list and
-                        brain.G.edge[dying_edge[0]][dying_edge[1]] > spread):
+                if not (node in node_list or not (brain.G.edge[dying_edge[0]][dying_edge[1]] > spread)):
                     node_list.append(node)
 
         if weight_loss_limit:
@@ -150,21 +150,22 @@ def degenerate(brain, weight_loss=0.1, edges_removed_limit=1,
         if redefine_edges or spread:
             brain.risk_edges = nx.edges(brain.G, node_list)
 
-    print("Number of toxic nodes: "+str(len(node_list)))
+    print("Number of toxic nodes: " + str(len(node_list)))
 
     return node_list
 
+
 def contiguous_spread(brain, edgeloss, startnodes=None):
-    '''
+    """
     Degenerate nodes in a continuous fashion.
     Doesn't currently include spreadratio
-    '''
+    """
 
     # make sure nodes have the linkedNodes attribute
     try:
         brain.G.node[0][ct.LINKED_NODES]
     except:
-        brain.findLinkedNodes()
+        brain.find_linked_nodes()
 
     # make sure all nodes have degenerating attribute
     try:
@@ -195,7 +196,7 @@ def contiguous_spread(brain, edgeloss, startnodes=None):
                 continue
             if brain.G.node[a]['degenerating']:
                 continue
-#                if not(a in toxic_nodes)&(not(brain.G.node[a]['degenerating'])):
+            #                if not(a in toxic_nodes)&(not(brain.G.node[a]['degenerating'])):
             newl.append(a)
 
         risk_nodes = risk_nodes + newl
@@ -204,7 +205,7 @@ def contiguous_spread(brain, edgeloss, startnodes=None):
     toxic_node_record = [toxic_nodes[:]]
     for _ in range(edgeloss):
         # find at risk nodes
-        ind = random.randint(0, len(risk_nodes)-1)
+        ind = random.randint(0, len(risk_nodes) - 1)
         # get the index of the node to be removed and remove from list
         dead_node = risk_nodes.pop(ind)
         # remove all instances from list
@@ -216,7 +217,6 @@ def contiguous_spread(brain, edgeloss, startnodes=None):
         # make it degenerate
         brain.G.node[dead_node]['degenerating'] = True
         print(('dead_node', dead_node))
-
 
         # add the new at-risk nodes
         l = brain.G.node[dead_node][ct.LINKED_NODES]
@@ -237,9 +237,9 @@ def contiguous_spread(brain, edgeloss, startnodes=None):
         if len(risk_nodes) == 0:
             break
 
-#            print(toxic_nodes)
+        #            print(toxic_nodes)
 
     # Update adjacency matrix to reflect changes
-    brain.reconstructAdjMat()
+    brain.reconstruct_adj_mat()
 
     return toxic_nodes, toxic_node_record

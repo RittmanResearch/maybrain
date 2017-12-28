@@ -31,7 +31,7 @@ class TestSequenceFunctions(unittest.TestCase):
     def test_loadAdj(self):
         ''' test basic loading '''       
         
-        self.brain.importAdjFile(self.fnameAdj)
+        self.brain.import_adj_file(self.fnameAdj)
         
     
     #### Different types of thresholding
@@ -39,16 +39,16 @@ class TestSequenceFunctions(unittest.TestCase):
         ''' load files and threshold '''
         
         # load brain
-        self.brain.importAdjFile(self.fnameAdj)
+        self.brain.import_adj_file(self.fnameAdj)
         
         # threshold by absolute value
-        self.brain.applyThreshold(tVal = 0.5)
+        self.brain.apply_threshold(tVal = 0.5)
         
         # threshold by perecentage of edges
-        self.brain.applyThreshold(edgePC = 50)
+        self.brain.apply_threshold(edgePC = 50)
                 
         # threshold by number of edges
-        self.brain.applyThreshold(totalEdges = 2)
+        self.brain.apply_threshold(totalEdges = 2)
         
     def test_loadAndPlot(self):
         ''' load, threhsold and plot '''
@@ -62,19 +62,19 @@ class TestSequenceFunctions(unittest.TestCase):
         
         br = recipes.loadAndThreshold(self.fnameAdj, self.fnameCo, 0.5)
         
-        br.importProperties(self.fnameProp)
+        br.import_properties(self.fnameProp)
         
         # highlight nodes with x value greater than 5
-        br.highlightFromConds('x', 'gt', 0.5, label = 'x1', mode = 'node', colour = (0.5,0.5,0.), opacity = 0.5)
+        br.highlight_from_conds('x', 'gt', 0.5, label ='x1', mode ='node', colour = (0.5, 0.5, 0.), opacity = 0.5)
         
         # highlight edges labelled green 
-        br.highlightFromConds('colour', 'eq', 'green', label = 'green', mode = 'edge', colour = (0.,1.,0.), opacity = 0.5)
+        br.highlight_from_conds('colour', 'eq', 'green', label ='green', mode ='edge', colour = (0., 1., 0.), opacity = 0.5)
         
-#        br.highlightFromConds(prop, rel, val, label = None, mode = 'edge', colour = (1.,0.,0.), opacity = 1.0)
+#        br.highlight_from_conds(prop, rel, val, label = None, mode = 'edge', colour = (1.,0.,0.), opacity = 1.0)
 #        
-#        br.highlightFromConds(prop, rel, val, label = None, mode = 'edge', colour = (1.,0.,0.), opacity = 1.0)
+#        br.highlight_from_conds(prop, rel, val, label = None, mode = 'edge', colour = (1.,0.,0.), opacity = 1.0)
 #        
-#        br.highlightFromConds(prop, rel, val, label = None, mode = 'edge', colour = (1.,0.,0.), opacity = 1.0)
+#        br.highlight_from_conds(prop, rel, val, label = None, mode = 'edge', colour = (1.,0.,0.), opacity = 1.0)
         
         
         

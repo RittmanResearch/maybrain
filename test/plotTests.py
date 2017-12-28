@@ -101,12 +101,12 @@ class TestSequenceFunctions(unittest.TestCase):
         self.a = recipes.loadAndThreshold(self.fnameAdj, self.fnameCo, 0.0)
         
         # import properties
-        self.a.importProperties(self.fnameProps)
+        self.a.import_properties(self.fnameProps)
         
         # plot properties
-        self.b.highlightFromConds('colour', 'eq', 'red', label = 'red_nodes', mode = 'node', colour = (1.,0.,0.), opacity = 1.)
-        self.b.highlightFromConds('colour', 'eq', 'green', label = 'green_edges', mode = 'edge', colour = (0.,1.,0.), opacity = 1.)
-        self.b.highlightFromConds('x', 'geq', 0, mode = 'edge', colour = (0.5, 0.5, 0.))
+        self.b.highlight_from_conds('colour', 'eq', 'red', label ='red_nodes', mode ='node', colour = (1., 0., 0.), opacity = 1.)
+        self.b.highlight_from_conds('colour', 'eq', 'green', label ='green_edges', mode ='edge', colour = (0., 1., 0.), opacity = 1.)
+        self.b.highlight_from_conds('x', 'geq', 0, mode ='edge', colour = (0.5, 0.5, 0.))
 
         
 if __name__ == '__main__':
