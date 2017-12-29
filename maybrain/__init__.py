@@ -5,4 +5,4 @@ Initialisation file for Maybrain
 """
 
 from . import brain
-from .utils import *
+from . import utils

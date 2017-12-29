@@ -66,8 +66,6 @@ class Brain:
         nodes_to_exclude : Nodes you don't want to load, in an array format (nodes no. starts from zero)
         naVals : How the "Not a Number" values are represented in the file
         """
-        self.exclnodes = nodes_to_exclude
-
         lines = []
         try:
             with open(fname, "r") as f:
