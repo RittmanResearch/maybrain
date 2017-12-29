@@ -1,6 +1,8 @@
+sudo: false
 language: python
 python:
- - "3.5"
+ - 3.5
+ - 3.6
 install:
  - sudo apt-get update
  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
@@ -10,14 +12,14 @@ install:
  - conda config --set always_yes yes --set changeps1 no
  - conda update -q conda
  # Useful for debugging any issues with conda
- - conda info -a
- - conda create -q -n test-environment python=3.5
+ #- conda info -a
+ - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
  - source activate test-environment
- - conda install -c menpo mayavi=4.5.0
- - conda install networkx=1.11
- - conda install -c conda-forge nibabel=2.1.0
+ #- conda install -c menpo mayavi=4.5.0
+ - conda install networkx=2
+ - conda install -c conda-forge nibabel=2.1
  - conda install matplotlib=2.1
- - conda install pyqt=4
+ #- conda install pyqt=4
  - python setup.py install
  - conda install -c conda-forge codecov
 before_script:

@@ -172,7 +172,7 @@ class Brain:
                 if len(prop) == 3:  # nodes
                     self.G.node[prop[1]][prop[0]] = prop[2]
                 elif len(prop) == 4:  # edges
-                    self.G.edge[prop[1]][prop[2]][prop[0]] = prop[3]
+                    self.G.edges[prop[1], prop[2]][prop[0]] = prop[3]
             except:
                 print('Warning! Unable to process property %s' % prop)
 
@@ -305,7 +305,7 @@ class Brain:
                 weights = weights[-edgenum:]
 
         # remove previous edges
-        self.G.remove_edges_from(self.G.edges())
+        self.G.remove_edges_from(list(self.G.edges()))
 
         # Adding the edges
         for e in weights:
@@ -342,7 +342,7 @@ class Brain:
         """
 
         try:
-            w = self.G.edge[edge[0]][edge[1]][ct.WEIGHT]
+            w = self.G.edges[edge[0], edge[1]][ct.WEIGHT]
             self.adjMat[edge[0], edge[1]] = w
 
             if not self.directed:
@@ -426,7 +426,7 @@ class Brain:
 
             # add weights to NNG
             for e in nng.edges():
-                nng.edge[e[0]][e[1]][ct.WEIGHT] = self.adjMat[e[0], e[1]]
+                nng.edges[e[0], e[1]][ct.WEIGHT] = self.adjMat[e[0], e[1]]
 
             # get a list of edges from the NNG in order of weight
             edge_list = sorted(nng.edges(data=True), key=lambda t: t[2][ct.WEIGHT], reverse=True)
@@ -499,9 +499,9 @@ class Brain:
             ind = -1
             for e in self.G.edges(data=True):
                 ind = ind + 1
-                print((self.G.edge[e[0]][e[1]]))
+                print((self.G.edges[e[0], e[1]]))
                 try:
-                    d = self.G.edge[e[0]][e[1]][prop]
+                    d = self.G.edges[e[0], e[1]][prop]
                 except KeyError:
                     continue
 
@@ -720,7 +720,7 @@ class Brain:
         emax = np.max(edge_list) + 1 / float(self.G.number_of_nodes())
 
         for edge in self.G.edges():
-            self.G.edge[edge[0]][edge[1]][ct.DISTANCE] = emax - self.G.edge[edge[0]][edge[1]][
+            self.G.edges[edge[0], edge[1]][ct.DISTANCE] = emax - self.G.edges[edge[0], edge[1]][
                 ct.WEIGHT]  # convert weights to a positive distance
 
     def copy_hemisphere(self, hsphere="R", midline=44.5):

@@ -35,7 +35,6 @@ class TestBrainObj(unittest.TestCase):
         self.assertEqual(self.a.adjMat.shape, (4, 4))
         self.assertEqual(self.a.adjMat[0][0], 0.802077230054)
         self.assertEqual(self.a.G.number_of_nodes(), 4)
-        self.assertEqual(self.a.G.nodes()[0], 0)
         self.assertEqual(len(self.a.G.edges()), 0)
 
         b = mbt.Brain()
@@ -139,16 +138,16 @@ class TestBrainObj(unittest.TestCase):
         # Absolute thresholding
         c.import_adj_file(self.SMALL_NEG_FILE)
         c.apply_threshold(threshold_type="totalEdges", value=2, use_absolute=True)
-        self.assertTrue(c.G.edge[1][2][ct.WEIGHT] == -0.843798947781)
-        self.assertTrue(c.G.edge[2][0][ct.WEIGHT] == 0.858463902674)
+        self.assertTrue(c.G.edges[1, 2][ct.WEIGHT] == -0.843798947781)
+        self.assertTrue(c.G.edges[2, 0][ct.WEIGHT] == 0.858463902674)
         c.apply_threshold(threshold_type="tVal", value=0.5, use_absolute=True)
         self.assertTrue(all(e[2][ct.WEIGHT] >= 0.5 or e[2][ct.WEIGHT] <= -0.5
                             for e in c.G.edges(data=True)))
         b.import_adj_file(self.SMALL_NEG_FILE)
         b.apply_threshold(threshold_type="totalEdges", value=1, use_absolute=True)
-        self.assertTrue(b.G.edge[1][2][ct.WEIGHT] == -0.843798947781)
+        self.assertTrue(b.G.edges[1, 2][ct.WEIGHT] == -0.843798947781)
         b.apply_threshold(threshold_type="edgePC", value=20, use_absolute=True)
-        self.assertTrue(b.G.edge[1][2][ct.WEIGHT] == -0.843798947781)
+        self.assertTrue(b.G.edges[1, 2][ct.WEIGHT] == -0.843798947781)
         self.assertEqual(b.G.number_of_edges(), 1)
 
     def test_binarise(self):
@@ -214,7 +213,7 @@ class TestBrainObj(unittest.TestCase):
         self.assertRaises(KeyError, self.a.update_adj_mat, (1, 1))
         self.a.G.add_edge(50, 50)  # dummy
         self.assertRaises(KeyError, self.a.update_adj_mat, (50, 50))
-        self.a.G.edge[50][50][ct.WEIGHT] = 12
+        self.a.G.edges[50, 50][ct.WEIGHT] = 12
         self.assertRaises(IndexError, self.a.update_adj_mat, (50, 50))
 
     def test_removeUnconnectedNodes(self):
@@ -299,9 +298,9 @@ class TestBrainObj(unittest.TestCase):
             self.assertTrue(self.a.G.node[0]['colour'], 'blue')
             self.assertTrue(self.a.G.node[3]['colour'], 'red')
             # edges
-            self.assertTrue(self.a.G.edge[0][2]['colour'], 'red')
-            self.assertTrue(self.a.G.edge[2][0]['colour'], 'red')
-            self.assertTrue(self.a.G.edge[1][3]['colour'], 'green')
+            self.assertTrue(self.a.G.edges[0, 2]['colour'], 'red')
+            self.assertTrue(self.a.G.edges[2, 0]['colour'], 'red')
+            self.assertTrue(self.a.G.edges[1, 3]['colour'], 'green')
 
 
 if __name__ == '__main__':
