@@ -6,6 +6,8 @@
 
 Maybrain is a Python package for analysing and visualising brain connectome and related data.
 
+_**IMPORTANT: Maybrain is under deep organisation thus some information in documentation might be wrong. We will update this soon**_ 
+
 ## Dependencies
 
 To run Maybrain you will need a Python 3.5 installtion and several other packages on which parts of the code depend. The following are required for analysis:

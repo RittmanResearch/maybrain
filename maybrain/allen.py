@@ -99,13 +99,13 @@ class allenBrain:
         
         # copy hemisphere if required
         if self.mirror and len(self.a.G.nodes()) < 600:
-            self.a.copyHemisphere()
+            self.a.copy_hemisphere()
             
         # set up brain with graph properties
         self.c = mbo.brainObj()
-        self.c.importAdjFile(assocMat, delimiter=delim,
-                             exclnodes=nodesToExclude)
-        self.c.importSpatialInfo(spatialFile)
+        self.c.import_adj_file(assocMat, delimiter=delim,
+                               nodes_to_exclude=nodesToExclude)
+        self.c.import_spatial_info(spatialFile)
   
     def comparison(self):
         # set up dictionary to link nodes from probe data and graph
@@ -557,15 +557,15 @@ class multiSubj:
                     self.a.G.node[n]['xyz'] = (x,y,z)
             
             if self.mirror and len(self.a.G.nodes()) < 600:
-                self.a.copyHemisphere()
+                self.a.copy_hemisphere()
 
         #    f.write('%s, %s, %s, %s \n' % (str(n), str(self.a.G.node[n]['xyz'][0]),str(self.a.G.node[n]['xyz'][1]),str(self.a.G.node[n]['xyz'][2])))
         #f.close()
        
         # set up brain with graph properties
         self.c = mbo.brainObj()
-        self.c.importAdjFile(assocMat, delimiter=delim, exclnodes=nodesToExclude)
-        self.c.importSpatialInfo(spatialFile)
+        self.c.import_adj_file(assocMat, delimiter=delim, nodes_to_exclude=nodesToExclude)
+        self.c.import_spatial_info(spatialFile)
 
     def comparison(self):
         """

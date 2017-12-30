@@ -119,13 +119,13 @@ colour
 \noindent Note that the first line contains the property name. Subsequent lines refer to edges if they contain 3 terms and nodes if they contain 2. The above will give node 1 the property `colour' with value `red' and the edge connecting nodes 1 and 5 (only if it exists CHECK) the same property and value. The properties are stored in the networkx objects. An example of the code needed to apply the properties is:
 
 \begin{verbatim}
-brain.importProperties(propertyFilename)
+brain.import_properties(propertyFilename)
 \end{verbatim}
 
 Properties can be filtered using highlights. A highlight is simply a list of nodes or edges. They can be generated, for example, as follows:
 
 \begin{verbatim}
-highlightFromConds('colour', 'eq', 'red', mode = 'node', colour = (1.,0.,0.))
+highlight_from_conds('colour', 'eq', 'red', mode = 'node', colour = (1.,0.,0.))
 \end{verbatim}
 
 \noindent Here, the term is property name, the second is the relation between the property and value and the third is the value (or range of values) the highlight will cover. The relations can be one of the following, the first few of which are based on the equivalent \LaTeX  markup:
@@ -149,7 +149,7 @@ Once the data have been input, you can modify things in a number of ways, outlin
 
 \subsection{Rethresholding the adjacency matrix}
 
-\noindent \texttt{applyThreshold(edgePC = None, totalEdges = None, tVal = -1.1)}
+\noindent \texttt{apply_threshold(edgePC = None, totalEdges = None, tVal = -1.1)}
 
 \vspace{12pt}
 
