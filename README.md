@@ -1,16 +1,14 @@
 # Maybrain
 
 
-[![Python v3.5](https://img.shields.io/badge/python-v3.5-blue.svg)]() [![Build Status](https://travis-ci.org/RittmanResearch/maybrain.svg?branch=master)](https://travis-ci.org/RittmanResearch/maybrain) [![codecov](https://codecov.io/gh/RittmanResearch/maybrain/branch/master/graph/badge.svg)](https://codecov.io/gh/RittmanResearch/maybrain) [![Release](https://img.shields.io/github/release/RittmanResearch/maybrain/all.svg)](https://github.com/RittmanResearch/maybrain/releases) [![License Apache-2.0](https://img.shields.io/github/license/RittmanResearch/maybrain.svg)](https://github.com/rittman/maybrain/blob/master/LICENSE)
+[![Python v3.5, v3.6](https://img.shields.io/badge/python-v3.5,v3.6-blue.svg)]() [![Build Status](https://travis-ci.org/RittmanResearch/maybrain.svg?branch=master)](https://travis-ci.org/RittmanResearch/maybrain) [![codecov](https://codecov.io/gh/RittmanResearch/maybrain/branch/master/graph/badge.svg)](https://codecov.io/gh/RittmanResearch/maybrain) [![Release](https://img.shields.io/github/release/RittmanResearch/maybrain/all.svg)](https://github.com/RittmanResearch/maybrain/releases) [![License Apache-2.0](https://img.shields.io/github/license/RittmanResearch/maybrain.svg)](https://github.com/rittman/maybrain/blob/master/LICENSE)
 
 
-Maybrain is a Python package for analysing and visualising brain connectome and related data.
-
-_**IMPORTANT: Maybrain is under deep organisation thus some information in documentation might be wrong. We will update this soon**_ 
+Maybrain is a Python package for analysing and visualising brain connectome and related data. 
 
 ## Dependencies
 
-To run Maybrain you will need a Python 3.5 installtion and several other packages on which parts of the code depend. The following are required for analysis:
+To run Maybrain you will need a Python 3.5 installation and several other packages on which parts of the code depend. The following are required for analysis:
 
 * [Numpy](http://www.numpy.org/) 1.13.1
 * [NetworkX](http://networkx.github.io/) 2.0

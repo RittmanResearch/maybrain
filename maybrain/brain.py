@@ -114,8 +114,8 @@ class Brain:
                 l[3] = 36 + (float(l[3]) / 2)
 
             if node_count in self.G.nodes():
-                self.G.node[node_count][ct.XYZ] = (float(l[1]), float(l[2]), float(l[3]))
-                self.G.node[node_count][ct.ANAT_LABEL] = l[0]
+                self.G.nodes[node_count][ct.XYZ] = (float(l[1]), float(l[2]), float(l[3]))
+                self.G.nodes[node_count][ct.ANAT_LABEL] = l[0]
 
             node_count += 1
 
@@ -168,7 +168,7 @@ class Brain:
         for prop in properties:
             try:
                 if len(prop) == 3:  # nodes
-                    self.G.node[prop[1]][prop[0]] = prop[2]
+                    self.G.nodes[prop[1]][prop[0]] = prop[2]
                 elif len(prop) == 4:  # edges
                     self.G.edges[prop[1], prop[2]][prop[0]] = prop[3]
             except:
@@ -518,15 +518,15 @@ class Brain:
 
                 # special treatment for 'x', 'y' and 'z'
                 if prop == 'x':
-                    d = self.G.node[c][ct.XYZ][0]
+                    d = self.G.nodes[c][ct.XYZ][0]
                 elif prop == 'y':
-                    d = self.G.node[c][ct.XYZ][1]
+                    d = self.G.nodes[c][ct.XYZ][1]
                 elif prop == 'z':
-                    d = self.G.node[c][ct.XYZ][2]
+                    d = self.G.nodes[c][ct.XYZ][2]
                 else:
                     # any other property
                     try:
-                        d = self.G.node[c][prop]
+                        d = self.G.nodes[c][prop]
                     except:
                         continue
 
@@ -643,7 +643,7 @@ class Brain:
             tval = 0.
 
         # get the contralaterally closest node if desired
-        pos = [v for v in self.G.node[duff_node][ct.XYZ]]
+        pos = [v for v in self.G.nodes[duff_node][ct.XYZ]]
         if contra:
             if pos[0] < midline:
                 pos[0] = midline + (midline - pos[0])
@@ -653,7 +653,7 @@ class Brain:
 
         for node in nodes:
             try:
-                distance = np.linalg.norm(np.array(pos - np.array(self.G.node[node]['xyz'])))
+                distance = np.linalg.norm(np.array(pos - np.array(self.G.nodes[node]['xyz'])))
                 if distance < tval:
                     tlist.append(node)
             except:
@@ -696,10 +696,10 @@ class Brain:
 
         for l in self.G.edges():
             # add to list of connecting nodes for each participating node
-            self.G.node[l[0]][ct.LINKED_NODES].append(l[1])
+            self.G.nodes[l[0]][ct.LINKED_NODES].append(l[1])
 
             if not self.directed:
-                self.G.node[l[1]][ct.LINKED_NODES].append(l[0])
+                self.G.nodes[l[1]][ct.LINKED_NODES].append(l[0])
 
     def weight_to_distance(self):
         """
@@ -729,21 +729,21 @@ class Brain:
         """
         if hsphere == "L":
             for node in self.G.nodes():
-                if self.G.node[node][ct.XYZ][0] < midline:
+                if self.G.nodes[node][ct.XYZ][0] < midline:
                     self.G.add_node(str(node) + "R")
-                    self.G.node[str(node) + "R"] = {v: w for v, w in self.G.node[node].items()}
-                    pos = self.G.node[node][ct.XYZ]
+                    self.G.nodes[str(node) + "R"] = {v: w for v, w in self.G.nodes[node].items()}
+                    pos = self.G.nodes[node][ct.XYZ]
                     pos = (midline + (midline - pos[0]), pos[1], pos[2])
-                    self.G.node[str(node) + "R"][ct.XYZ] = pos
+                    self.G.nodes[str(node) + "R"][ct.XYZ] = pos
                 else:
                     self.G.remove_node(node)
 
         elif hsphere == "R":
             for node in self.G.nodes():
-                if self.G.node[node][ct.XYZ][0] > midline:
+                if self.G.nodes[node][ct.XYZ][0] > midline:
                     self.G.add_node(str(node) + "L")
-                    self.G.node[str(node) + "L"] = {v: w for v, w in self.G.node[node].items()}
-                    pos = self.G.node[node][ct.XYZ]
-                    self.G.node[str(node) + "L"][ct.XYZ] = (midline - (pos[0] - midline), pos[1], pos[2])
+                    self.G.nodes[str(node) + "L"] = {v: w for v, w in self.G.nodes[node].items()}
+                    pos = self.G.nodes[node][ct.XYZ]
+                    self.G.nodes[str(node) + "L"][ct.XYZ] = (midline - (pos[0] - midline), pos[1], pos[2])
                 else:
                     self.G.remove_node(node)

@@ -56,19 +56,19 @@ class TestSequenceFunctions(unittest.TestCase):
                 
         
         # plot everything
-        self.b.plotBrainCoords(self.a)
+        self.b.plot_brain_coords(self.a)
         
         # this line will only plot two points and give a printed error 
         # for the others (1 and 3)
         nodes = [0,1,2,3]
         print(nodes)
-        self.b.plotBrainCoords(self.a, nodes=nodes)
+        self.b.plot_brain_coords(self.a, nodes=nodes)
         
         # plot selected nodes
         # this one will work fine
         nodes = [0,2,6]
         print(nodes)
-        self.b.plotBrainCoords(self.a, nodes=nodes)
+        self.b.plot_brain_coords(self.a, nodes=nodes)
         
         
     def test_plotOnlyEdges(self):
@@ -80,7 +80,7 @@ class TestSequenceFunctions(unittest.TestCase):
         self.a = recipes.loadAndThreshold(self.fnameAdj, self.fnameCo, 0.5)
         
         # plot the edges
-        self.b.plotBrainEdges(self.a)
+        self.b.plot_brain_edges(self.a)
         
 
     def test_plotOnlyCoords(self):
@@ -92,7 +92,7 @@ class TestSequenceFunctions(unittest.TestCase):
         self.a = recipes.loadAndThreshold(self.fnameAdj, self.fnameCo, 0.5)
         
         # plot the edges
-        self.b.plotBrainCoords(self.a)
+        self.b.plot_brain_coords(self.a)
         
         
     def text_addHighlight(self):

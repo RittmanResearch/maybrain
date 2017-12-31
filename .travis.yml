@@ -30,6 +30,7 @@ script:
  - python test/test_brain_class.py
  - python test/test_plotting.py
  - coverage run test/test_brain_class.py
+ - coverage run test/test_plotting.py
 branches:
   only:
   - gh-pages

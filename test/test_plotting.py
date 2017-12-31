@@ -12,7 +12,7 @@ class TestPlotting(unittest.TestCase):
 
     def setUp(self):
         self.a = mbt.Brain()
-        self.SMALL_FILE = "data/3d_grid_adj.txt"
+        self.SMALL_FILE = "test/data/3d_grid_adj.txt"
 
     def test_histograms(self):
         self.a.import_adj_file(self.SMALL_FILE)
