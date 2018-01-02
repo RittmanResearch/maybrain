@@ -25,19 +25,13 @@ Software versions higher than those given may also work. If you are not familiar
 
 ## Installation
 
-To install, simply copy the files that are inside the `maybrain` folder into the **site-packages** folder of your Python installation.
+To install, simply run `setup.py` throughout `pip`:
 
-If you are not sure where this folder is located, you can open a Python terminal and run the following code to find where Python searches for installed packages:
-
-```python
-import sys
-print('\n'.join(sys.path))
-```
-
-Another possibility is to run our `setup.py` script:
 ```bash
-$ python setup.py install
+$ pip install .
 ```
+
+If you want more detailed instructions about installing maybrain using Anaconda, please go to our [Wiki pages](https://github.com/RittmanResearch/maybrain/wiki).
 
 ## Documentation
 For a detailed documentation, with usage examples and explanations, please go to our [Wiki pages](https://github.com/RittmanResearch/maybrain/wiki).

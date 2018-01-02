@@ -20,7 +20,7 @@ install:
  - conda install -c conda-forge nibabel=2.1
  - conda install matplotlib=2.1
  #- conda install pyqt=4
- - python setup.py install
+ - pip install .
  - conda install -c conda-forge codecov
 before_script:
   - "export DISPLAY=:99.0"

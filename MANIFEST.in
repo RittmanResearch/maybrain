@@ -1,0 +1,3 @@
+include maybrain/resources/properties_anatlabels.txt
+include maybrain/resources/properties_hemispheres.txt
+include maybrain/resources/properties_lobes.txt
