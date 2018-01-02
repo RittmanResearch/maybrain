@@ -12,3 +12,5 @@ LINKED_NODES = 'linkedNodes'
 XYZ = 'xyz'  # 3D coordinates of one node
 ANAT_LABEL = 'anatlabel'
 DISTANCE = 'distance'
+HEMISPHERE = 'hemisphere'
+LOBE = 'lobe'

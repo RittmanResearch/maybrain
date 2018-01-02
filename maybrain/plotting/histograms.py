@@ -15,6 +15,12 @@ def plot_weight_distribution(brain, bins=None, output_file=None):
     """ 
     It uses matplotlib to plot a histogram of the weights of the edges.
     Requires that the brain was thresholded before
+
+    brain: an instance of the Brain class
+    bins: the number of bins if you don't want to use the automatic ones calculated by matplotlib
+    output_file: if you want to create a file. It then calls fig.savefig(output_file) from matplotlib
+
+    return: if output_file is None, this returns (fig, ax) from the figure created
     """
     fig, ax = plt.subplots()
 
