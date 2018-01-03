@@ -28,6 +28,9 @@ class TestPlotting(unittest.TestCase):
         fig, _ = mpt.plot_avg_matrix(dictionary)
         plt.close(fig)
 
+        fig, _ = mpt.plot_strength_matrix(dummy_brain)
+        plt.close(fig)
+
 
 if __name__ == '__main__':
     unittest.main()
