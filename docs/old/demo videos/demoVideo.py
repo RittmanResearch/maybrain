@@ -23,9 +23,9 @@ a.readSpatialInfo("test data/parcel_400_xyz.txt")
 a.importSkull('test data/avg152T1_LR_nifti.nii')
 
 # plot brain and skull
-plot.plotBrain(a, opacity = 0.2, label='brain')
+plot.plot_brain(a, opacity = 0.2, label='brain')
 contourVals = range(0, 255, 75)
-plot.plotSkull(a, contourVals = contourVals, opacity = 1.0, label='skull')
+plot.plot_skull(a, contourVals = contourVals, opacity = 1.0, label='skull')
 
 # assign colours at random
 l = len(a.G.nodes())
@@ -43,9 +43,9 @@ blueBrain = a.makeSubBrain('colour', 'blue')
 greenBrain = a.makeSubBrain('colour', 'green')
 
 # plot brains of each colour
-plot.plotBrain(redBrain, col=(1, 0, 0), opacity = 1., label = 'red')
-plot.plotBrain(greenBrain, col=(0, 1, 0), opacity = 1., label = 'green')
-plot.plotBrain(blueBrain, col=(0, 0, 1), opacity = 1., label = 'blue')
+plot.plot_brain(redBrain, col=(1, 0, 0), opacity = 1., label ='red')
+plot.plot_brain(greenBrain, col=(0, 1, 0), opacity = 1., label ='green')
+plot.plot_brain(blueBrain, col=(0, 0, 1), opacity = 1., label ='blue')
 
 # animate the image
 animate.anim(plot, 1, folder = 'demoVideo/')

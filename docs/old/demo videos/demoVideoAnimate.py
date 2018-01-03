@@ -61,16 +61,16 @@ def anim(obj, saveBool, folder = ''):
     # set initial views
     
     # turn off red brain
-    obj.changePlotProperty('brainEdge', 'visibility', 'red')
-    obj.changePlotProperty('brainNode', 'visibility', 'red')    
+    obj.change_plot_property('brainEdge', 'visibility', 'red')
+    obj.change_plot_property('brainNode', 'visibility', 'red')
 
     # turn off green brain
-    obj.changePlotProperty('brainEdge', 'visibility', 'green')
-    obj.changePlotProperty('brainNode', 'visibility', 'green')    
+    obj.change_plot_property('brainEdge', 'visibility', 'green')
+    obj.change_plot_property('brainNode', 'visibility', 'green')
 
     # turn off blue brain
-    obj.changePlotProperty('brainEdge', 'visibility', 'blue')
-    obj.changePlotProperty('brainNode', 'visibility', 'blue')    
+    obj.change_plot_property('brainEdge', 'visibility', 'blue')
+    obj.change_plot_property('brainNode', 'visibility', 'blue')
 
 
 
@@ -78,47 +78,47 @@ def anim(obj, saveBool, folder = ''):
     for s in r:
         if s<0.:
             s = 0.
-        obj.changePlotProperty('skull', 'opacity', 'skull', value = s)
+        obj.change_plot_property('skull', 'opacity', 'skull', value = s)
         filecount = postChange(f, saveBool, filecount)
         yield
 
-    obj.changePlotProperty('skull', 'opacity', 'skull', value = 0.01)
+    obj.change_plot_property('skull', 'opacity', 'skull', value = 0.01)
 
     # brain nodes and edges fading
     for s in r:
         if s<0.:
             s = 0.
-        obj.changePlotProperty('brainNode', 'opacity', 'brain', value = s)
-        obj.changePlotProperty('brainEdge', 'opacity', 'brain', value = s)        
+        obj.change_plot_property('brainNode', 'opacity', 'brain', value = s)
+        obj.change_plot_property('brainEdge', 'opacity', 'brain', value = s)
         filecount = postChange(f, saveBool, filecount)
         yield        
 
     # fix properties
-    obj.changePlotProperty('brainNode', 'opacity', 'brain', value = 1.)
-    obj.changePlotProperty('brainEdge', 'opacity', 'brain', value = 0.1)
-    obj.changePlotProperty('skull', 'visibility', 'skull')
+    obj.change_plot_property('brainNode', 'opacity', 'brain', value = 1.)
+    obj.change_plot_property('brainEdge', 'opacity', 'brain', value = 0.1)
+    obj.change_plot_property('skull', 'visibility', 'skull')
     
     # highlight each colour
     for ind in ['red', 'blue', 'green']:
         # switch on
-        obj.changePlotProperty('brainEdge', 'visibility', ind)
-        obj.changePlotProperty('brainNode', 'visibility', ind)
-        obj.changePlotProperty('brainEdge', 'opacity', ind, value = 0.1)
-        obj.changePlotProperty('brainNode', 'opacity', ind, value = 1.)
+        obj.change_plot_property('brainEdge', 'visibility', ind)
+        obj.change_plot_property('brainNode', 'visibility', ind)
+        obj.change_plot_property('brainEdge', 'opacity', ind, value = 0.1)
+        obj.change_plot_property('brainNode', 'opacity', ind, value = 1.)
         for x in range(10):
             filecount = postChange(f, saveBool, filecount)
             yield
         # switch off
-        obj.changePlotProperty('brainEdge', 'visibility', ind)
-        obj.changePlotProperty('brainNode', 'visibility', ind)        
+        obj.change_plot_property('brainEdge', 'visibility', ind)
+        obj.change_plot_property('brainNode', 'visibility', ind)
         postChange(f, saveBool, filecount)
         yield
         
     # fix properties
-    obj.changePlotProperty('brainNode', 'opacity', 'brain', value = 1.)
-    obj.changePlotProperty('brainEdge', 'opacity', 'brain', value = 0.1)     
-    obj.changePlotProperty('skull', 'visibility', 'skull')
-    obj.changePlotProperty('skull', 'opacity', 'skull', value = 0.1)    
+    obj.change_plot_property('brainNode', 'opacity', 'brain', value = 1.)
+    obj.change_plot_property('brainEdge', 'opacity', 'brain', value = 0.1)
+    obj.change_plot_property('skull', 'visibility', 'skull')
+    obj.change_plot_property('skull', 'opacity', 'skull', value = 0.1)
     
     
     # spin it round

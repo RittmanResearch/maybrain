@@ -176,9 +176,9 @@ class allenBrain:
     def doPlot(self):
         self.a.importSkull("/usr/share/data/fsl-mni152-templates/MNI152_T1_2mm_brain.nii.gz")
         p = mbo.plotObj()
-        p.plotSkull(self.a, contourVals = [3000,9000])
-        p.plotBrainCoords(self.c, nodes =  self.c.G.nodes(),
-                                     col=(1,0,0), sizeList=5)
+        p.plot_skull(self.a, contourVals = [3000, 9000])
+        p.plot_brain_coords(self.c, nodes =  self.c.G.nodes(),
+                            col=(1,0,0), sizeList=5)
         p.plotBrainCoord(self.a, nodes = self.a.G.nodes(),
                                      col=(0,0,1), sizeList=5)
         self.saveFig()

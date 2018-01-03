@@ -20,7 +20,7 @@ install:
  - conda install -c conda-forge nibabel=2.1
  - conda install matplotlib=2.1
  #- conda install pyqt=4
- - python setup.py install
+ - pip install .
  - conda install -c conda-forge codecov
 before_script:
   - "export DISPLAY=:99.0"
@@ -28,7 +28,10 @@ before_script:
   - sleep 3 # give xvfb some time to start
 script: 
  - python test/test_brain_class.py
- - coverage run test/test_brain_class.py
+ - python test/test_plotting.py
+ - coverage run --append test/test_brain_class.py
+ - coverage run --append test/test_plotting.py
+# - coverage combine
 branches:
   only:
   - gh-pages

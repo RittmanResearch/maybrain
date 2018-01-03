@@ -91,53 +91,6 @@ def nodalefficiency(G, nodes=None):
     return(outDict)
 
 
-
-def histograms(brain, outfilebase="brain"):
-    from matplotlib import pyplot as plt
-    from numpy import fill_diagonal
-    """ 
-    Produces histograms of association matrix weights and edge lengths.
-    Requires spatial information to have been loaded on to the graph.
-    """
-    # define lengths for each edge
-    for edge in brain.G.edges():
-        brain.G.edge[edge[0]][edge[1]]['length'] = abs(lg.norm(np.array(brain.G.node[edge[0]]['xyz']) - np.array(brain.G.node[edge[1]]['xyz'])))
-
-    # get a list of weights
-    weightList = brain.adjMat.copy()
-    fill_diagonal(weightList, 0.)
-    weightList = np.array([v for v in weightList.flatten() if not str(v)=="nan"])
-
-    # plot the weights
-    fig = plt.figure()
-    ax1 = fig.add_subplot(211)
-    ax1.set_title("Weights")
-    ax1.hist(weightList)
-
-    # add a second axis
-    ax2 = fig.add_axes([0.15, 0.1, 0.7, 0.3])
-
-    # get a list of lengths
-    lengths = [brain.G.edge[v[0]][v[1]]['length'] for v in brain.G.edges()]
-    lengths=np.array((lengths))
-
-    # Title for lengths
-    if not brain.threshold:
-        title = "Lengths at no threshold"
-        print("You have not set a threshold on the graph, so all edge lengths will be included giving a normal distribution")
-    else:
-        try:
-            title = "Lengths at " + "{0:.1f}".format(brain.edgePC*100) + "% connectivity"
-        except AttributeError:
-            title = "Lengths at " + "{0.2f}".format(brain.threshold) + " threshold"
-    ax2.set_title(title)
-
-    # plot the lengths
-    ax2.hist(lengths)
-
-    # save the figure
-    fig.savefig(outfilebase+"_histograms.png")
-
 def withinModuleDegree(G, ci, weight=None):
     """
     To calculate mean within module degree
