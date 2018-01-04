@@ -156,6 +156,13 @@ class TestBrainObj(unittest.TestCase):
         self.a.binarise()
         self.assertTrue(all(e[2][ct.WEIGHT] == 1 for e in self.a.G.edges(data=True)))
 
+    def test_make_absolute(self):
+        c = mbt.Brain(directed=True)
+        c.import_adj_file(self.SMALL_NEG_FILE)
+        c.apply_threshold()
+        c.make_edges_absolute()
+        self.assertTrue(all(e[2][ct.WEIGHT] >= 0 for e in c.G.edges(data=True)))
+
     def test_localThreshold(self):
         self.a.import_adj_file(self.MODIF_FILE, delimiter=",")
         self.a.apply_threshold()

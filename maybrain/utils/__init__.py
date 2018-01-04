@@ -2,3 +2,4 @@
 
 from .brain_utils import *
 from .bct import *
+from .highlights import *

@@ -5,7 +5,6 @@ Module which contains the definition of Brain class.
 import networkx as nx
 import numpy as np
 import random
-from maybrain import highlightObj
 from maybrain import constants as ct
 
 
@@ -41,9 +40,6 @@ class Brain:
         self.nbiso = None  # all the isosurface info, nibabel object
         self.iso = None  # the isosurface
         self.isoHeader = None  # header information
-
-        self.labelNo = 0  # index for autolabeling of highlights
-        self.highlights = {}  # highlights items
 
         self.risk_edges = None
 
@@ -93,7 +89,7 @@ class Brain:
         Add 3D coordinate information for each node from a given file. It needs to be called after importAdjFile()
         fname : file name
         delimiter : the delimiter of the values inside the matrix, like ","
-        convert_mni : Whether you want to convert coordinates from voxel-wise to MNI space
+        convert_mni : Whether you want to convert coordinates from voxel-wise (2 mm) to MNI space
         """
         # open file
         try:
@@ -452,159 +448,19 @@ class Brain:
         for edge in self.G.edges(data=True):
             edge[2][ct.WEIGHT] = 1
 
+    def make_edges_absolute(self):
+        """
+        Makes all the edges in self.G absolute
+        """
+        for edge in self.G.edges(data=True):
+            edge[2][ct.WEIGHT] = abs(edge[2][ct.WEIGHT])
+
     def remove_unconnected_nodes(self):
         """
         Removes nodes with no connections
         """
         node_list = [v for v in self.G.nodes() if self.G.degree(v) == 0]
         self.G.remove_nodes_from(node_list)
-
-    def highlight_from_conds(self, prop, rel, val, label=None, mode='edge', colour=(1., 0., 0.), opacity=1.0):
-        """ Creates a highlight by asking if the propertly prop is related to val by rel
-
-            type can be 'edge' or 'nodes', to filter for edges or nodes (coordinates)
-            with the given property
-
-            rel can be one of the following strings:
-                geq - greater than or equal to
-                leq - less than or equal to
-                gt - strictly greater than
-                lt - stricctly less than
-                eq - equal to (i.e. exactly)
-                in(), in[), in(], in[] - within an interval, in this case val is a list of two numbers
-                contains - val is a string
-        """
-
-        # check filter mode
-        if not (mode in ['edge', 'node', 'node or edge']):
-            print('filter mode not recognised')
-            return
-        # check if label given
-        if not label:
-            label = self._get_auto_label()
-
-        # make a highlight object
-        h = highlightObj()
-        h.colour = colour
-        h.opacity = opacity
-        h.edgeIndices = []
-        h.nodeIndices = []
-
-        print((prop, rel, val, label, mode))
-
-        # extract lists from edges
-        if mode in ['edge', 'node or edge']:
-            ind = -1
-            for e in self.G.edges(data=True):
-                ind = ind + 1
-                print((self.G.edges[e[0], e[1]]))
-                try:
-                    d = self.G.edges[e[0], e[1]][prop]
-                except KeyError:
-                    continue
-
-                # match properties
-                boolval = self.prop_compare(d, rel, val)
-                print((d, rel, val, boolval))
-
-                # save data in highlight
-                if boolval:
-                    h.edgeIndices.append((e[0], e[1]))
-
-        # extract lists from nodes
-        if mode in ['node', 'node or edge']:
-            for c in range(len(self.G.nodes())):
-                # get property
-
-                # special treatment for 'x', 'y' and 'z'
-                if prop == 'x':
-                    d = self.G.nodes[c][ct.XYZ][0]
-                elif prop == 'y':
-                    d = self.G.nodes[c][ct.XYZ][1]
-                elif prop == 'z':
-                    d = self.G.nodes[c][ct.XYZ][2]
-                else:
-                    # any other property
-                    try:
-                        d = self.G.nodes[c][prop]
-                    except:
-                        continue
-
-                # test property against criteria
-                boolval = self.prop_compare(d, rel, val)
-
-                # add to highlight if good
-                if boolval:
-                    h.nodeIndices.append(c)
-
-        # add highlight to dictionary
-        self.highlights[label] = h
-
-    def make_highlight(self, edge_inds, coord_inds, col, label=None):
-        """ create a highlight object from some edge indices """
-
-        h = highlightObj()
-
-        h.edgeIndices = edge_inds
-        h.nodeIndices = coord_inds
-        h.colour = col
-
-        if not label:
-            label = self.getAutoLabel()
-
-        self.highlights[label] = h
-
-    def prop_compare(self, d, rel, val):
-        """ compare d relative to val, used by highlight_from_conds
-
-        geq - greater than or equal to
-                leq - less than or equal to
-                gt - strictly greater than
-                lt - stricctly less than
-                eq - equal to (i.e. exactly)
-                in(), in[), in(], in[] - with
-                contains """
-
-        if rel == 'eq':
-            b = d == val
-        elif rel == 'gt':
-            b = d > val
-        elif rel == 'lt':
-            b = d < val
-        elif rel == 'leq':
-            b = d <= val
-        elif rel == 'geq':
-            b = d >= val
-        elif rel == 'in()':
-            b = (d > val[0]) & (d < val[1])
-        elif rel == 'in[)':
-            b = (d >= val[0]) & (d < val[1])
-        elif rel == 'in(]':
-            b = (d > val[0]) & (d <= val[1])
-        elif rel == 'in[]':
-            b = (d >= val[0]) & (d <= val[1])
-        elif rel == 'contains':
-            b = d in val
-        else:
-            print(('relation not recognised: ' + rel))
-
-        return b
-
-    def _get_auto_label(self):
-        """ generate an automatic label for a highlight object if none given """
-
-        # get index of label
-        num = str(self.labelNo)
-        num = '0' * (4 - len(num)) + num
-
-        # make label and print
-        label = 'plot ' + num
-        print(('automatically generated label: ' + label))
-
-        # iterate label index
-        self.labelNo = self.labelNo + 1
-
-        return label
 
     def _nng(self, k):
         """ Private method to help local thresholding by creating a k-nearest neighbour graph"""
