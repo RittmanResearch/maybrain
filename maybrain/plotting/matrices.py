@@ -17,9 +17,9 @@ def _get_ordered_array_and_labels(matrix, dummy_adj_file, hemi_prop, lobes_prop,
     dummy_brain.import_properties(lobes_prop)
     dummy_brain.import_properties(hemi_prop)
 
-    # Sorting the nodes, first by hemisphere, then by lobe, then by anatomical label
+    # Sorting the nodes, first by hemisphere, then by lobe, then by anatomical label, and then by node number
     nodes = copy.deepcopy(list(dummy_brain.G.nodes(data=True)))
-    nodes.sort(key=lambda x: (x[1][hemi_name], x[1][lobes_name], x[1][anat_name]))
+    nodes.sort(key=lambda x: (x[1][hemi_name], x[1][lobes_name], x[1][anat_name], x[0]))
 
     # Getting the labels of the nodes and the numbers, now in ascending order
     labels = [x[1][anat_name] for x in nodes]
