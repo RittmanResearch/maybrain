@@ -309,6 +309,51 @@ class TestBrainObj(unittest.TestCase):
             self.assertTrue(self.a.G.edges[2, 0]['colour'], 'red')
             self.assertTrue(self.a.G.edges[1, 3]['colour'], 'green')
 
+    def test_highlights(self):
+        self.a.import_adj_file(self.SMALL_FILE)
+        self.a.apply_threshold()
+        self.a.import_properties(self.PROPS_FILE)
+
+        utils.highlight_from_conds(self.a, 'colour', 'eq', 'blue', mode='node')
+        self.assertEqual(utils.highlights[1].nodes, [0])
+        self.assertEqual(utils.highlights[1].edges, [])
+
+        utils.highlight_from_conds(self.a, ct.WEIGHT, 'geq', 0.84379894778099995, mode='edge', label=2)
+        self.assertEqual(utils.highlights[2].nodes, [])
+        self.assertEqual(utils.highlights[2].edges, [(1, 2)])
+
+        utils.highlight_from_conds(self.a, ct.WEIGHT, 'gt', 0.84379894778099995, mode='edge')
+        self.assertEqual(utils.highlights[3].nodes, [])
+        self.assertEqual(utils.highlights[3].edges, [])
+
+        utils.highlight_from_conds(self.a, ct.WEIGHT, 'leq', 0.203602458588, mode='edge', label=4)
+        self.assertEqual(utils.highlights[4].nodes, [])
+        self.assertEqual(sorted(utils.highlights[4].edges), [(0, 2), (0, 3)])
+
+        utils.highlight_from_conds(self.a, ct.WEIGHT, 'lt', 0.203602458588, mode='edge', label=5)
+        self.assertEqual(utils.highlights[5].nodes, [])
+        self.assertEqual(utils.highlights[5].edges, [(0, 3)])
+
+        utils.highlight_from_conds(self.a, ct.WEIGHT, 'in[]', [0.16390494700200001, 0.60080034391699999], mode='node|edge', label=5)
+        self.assertEqual(utils.highlights[5].nodes, [])
+        self.assertEqual(sorted(utils.highlights[5].edges), [(0, 1), (0, 2), (0, 3), (1, 3)])
+        utils.highlight_from_conds(self.a, ct.WEIGHT, 'in(]', [0.16390494700200001, 0.60080034391699999], mode='edge|node', label=5)
+        self.assertEqual(utils.highlights[5].nodes, [])
+        self.assertEqual(sorted(utils.highlights[5].edges), [(0, 1), (0, 2), (1, 3)])
+        utils.highlight_from_conds(self.a, ct.WEIGHT, 'in[)', [0.16390494700200001, 0.60080034391699999], mode='edge', label=5)
+        self.assertEqual(utils.highlights[5].nodes, [])
+        self.assertEqual(sorted(utils.highlights[5].edges), [(0, 2), (0, 3), (1, 3)])
+        utils.highlight_from_conds(self.a, ct.WEIGHT, 'in()', [0.16390494700200001, 0.60080034391699999], mode='edge', label=5)
+        self.assertEqual(utils.highlights[5].nodes, [])
+        self.assertEqual(sorted(utils.highlights[5].edges), [(0, 2), (1, 3)])
+
+        utils.highlight_from_conds(self.a, 'colour', 'in', ['red', 'blue'], mode='node|edge')
+        self.assertEqual(sorted(utils.highlights[6].nodes), [0, 1, 3])
+        self.assertEqual(utils.highlights[6].edges, [(0, 2)])
+
+        utils.make_highlight(edge_inds=[(1, 2), (4, 5)], nodes_inds=[2, 4], label='custom')
+        self.assertEqual(sorted(utils.highlights['custom'].nodes), [2,4])
+        self.assertEqual(sorted(utils.highlights['custom'].edges), [(1, 2), (4,5)])
 
 if __name__ == '__main__':
     unittest.main()

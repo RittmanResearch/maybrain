@@ -2,7 +2,7 @@ from maybrain import constants as ct
 import numpy as np
 
 
-__number_of_highlights = 0  # Used for automatic labeling
+__number_of_highlights = 1  # Used for automatic labeling
 highlights = {}  # Our highlights
 
 
@@ -71,7 +71,8 @@ def highlight_from_conds(brain, prop, rel, val, mode, label=None):
         'lt' - strictly less than
         'eq' - equal to (i.e. exactly)
         'in()', 'in[)', 'in(]', 'in[]' - within an interval, in this case val is a list of two numbers
-        'in' - in val
+                                         "[" and "]" means inclusive, "(" and ")" means exclusive
+        'in' - in `val`
     val: The value, or range of values, to be compared to
     mode: Whether looking for nodes and/or edges. It can be 'node', 'edge', 'node|edge' or 'edge|node'
     label: Identification of the highlight for further access. If None, one will be automatically created
