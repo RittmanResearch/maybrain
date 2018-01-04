@@ -63,7 +63,7 @@ def highlight_from_conds(brain, prop, rel, val, mode, label=None):
 
     brain: An instance of Brain to highlight
     prop: The property to look for in `brain`. If this value is equal to x/X/y/Y/z/Z, it will look out for the
-          respective value from the property ct.XYZ
+          respective value from the property ct.XYZ in the nodes
     rel: The relation between the property and value that is being looked for in the brain. It can be:
         'geq' - greater than or equal to
         'leq' - less than or equal to

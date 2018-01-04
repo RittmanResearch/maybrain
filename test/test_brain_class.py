@@ -353,7 +353,12 @@ class TestBrainObj(unittest.TestCase):
 
         utils.make_highlight(edge_inds=[(1, 2), (4, 5)], nodes_inds=[2, 4], label='custom')
         self.assertEqual(sorted(utils.highlights['custom'].nodes), [2,4])
-        self.assertEqual(sorted(utils.highlights['custom'].edges), [(1, 2), (4,5)])
+        self.assertEqual(sorted(utils.highlights['custom'].edges), [(1, 2), (4, 5)])
+
+        self.a.import_spatial_info(self.COORD_FILE)
+        utils.highlight_from_conds(self.a, 'y', 'eq', 2, mode='node', label='custom')
+        self.assertEqual(sorted(utils.highlights['custom'].nodes), [2, 3])
+        self.assertEqual(utils.highlights['custom'].edges, [])
 
 if __name__ == '__main__':
     unittest.main()
