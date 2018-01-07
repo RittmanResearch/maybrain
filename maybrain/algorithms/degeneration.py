@@ -11,15 +11,16 @@ import numpy as np
 from maybrain import constants as ct
 
 
-def degenerate(brain, weight_loss=0.1, edges_removed_limit=1,
-               thresh_limit=None, pc_limit=None, weight_loss_limit=None,
-               node_list=[], spread=False, update_adj_mat=True,
-               distances=False, spatial_search=False):
+def random_degenerate(brain, weight_loss=0.1, edges_removed_limit=1,
+                      thresh_limit=None, pc_limit=None, weight_loss_limit=None,
+                      node_list=[], spread=False, update_adj_mat=True,
+                      distances=False, spatial_search=False):
     """
     Remove random edges from connections of the toxicNodes set, or from the
-    risk_edges set. This occurs either until edgesRemovedLimit number of edges
+    risk_edges set. This occurs either until edges_removed_limit number of edges
     have been removed (use this for a thresholded weighted graph), or until the
-    weight loss limit has been reached (for a weighted graph). For a binary
+    weight loss limit has been reached (for a weighted graph). The limit can also
+    be determined by a given weight threshold (thresh_limit) or percentage connectivity (pc_limit). For a binary
     graph, weight loss should be set to 1.
 
     The spread option recruits connected nodes of degenerating edges to the
@@ -33,6 +34,11 @@ def degenerate(brain, weight_loss=0.1, edges_removed_limit=1,
 
     Spread can either be False, or a number specifying the weight above which
     to add nodes within the list of at-risk nodes.
+
+    The distances option records the edge length of edges lost.
+
+    The adjacency matrix can optionally be updated to record lost edges by
+    setting update_adj_mat to be True (the default option).
 
     """
 
@@ -157,8 +163,10 @@ def degenerate(brain, weight_loss=0.1, edges_removed_limit=1,
 
 def contiguous_spread(brain, edgeloss, startnodes=None):
     """
-    Degenerate nodes in a continuous fashion.
-    Doesn't currently include spreadratio
+    Degenerate nodes in a continuous fashion. The starting node is chosen at
+    random, or from a set startnodes. The maximum number of nodes lost is
+    edgeloss. It returns a list of the nodes degenerated and a list containing the
+    degenerated nodes at each step
     """
 
     # make sure nodes have the linkedNodes attribute

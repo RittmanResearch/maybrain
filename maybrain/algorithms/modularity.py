@@ -139,4 +139,34 @@ def modularity(brain, hierarchy=False, diag_val=0., nodes_to_exclude=None):
 
     # return hierarchy only if desired
     if hierarchy:
-        return (ci, q)
+        return ci, q
+
+
+def within_module_degree(brain, ci, weight=None):
+    """
+    To calculate mean within module degree
+    """
+    #    moduleList = [v for v in set(ci.values())] # get module list
+    withinDegDict = {}  # output dictionary of nodes and mean within module degree
+    #    modDict = {m:[v for v in ci.keys() if ci[v]==m] for m in moduleList} # sort nodes in to modules
+
+    for n in brain.G.nodes():
+        m = ci[n]  # select module
+
+        eList = brain.G.edges([n])
+        eList = [e for e in eList if all([ci[e[0]] == m, ci[e[1]] == m])]  # find edges exclusively within the module
+
+        if weight:
+            wts = np.sum([float(G.edge[e[0]][e[1]]['weight']) for e in eList])  # get weights/degree
+            wts = wts / float(len(eList))
+        else:
+            wts = float(len(eList))
+
+        withinDegDict[n] = wts
+
+    #        if len(modDict[m]) > 1:
+    #            withinDegDict[n] = wts/(len(modDict[m])-1)  # mean of weight/degree, ie average degree within module
+    #        else:
+    #            withinDegDict[n] = 0.
+
+    return withinDegDict
