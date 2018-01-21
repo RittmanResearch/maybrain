@@ -5,20 +5,26 @@ Module for linking with the Allen brain atlas
 @author: tim
 """
 
-from maybrain import brain
 import csv
-from os import path,rename,remove
+from os import path, rename, remove
 import numpy as np
 from scipy import stats
 from matplotlib import pyplot as plt
 from glob import glob
 
+from maybrain import brain
+from maybrain.plotting import mayavi_wrapper as plot
+
 class AllenBrain:
     """
-    
+    An object the combines a network generated from imaging data with gene
+    expression data taken from the Allen brain atlas. Genetic data can be
+    downloaded from http://human.brain-map.org/static/download.
+
+    An example will be available on the wiki soon.
     """
-    def __init__(self, allenSubj, assocMat, delim=",",
-                 spatialFile="atlas471_xyz_flip_xy.txt", nodesToExclude=[],
+    def __init__(self, allen_subj, assoc_matrix, delim=",",
+                 spatial_file="atlas471_xyz_flip_xy.txt", nodesToExclude=[],
                  symmetrise=False, mirror=False, convertMNI=False):
         """
         This object contains two 'brain' network objects, one for the imaging
@@ -26,11 +32,18 @@ class AllenBrain:
         between the imaging and Allen data by pairing nodes between the two
         network objects.
         """
-      
-        self.subj = allenSubj
-        self.fname = "SampleAnnot.csv"
-        self.mafile = "MicroarrayExpression.csv"
-        self.probefile = "Probes.csv"
+
+        self.allen_subj = allen_subj
+        self.annotation_file = "SampleAnnot.csv"
+        self.microarray_expression_file = "MicroarrayExpression.csv"
+        self.probe_file = "Probes.csv"
+        
+        self.signif_value = 1.0 # set significance value for gene correlations
+                
+        # output matrices
+        self.gene_matrix = None
+        self.probe_matrix = None
+        self.probe_dict = None
 
         # if symmetrise is true then regions are identified by the structure
         # name, if symmetrise is false, then regions are identified by the
@@ -39,49 +52,53 @@ class AllenBrain:
             self.sLab = "structure_acronym"
         else:
             self.sLab = "structure_name"
-       
+
         self.mirror = mirror
         if symmetrise and self.mirror:
-            print("Please select either a symmetrised or mirrored graph, ignoring mirror=True")
+            print("Please select either a symmetrised or mirrored graph,\
+                  ignoring mirror=True")
             self.mirror = False
-            
+
         # set up brain for expression data
         self.expr_brain = brain.Brain()
-        
+
         node_counter = 0
-      
+
         # import probe data
-        f = open(path.join(self.subj, self.fname), "rb")        
+        f = open(path.join(self.allen_subj, self.annotation_file), "rb")
         reader = csv.DictReader(f, delimiter=",", quotechar='"')
-      
+
         self.headers = ['probe']
         self.sIDDict = {}
 
         for l in reader:
-           # n = int(l["structure_id"])
-           sID = l[self.sLab]
-           n = node_counter # GIVE NODES UNIQUE INCREMENTAL ID (across all subjects)
-           if not self.expr_brain.G.has_node(n):
-               self.expr_brain.G.add_node(n)
-               self.expr_brain.G.node[n] = l
-               self.expr_brain.G.node[n]['sID'] = sID # store the structure_acronym/structure_name for the node
-               node_counter += 1
-               # self.headers[subj].append(l["structure_id"])
-               self.headers.append(sID) #STORE structure_acronym or structure_name depending on symmetrise
+            # n = int(l["structure_id"])
+            sID = l[self.sLab]
+            n = node_counter # GIVE NODES UNIQUE INCREMENTAL ID (across all subjects)
+            if not self.expr_brain.G.has_node(n):
+                self.expr_brain.G.add_node(n)
+                self.expr_brain.G.node[n] = l
+                
+                # store the structure_acronym/structure_name for the node
+                self.expr_brain.G.node[n]['sID'] = sID
+                node_counter += 1
                
-               if not sID in list(self.sIDDict.keys()):
-                   self.sIDDict[sID] = [n]
-               else:
-                   self.sIDDict[sID].append(n)
+                # self.headers[subj].append(l["structure_id"])
+                self.headers.append(sID) #STORE structure_acronym or structure_name depending on symmetrise
+               
+                if not sID in list(self.sIDDict.keys()):
+                    self.sIDDict[sID] = [n]
+                else:
+                    self.sIDDict[sID].append(n)
         f.close()
       
         if convertMNI:
             # convert location data for Allen brain from MNI space
-             for n in self.expr_brain.G.nodes():
-                 x = 45 - (float(self.expr_brain.G.node[n]['mni_x'])/2)
-                 y = 63 + (float(self.expr_brain.G.node[n]['mni_y'])/2)
-                 z = 36 + (float(self.expr_brain.G.node[n]['mni_z'])/2)
-                 self.expr_brain.G.node[n]['xyz'] = (x,y,z)
+            for n in self.expr_brain.G.nodes():
+                x = 45 - (float(self.expr_brain.G.node[n]['mni_x'])/2)
+                y = 63 + (float(self.expr_brain.G.node[n]['mni_y'])/2)
+                z = 36 + (float(self.expr_brain.G.node[n]['mni_z'])/2)
+                self.expr_brain.G.node[n]['xyz'] = (x,y,z)
         else:
             for n in self.expr_brain.G.nodes():
                 x = float(self.expr_brain.G.node[n]['mni_x'])
@@ -94,10 +111,10 @@ class AllenBrain:
             self.expr_brain.copy_hemisphere()
             
         # set up brain with graph properties
-        self.c = brain.Brain()
-        self.c.import_adj_file(assocMat, delimiter=delim,
-                               nodes_to_exclude=nodesToExclude)
-        self.c.import_spatial_info(spatialFile)
+        self.imaging_brain = brain.Brain()
+        self.imaging_brain.import_adj_file(assoc_matrix, delimiter=delim,
+                                           nodes_to_exclude=nodesToExclude)
+        self.imaging_brain.import_spatial_info(spatial_file)
   
     def comparison(self):
         # set up dictionary to link nodes from probe data and graph
@@ -107,17 +124,19 @@ class AllenBrain:
 
         nodeDictMRIs = {}
       
-        for node in self.c.G.nodes():
+        for node in self.imaging_brain.G.nodes():
             dOther = (None, 999.) # dummy length of 999
             dOwn = (None, 999.)
       
             for n in self.expr_brain.G.nodes():
-                d = np.linalg.norm(np.array(self.c.G.node[node]['xyz'] - np.array(self.expr_brain.G.node[n]['xyz'])))
+                d = np.linalg.norm(np.array(self.imaging_brain.G.node[node]['xyz']
+                                   - np.array(self.expr_brain.G.node[n]['xyz'])))
                 if d < dOther[1]:
                     dOther = (n,d)
           
-            for n in [v for v in self.c.G.nodes() if not v==node]:
-                d = np.linalg.norm(np.array(self.c.G.node[node]['xyz'] - np.array(self.c.G.node[n]['xyz'])))
+            for n in [v for v in self.imaging_brain.G.nodes() if not v==node]:
+                d = np.linalg.norm(np.array(self.imaging_brain.G.node[node]['xyz']
+                                   - np.array(self.imaging_brain.G.node[n]['xyz'])))
                 if d < dOwn[1]:
                     dOwn = (n,d)
             nodeDictMRIs[node] = {"allen":dOther, "MRIs":dOwn}
@@ -128,13 +147,15 @@ class AllenBrain:
             dOther = (None, 999.)
             dOwn = (None, 999.)
           
-            for n in self.c.G.nodes():
-                d = np.linalg.norm(np.array(self.expr_brain.G.node[node]['xyz'] - np.array(self.c.G.node[n]['xyz'])))
+            for n in self.imaging_brain.G.nodes():
+                d = np.linalg.norm(np.array(self.expr_brain.G.node[node]['xyz']
+                                   - np.array(self.imaging_brain.G.node[n]['xyz'])))
                 if d < dOther[1]:
                     dOther = (n,d)
           
             for n in [v for v in self.expr_brain.G.nodes() if not v==node]:
-                d = np.linalg.norm(np.array(self.expr_brain.G.node[node]['xyz'] - np.array(self.expr_brain.G.node[n]['xyz'])))
+                d = np.linalg.norm(np.array(self.expr_brain.G.node[node]['xyz']
+                                   - np.array(self.expr_brain.G.node[n]['xyz'])))
                 if d < dOwn[1]:
                     dOwn = (n,d)
             nodeDictAllen[node] = {"allen":dOwn, "MRIs":dOther}
@@ -144,7 +165,7 @@ class AllenBrain:
         for node in list(nodeDictMRIs.keys()):
             # find closest allen node 'n'
             n = nodeDictMRIs[node]['allen'][0]
-            self.c.G.node[node]['pair'] = n
+            self.imaging_brain.G.node[node]['pair'] = n
             self.expr_brain.G.node[n]['pair'] = node
             nodePairs.append((node,n))
             # if there is no other MRI node closer to the current MRI region 
@@ -152,51 +173,49 @@ class AllenBrain:
             # if there is also no other MRI node closer to this allen region then match
             #     n = nodeDictMRIs[node]['allen'][0]
             #     if nodeDictAllen[n]['MRIs'][0] == node:
-            #         self.c.G.node[node]['pair'] = n
+            #         self.imaging_brain.G.node[node]['pair'] = n
             #         self.expr_brain.G.node[n]['pair'] = node
             #         nodePairs.append((node,n))
             #     else:
             # if there is another MRI node closer to this allen region then delete current regions (and do not match it)
-            #         self.c.G.remove_node(node)
+            #         self.imaging_brain.G.remove_node(node)
             # else:
-            #     self.c.G.remove_node(node)
+            #     self.imaging_brain.G.remove_node(node)
       
         for node in self.expr_brain.G.nodes():
             if not 'pair' in list(self.expr_brain.G.node[node].keys()):
                 self.expr_brain.G.remove_node(node)             
                   
     def doPlot(self):
-        self.expr_brain.importSkull("/usr/share/data/fsl-mni152-templates/MNI152_T1_2mm_brain.nii.gz")
-        p = brain.plotObj()
-        p.plot_skull(self.expr_brain, contourVals = [3000, 9000])
-        p.plot_brain_coords(self.c, nodes =  self.c.G.nodes(),
+        self.expr_brain.import_background("/usr/share/data/fsl-mni152-templates/MNI152_T1_2mm_brain.nii.gz")
+        plot.plot_skull(self.expr_brain, contourVals = [3000, 9000])
+        plot.plot_brain_coords(self.imaging_brain, nodes = self.imaging_brain.G.nodes(),
                             col=(1,0,0), sizeList=5)
-        p.plotBrainCoord(self.expr_brain, nodes = self.expr_brain.G.nodes(),
+        plot.plot_brain_coords(self.expr_brain, nodes = self.expr_brain.G.nodes(),
                                      col=(0,0,1), sizeList=5)
-        self.saveFig()
                                     
-    def probeData(self, propDict, graphMetric="gm", nodeList=None, plot=False,
-                  probeList=[], probeNumbers=[], sigVal=1.0, T=False):
+    def probeData(self, propDict, graphMetric="gm", nodeList=None, scatter_plot=False,
+                  probeList=[], probeNumbers=[], signif_value=1.0, T=False):
         '''
         
         '''
-        self.gm=graphMetric
-        self.sigVal=sigVal
+        self.gm = graphMetric
+        self.signif_value = signif_value
       
-        probes = open(path.join(self.subj,"Probes.csv"), "rb")
+        probes = open(path.join(self.allen_subj,"Probes.csv"), "rb")
         probeReader = csv.DictReader(probes, delimiter=",",
                                      quotechar='"')
-        self.probeDict = {l['probe_id']:[l['gene_symbol'], l['gene_name']] for l in probeReader}
+        self.probe_dict = {l['probe_id']:[l['gene_symbol'], l['gene_name']] for l in probeReader}
         if probeList:
             probeNumbers = []
             for p in probeList:
-                probeNumbers.extend([v for v in list(self.probeDict.keys()) if any([p in self.probeDict[v][1], p in self.probeDict[v][0]])])
+                probeNumbers.extend([v for v in list(self.probe_dict.keys()) if any([p in self.probe_dict[v][1], p in self.probe_dict[v][0]])])
             print((" ".join(["Probe numbers:", ' '.join(probeNumbers)])))
       
         else:
             probeNumbers = None
       
-        self.outFile = path.join(self.subj, self.gm+'.txt')
+        self.outFile = path.join(self.allen_subj, self.gm+'.txt')
         print(("Saving data in:"+self.outFile))
         if path.exists(self.outFile):
             rename(self.outFile, self.outFile+'.old')
@@ -207,185 +226,185 @@ class AllenBrain:
         self.propDict = propDict
                               
         if nodeList:
-            for node in self.c.G.nodes():
+            for node in self.imaging_brain.G.nodes():
                 if not node in nodeList:
-                    self.expr_brain.G.remove_node(self.c.G.node[node]['pair'])
-                    self.c.G.remove_node(node)
+                    self.expr_brain.G.remove_node(self.imaging_brain.G.node[node]['pair'])
+                    self.imaging_brain.G.remove_node(node)
       
         # import probe data
-        f = open(path.join(self.subj, self.mafile), "rb")
+        f = open(path.join(self.allen_subj, self.microarray_expression_file), "rb")
         reader = csv.DictReader(f, delimiter=",",
                                 fieldnames=self.headers,
                                 quotechar='"')
       
         for l in reader:
             if T:
-                self.probeSubT(l, plot, probeNumbers)
+                self.probeSubT(l, probeNumbers)
             else:
-                self.probeSub(l, plot, probeNumbers)
+                self.probeSub(l, scatter_plot, probeNumbers)
         f.close()
        
     def writeXMatrix(self, outFile="Xmatrix.csv", probeNumbers=None, tempMatName="tempMat.txt", sd=False, sdFile="NodesSd.txt"):
-       # get all probes if otherwise unspecified
-       if not probeNumbers:
-           f = open(path.join(self.subj, self.probefile))
-           reader = csv.DictReader(f, delimiter=",", quotechar='"')
-           probeNumbers = [l['probe_id'] for l in reader]
-           del(reader)
-           f.close()  
+        # get all probes if otherwise unspecified
+        if not probeNumbers:
+            f = open(path.join(self.allen_subj, self.probe_file))
+            reader = csv.DictReader(f, delimiter=",", quotechar='"')
+            probeNumbers = [l['probe_id'] for l in reader]
+            del(reader)
+            f.close()  
   
-       # set up out file
-       out = open(self.subj+outFile, "wb")
-       headers = ["Gene"]
-       headers.extend([str(v) for v in self.c.G.nodes()])
-       writer = csv.DictWriter(out, fieldnames = headers, delimiter=" ")
-       writer.writeheader()
-      
-       # set up matrix
-       y = len(probeNumbers)
-       z = len(self.c.G.nodes())
-       sT = np.max([len(list(self.sIDDict.values()))]) # max numbers of nodes for any region
+        # set up out file
+        out = open(self.allen_subj+outFile, "wb")
+        headers = ["Gene"]
+        headers.extend([str(v) for v in self.imaging_brain.G.nodes()])
+        writer = csv.DictWriter(out, fieldnames = headers, delimiter=" ")
+        writer.writeheader()
        
-       probeMat = np.memmap(tempMatName,
-                            dtype="float64",
-                            mode="w+",
-                            shape=(y,z,sT))
-                           
-       # set up gene list
-       geneFlag = True
-       pFile = open(path.join(self.subj, self.probefile))
-       pReader = csv.DictReader(pFile, delimiter=",", quotechar='"')
-       pDict = {l['probe_id']:l['gene_symbol'] for l in pReader}
-       geneList = list(pDict.values())
-       set(geneList)
-       geneList = {gene:[] for gene in geneList}
+        # set up matrix
+        y = len(probeNumbers)
+        z = len(self.imaging_brain.G.nodes())
+        sT = np.max([len(list(self.sIDDict.values()))]) # max numbers of nodes for any region
+        
+        probeMat = np.memmap(tempMatName,
+                             dtype="float64",
+                             mode="w+",
+                             shape=(y,z,sT))
+                            
+        # set up gene list
+        geneFlag = True
+        pFile = open(path.join(self.allen_subj, self.probe_file))
+        pReader = csv.DictReader(pFile, delimiter=",", quotechar='"')
+        pDict = {l['probe_id']:l['gene_symbol'] for l in pReader}
+        geneList = list(pDict.values())
+        set(geneList)
+        geneList = {gene:[] for gene in geneList}
+        
+        sIDList = [v for v in self.headers if not v=='probe']
+        sIDList = set(sIDList)
+        
+        # get the corresponding node names in the MRI graph
+        # cNodes is a dict whose keys are all the MRI nodes and values are the matched alen nodes
+        #### PV modified line below which constructed cNodes by looping through allen nodes
+        # but with PV's lax matching criteria several mri nodes can be matched to same allen node
+        # the mri pair of these allen nodes gets overwritten in self.expr_brain.G.nodes and so not all mri nodes will appear 
+        # as pairs of allen nodes in this dict... need to look up pairs in self.imaging_brain.G.nodes instead, where
+        # each mri node is matched to an allen region
+        # cNodes = {str(self.expr_brain.G.node[v]['pair']):v for v in self.expr_brain.G.nodes()}
+        
+        cNodes = {str(v):self.imaging_brain.G.node[v]['pair'] for v in self.imaging_brain.G.nodes()}
+        
+        # assign values to matrix
+        print((str(self.allen_subj)))
+        print('\n')
+        # Generate custom fieldnames list for DictReader which doesn't rely on structure_id
+        # *************************************
+        fieldnames_pv = ['probe']
+        myNodeDict = {}
+        tempHeaders = self.headers
+        tempHeaders.remove('probe')
+ 
+        for p,q in enumerate(self.headers):
+            myNodeDict[p] = q
+            fieldnames_pv.append(str(p))   #####
+        # *************************************
+ 
+        # import probe data
+        f = open(path.join(self.allen_subj, self.microarray_expression_file), "rb")
+        reader = csv.DictReader(f, delimiter=",",
+                                fieldnames=fieldnames_pv,
+                                quotechar='"')
+        y = 0
+        for l in reader:
+            probe = l['probe']
+            if probe in probeNumbers:
+                # assign probe values to sample numbers
+                for z,cNode in enumerate(self.imaging_brain.G.nodes()):
+                    aNode = cNodes[str(cNode)]
+                    # *************************************
+                    # Find structure_acronym corresponding to the matched allen node
+                    acronym = self.expr_brain.G.node[aNode][self.sLab]
+                    # Initialise list for summing expression values for allen nodes with same structure_acronym
+                    totalExpression = []
+                    # Loop over allen nodes to find all those with the correct acronym for the current MRI node
+                    # and add their expression values to the list for averaging
+                    s=0
+                    for ID, struct_ac in list(myNodeDict.items()):
+                        if struct_ac == acronym:
+                            # print(ID, struct_ac, l[str(ID)])
+                            # print('\n')
+                            # if l[str(ID)]:
+                            totalExpression.append(float(l[str(ID)]))
+                            probeMat[y,z,s] = float(l[str(ID)])
+                            s+=1
+                            
+                if geneFlag:
+                    geneList[pDict[probe]].append(y)  # records the position of the probe in a dictionary with genes as a key
+                y+=1
+        f.close()
+        del(reader)
+ 
+        # get values to normalise expression levels for each probe within subject
+        for y in range(probeMat.shape[0]):
+            # create a masked array removing the 0. values
+            subjMat = np.ma.array(probeMat[y,:,sT:sT],
+                                  mask=probeMat[y,:,sT:sT]==0.,
+                                  dtype="float64")
+ 
+            subjMat = (subjMat - np.mean(np.ma.array(subjMat, mask=subjMat==0.))) / np.std(np.ma.array(subjMat, mask=subjMat==0.))
+            probeMat[y,:,sT:sT] = subjMat
+ 
+        geneFlag=False
        
-       sIDList = [v for v in self.headers if not v=='probe']
-       sIDList = set(sIDList)
+        # collapse across subjects and probes by gene
+        geneNames = list(geneList.keys())
+        geneNames.sort() # sort in to alphabetical order
+        
+        # collapse across nodes within regions (averaging across all subjects)
+        # probeMat = np.mean(np.ma.array(probeMat, mask=probeMat==0.), axis=3) # this would work, but runs in to memory problems
+        sh = probeMat.shape
+        probeMatTemp = np.memmap("probeMatTemp.txt", mode="w+", dtype="float64", shape=sh[:2])
+ 
+        # write out the standard deviation for each probe if specified
+        if sd:
+            sdOut = open(sdFile, "wb")
+            sdOut.writelines("Probe Node sd\n")
+        for y in range(sh[0]):
+            for z in range(sh[1]):
+                probeMatTemp[y,z] = np.mean(np.ma.array(probeMat[y,z], mask=probeMat[y,z]==0.)) # mask out unused values, ie where there are less than the maximum number of homolous nodes in a structural region
+                if sd:
+                    std = np.std(np.ma.array(probeMat[y,z], mask=probeMat[y,z]==0.))
+                    sdOut.writelines(' '.join([str(int(probeNumbers[y])), str(self.imaging_brain.G.nodes()[z]), "{:2.5f}".format(std)])+'\n')
+        if sd:
+            sdOut.close()
+        
+        # reassign the probe matrix and delete temporary memory-mapped file
+        probeMat = probeMatTemp
+        del(probeMatTemp)
+        remove(tempMatName)
+        
+        for gene in geneNames:
+            if (geneList[gene]):
+                x = probeMat.shape[1] # number of nodes
+                y = len(geneList[gene]) # number of probes
+                               
+                geneMat = np.zeros(shape=(x,y), dtype="float64")
+               
+                for n,p in enumerate(geneList[gene]): # nb: p is the position of the probe recorded above
+                    geneMat[:,n] = probeMat[p,:]
+                               
+                self.gene_matrix = geneMat
+                meanGene = np.mean(np.ma.array(geneMat, mask=np.isnan(geneMat)), axis=1) # collapse values across probes for each gene
+               
+                outDict = dict(list(zip([str(v) for v in self.imaging_brain.G.nodes()], ["{:10.20f}".format(v) for v in meanGene])))
+                outDict["Gene"] = gene
+                writer.writerow(outDict)
        
-       # get the corresponding node names in the MRI graph
-       # cNodes is a dict whose keys are all the MRI nodes and values are the matched alen nodes
-       #### PV modified line below which constructed cNodes by looping through allen nodes
-       # but with PV's lax matching criteria several mri nodes can be matched to same allen node
-       # the mri pair of these allen nodes gets overwritten in self.expr_brain.G.nodes and so not all mri nodes will appear 
-       # as pairs of allen nodes in this dict... need to look up pairs in self.c.G.nodes instead, where
-       # each mri node is matched to an allen region
-       # cNodes = {str(self.expr_brain.G.node[v]['pair']):v for v in self.expr_brain.G.nodes()}
+        self.geneList = geneList
+        self.probe_matrix = probeMat
+        out.close()
+        remove("probeMatTemp.txt") # delete memory map file
        
-       cNodes = {str(v):self.c.G.node[v]['pair'] for v in self.c.G.nodes()}
-       
-       # assign values to matrix
-       print((str(self.subj)))
-       print('\n')
-       # Generate custom fieldnames list for DictReader which doesn't rely on structure_id
-       # *************************************
-       fieldnames_pv = ['probe']
-       myNodeDict = {}
-       tempHeaders = self.headers
-       tempHeaders.remove('probe')
-
-       for p,q in enumerate(self.headers):
-           myNodeDict[p] = q
-           fieldnames_pv.append(str(p))   #####
-       # *************************************
-
-       # import probe data
-       f = open(path.join(self.subj, self.mafile), "rb")
-       reader = csv.DictReader(f, delimiter=",",
-                               fieldnames=fieldnames_pv,
-                               quotechar='"')
-       y = 0
-       for l in reader:
-           probe = l['probe']
-           if probe in probeNumbers:
-               # assign probe values to sample numbers
-               for z,cNode in enumerate(self.c.G.nodes()):
-                   aNode = cNodes[str(cNode)]
-                   # *************************************
-                   # Find structure_acronym corresponding to the matched allen node
-                   acronym = self.expr_brain.G.node[aNode][self.sLab]
-                   # Initialise list for summing expression values for allen nodes with same structure_acronym
-                   totalExpression = []
-                   # Loop over allen nodes to find all those with the correct acronym for the current MRI node
-                   # and add their expression values to the list for averaging
-                   s=0
-                   for ID, struct_ac in list(myNodeDict.items()):
-                       if struct_ac == acronym:
-                           # print(ID, struct_ac, l[str(ID)])
-                           # print('\n')
-                           # if l[str(ID)]:
-                           totalExpression.append(float(l[str(ID)]))
-                           probeMat[y,z,s] = float(l[str(ID)])
-                           s+=1
-                           
-               if geneFlag:
-                   geneList[pDict[probe]].append(y)  # records the position of the probe in a dictionary with genes as a key
-               y+=1
-       f.close()
-       del(reader)
-
-       # get values to normalise expression levels for each probe within subject
-       for y in range(probeMat.shape[0]):
-           # create a masked array removing the 0. values
-           subjMat = np.ma.array(probeMat[y,:,sT:sT],
-                                 mask=probeMat[y,:,sT:sT]==0.,
-                                 dtype="float64")
-
-           subjMat = (subjMat - np.mean(np.ma.array(subjMat, mask=subjMat==0.))) / np.std(np.ma.array(subjMat, mask=subjMat==0.))
-           probeMat[y,:,sT:sT] = subjMat
-
-       geneFlag=False
-      
-       # collapse across subjects and probes by gene
-       geneNames = list(geneList.keys())
-       geneNames.sort() # sort in to alphabetical order
-       
-       # collapse across nodes within regions (averaging across all subjects)
-       # probeMat = np.mean(np.ma.array(probeMat, mask=probeMat==0.), axis=3) # this would work, but runs in to memory problems
-       sh = probeMat.shape
-       probeMatTemp = np.memmap("probeMatTemp.txt", mode="w+", dtype="float64", shape=sh[:2])
-
-       # write out the standard deviation for each probe if specified
-       if sd:
-           sdOut = open(sdFile, "wb")
-           sdOut.writelines("Probe Node sd\n")
-       for y in range(sh[0]):
-           for z in range(sh[1]):
-               probeMatTemp[y,z] = np.mean(np.ma.array(probeMat[y,z], mask=probeMat[y,z]==0.)) # mask out unused values, ie where there are less than the maximum number of homolous nodes in a structural region
-               if sd:
-                   std = np.std(np.ma.array(probeMat[y,z], mask=probeMat[y,z]==0.))
-                   sdOut.writelines(' '.join([str(int(probeNumbers[y])), str(self.c.G.nodes()[z]), "{:2.5f}".format(std)])+'\n')
-       if sd:
-           sdOut.close()
-       
-       # reassign the probe matrix and delete temporary memory-mapped file
-       probeMat = probeMatTemp
-       del(probeMatTemp)
-       remove(tempMatName)
-       
-       for g,gene in enumerate(geneNames):
-           if (geneList[gene]):
-               x = probeMat.shape[1] # number of nodes
-               y = len(geneList[gene]) # number of probes
-                              
-               geneMat = np.zeros(shape=(x,y), dtype="float64")
-              
-               for n,p in enumerate(geneList[gene]): # nb: p is the position of the probe recorded above
-                   geneMat[:,n] = probeMat[p,:]
-                              
-               self.geneMat = geneMat
-               meanGene = np.mean(np.ma.array(geneMat, mask=np.isnan(geneMat)), axis=1) # collapse values across probes for each gene
-              
-               outDict = dict(list(zip([str(v) for v in self.c.G.nodes()], ["{:10.20f}".format(v) for v in meanGene])))
-               outDict["Gene"] = gene
-               writer.writerow(outDict)
-      
-       self.geneList = geneList
-       self.probeMat = probeMat
-       out.close()
-       remove("probeMatTemp.txt") # delete memory map file
-       
-    def probeSub(self, l, plot, probeNumbers=None):
+    def probeSub(self, l, scatter_plot, probeNumbers=None):
         probe = l['probe']
         if probeNumbers:
             if probe in probeNumbers:
@@ -397,10 +416,10 @@ class AllenBrain:
                     else:
                         self.expr_brain.G.node[node][probe] = None
               
-                aa = np.zeros((len(self.c.G.nodes()),3))
+                aa = np.zeros((len(self.imaging_brain.G.nodes()),3))
                 
-                for n,cnode in enumerate(self.c.G.nodes()):
-                    node = self.c.G.node[cnode]['pair']
+                for n,cnode in enumerate(self.imaging_brain.G.nodes()):
+                    node = self.imaging_brain.G.node[cnode]['pair']
                     if self.propDict[self.expr_brain.G.node[node]['pair']]:
                         aa[n,0] = self.expr_brain.G.node[node][probe]
                         aa[n,1] = self.propDict[cnode]
@@ -413,13 +432,13 @@ class AllenBrain:
                 
                 r,p = stats.pearsonr(aa[:,0], aa[:,1])
               
-                if p < self.sigVal:
+                if p < self.signif_value:
                     print(probe)
                     # plot graph
                     out = open(self.outFile, "a")
-                    out.writelines(','.join([str(v) for v in [probe, '"'+self.probeDict[probe][1]+'"', r, p]])+'\n')
+                    out.writelines(','.join([str(v) for v in [probe, '"'+self.probe_dict[probe][1]+'"', r, p]])+'\n')
                     out.close()
-                    if plot:
+                    if scatter_plot:
                         plt.scatter(aa[:,1], aa[:,0])
                         plt.savefig(self.outFile.replace('.txt',probe+'.png'), dpi=300)
                         plt.close()
@@ -428,12 +447,12 @@ class AllenBrain:
                     print(("Saving data in :"+self.outFile.replace('.txt', probe+self.gm+'.txt')))
                     datFile = open(self.outFile.replace('.txt', probe+self.gm+'.txt'), "wb")
                     datFile.writelines(' '.join([probe, self.gm, "node", "subj"])+'\n')
-                    datFile.writelines('\n'.join([' '.join([str(aa[n,0]), str(aa[n,1]), str(aa[n,2]), self.subj]) for n in range(len(aa[:,1]))]))
+                    datFile.writelines('\n'.join([' '.join([str(aa[n,0]), str(aa[n,1]), str(aa[n,2]), self.allen_subj]) for n in range(len(aa[:,1]))]))
                     datFile.close()
         else:
             pass
   
-    def probeSubT(self, l, plot, probeNumbers=None):
+    def probeSubT(self, l, probeNumbers=None):
         '''
         l is a line from the probe file.
         The purpose of this function is to write thresholded data to a datafile
@@ -450,13 +469,13 @@ class AllenBrain:
                     else:
                         self.expr_brain.G.node[node][probe] = None
                                     
-                    outDict = {probe:probe, 'subj':self.subj}
+                    outDict = {probe:probe, 'subj':self.allen_subj}
                     for p in list(self.propDict.keys()):
                         outDict[p] = self.propDict[p]
                   
                     if not datFile:
                         headers = [probe, "subj"]
-                        gmSubjs = list(self.propDict[list(self.probeDict.keys())[0]].keys())
+                        gmSubjs = list(self.propDict[list(self.probe_dict.keys())[0]].keys())
                         gmSubjs.sort()
                         headers.extend(gmSubjs)
 
@@ -480,17 +499,17 @@ class multiSubj:
     one for the Allen data. Embedded functions make a comparison between the imaging
     and Allen data by pairing nodes between the two network objects.
     """
-    def __init__(self, assocMat, nodesToExclude=[], delim=" ",
-                 subjList=None, spatialFile="parcel_500.txt", symmetrise=False,
+    def __init__(self, assoc_matrix, nodesToExclude=[], delim=" ",
+                 subjList=None, spatial_file="parcel_500.txt", symmetrise=False,
                  convertMNI=False, mirror=True):
         if subjList:
-            self.subjList = subjList
+            self.allen_subjList = subjList
         else:
-            self.subjList = [v for v in glob("17823*") if path.isdir(v)]
+            self.allen_subjList = [v for v in glob("17823*") if path.isdir(v)]
            
-        self.fname = "SampleAnnot.csv"
-        self.mafile = "MicroarrayExpression.csv"
-        self.probefile = "Probes.csv"
+        self.annotation_file = "SampleAnnot.csv"
+        self.microarray_expression_file = "MicroarrayExpression.csv"
+        self.probe_file = "Probes.csv"
         self.mirror=mirror
         
         # if symmetrise is true then regions are identified by the structure name,
@@ -508,10 +527,10 @@ class multiSubj:
 
         self.headers={}
         self.sIDDict = {} # dictionary storing the list of nodes for each structural ID by subject - for use later in averaging across all subjects
-        for subj in self.subjList:
+        for subj in self.allen_subjList:
             self.sIDDict[subj] = {}
             # import probe data
-            f = open(path.join(subj, self.fname), "rb")        
+            f = open(path.join(subj, self.annotation_file), "rb")        
             reader = csv.DictReader(f, delimiter=",", quotechar='"')
            
             self.headers[subj] = ['probe']
@@ -536,11 +555,11 @@ class multiSubj:
             
             if convertMNI:
                 # convert location data for Allen brain from MNI space
-                 for n in self.expr_brain.G.nodes():
-                     x = 45 - (float(self.expr_brain.G.node[n]['mni_x'])/2)
-                     y = 63 + (float(self.expr_brain.G.node[n]['mni_y'])/2)
-                     z = 36 + (float(self.expr_brain.G.node[n]['mni_z'])/2)
-                     self.expr_brain.G.node[n]['xyz'] = (x,y,z)
+                for n in self.expr_brain.G.nodes():
+                    x = 45 - (float(self.expr_brain.G.node[n]['mni_x'])/2)
+                    y = 63 + (float(self.expr_brain.G.node[n]['mni_y'])/2)
+                    z = 36 + (float(self.expr_brain.G.node[n]['mni_z'])/2)
+                    self.expr_brain.G.node[n]['xyz'] = (x,y,z)
             else:
                 for n in self.expr_brain.G.nodes():
                     x = float(self.expr_brain.G.node[n]['mni_x'])
@@ -555,9 +574,9 @@ class multiSubj:
         #f.close()
        
         # set up brain with graph properties
-        self.c = brain.Brain()
-        self.c.import_adj_file(assocMat, delimiter=delim, nodes_to_exclude=nodesToExclude)
-        self.c.import_spatial_info(spatialFile)
+        self.imaging_brain = brain.Brain()
+        self.imaging_brain.import_adj_file(assoc_matrix, delimiter=delim, nodes_to_exclude=nodesToExclude)
+        self.imaging_brain.import_spatial_info(spatial_file)
 
     def comparison(self):
         """
@@ -568,17 +587,17 @@ class multiSubj:
         """
         nodeDictMRIs = {}
        
-        for node in self.c.G.nodes():
+        for node in self.imaging_brain.G.nodes():
             dOther = (None, 999.) # dummy length of 999
             dOwn = (None, 999.)
        
             for n in self.expr_brain.G.nodes():
-                d = np.linalg.norm(np.array(self.c.G.node[node]['xyz'] - np.array(self.expr_brain.G.node[n]['xyz'])))
+                d = np.linalg.norm(np.array(self.imaging_brain.G.node[node]['xyz'] - np.array(self.expr_brain.G.node[n]['xyz'])))
                 if d < dOther[1]:
                     dOther = (n,d)
            
-            for n in [v for v in self.c.G.nodes() if not v==node]:
-                d = np.linalg.norm(np.array(self.c.G.node[node]['xyz'] - np.array(self.c.G.node[n]['xyz'])))
+            for n in [v for v in self.imaging_brain.G.nodes() if not v==node]:
+                d = np.linalg.norm(np.array(self.imaging_brain.G.node[node]['xyz'] - np.array(self.imaging_brain.G.node[n]['xyz'])))
                 if d < dOwn[1]:
                     dOwn = (n,d)
             nodeDictMRIs[node] = {"allen":dOther, "MRIs":dOwn}
@@ -589,8 +608,8 @@ class multiSubj:
             dOther = (None, 999.)
             dOwn = (None, 999.)
            
-            for n in self.c.G.nodes():
-                d = np.linalg.norm(np.array(self.expr_brain.G.node[node]['xyz'] - np.array(self.c.G.node[n]['xyz'])))
+            for n in self.imaging_brain.G.nodes():
+                d = np.linalg.norm(np.array(self.expr_brain.G.node[node]['xyz'] - np.array(self.imaging_brain.G.node[n]['xyz'])))
                 if d < dOther[1]:
                     dOther = (n,d)
            
@@ -605,7 +624,7 @@ class multiSubj:
         for node in list(nodeDictMRIs.keys()):
             # find closest allen node 'n'
             n = nodeDictMRIs[node]['allen'][0]
-            self.c.G.node[node]['pair'] = n
+            self.imaging_brain.G.node[node]['pair'] = n
             self.expr_brain.G.node[n]['pair'] = node
             nodePairs.append((node,n))
             # if there is no other MRI node closer to the current MRI region 
@@ -613,14 +632,14 @@ class multiSubj:
             # if there is also no other MRI node closer to this allen region then match
             #     n = nodeDictMRIs[node]['allen'][0]
             #     if nodeDictAllen[n]['MRIs'][0] == node:
-            #         self.c.G.node[node]['pair'] = n
+            #         self.imaging_brain.G.node[node]['pair'] = n
             #         self.expr_brain.G.node[n]['pair'] = node
             #         nodePairs.append((node,n))
             #     else:
             # if there is another MRI node closer to this allen region then delete current regions (and do not match it)
-            #         self.c.G.remove_node(node)
+            #         self.imaging_brain.G.remove_node(node)
             # else:
-            #     self.c.G.remove_node(node)
+            #     self.imaging_brain.G.remove_node(node)
        
         for node in self.expr_brain.G.nodes():
             if not 'pair' in list(self.expr_brain.G.node[node].keys()):
@@ -636,11 +655,11 @@ class multiSubj:
             self.expr_brain.G.node[n]['pairNodes'] = []
         
         # iterate through imaging nodes to find closes Allen node
-        for node in self.c.G.nodes():
+        for node in self.imaging_brain.G.nodes():
             dOther = (None, 999.) # dummy length of 999
        
             for n in self.expr_brain.G.nodes():
-                d = np.linalg.norm(np.array(self.c.G.node[node]['xyz'] - np.array(self.expr_brain.G.node[n]['xyz'])))
+                d = np.linalg.norm(np.array(self.imaging_brain.G.node[node]['xyz'] - np.array(self.expr_brain.G.node[n]['xyz'])))
                 if d < dOther[1]:
                     dOther = (n,d)
                     
@@ -654,9 +673,9 @@ class multiSubj:
         """
         If meanVals is specified, this takes the mean probe value across subjects
         """
-        for subj in self.subjList:
+        for subj in self.allen_subjList:
             # import probe data
-            f = open(path.join(subj, self.mafile), "rb")
+            f = open(path.join(subj, self.microarray_expression_file), "rb")
             reader = csv.DictReader(f, delimiter=",",
                                     fieldnames=self.headers[subj],
                                     quotechar='"')
@@ -664,8 +683,8 @@ class multiSubj:
                 probe = l['probe']
                 if probe in probeNumbers:
                     # assign probe values to sample numbers
-                    for cnode in self.c.G.nodes():
-                        node = self.c.G.node[cnode]['pair']
+                    for cnode in self.imaging_brain.G.nodes():
+                        node = self.imaging_brain.G.node[cnode]['pair']
                         sID = self.expr_brain.G.node[node][self.sLab]
                         if not probe in list(self.expr_brain.G.node[node].keys()):
                             self.expr_brain.G.node[node][probe] = {}
@@ -683,7 +702,7 @@ class multiSubj:
     def writeXMatrix(self, outFile="Xmatrix.csv", probeNumbers=None, tempMatName="tempMat.txt", sd=False, sdFile="NodesSd.txt"):
         # get all probes if otherwise unspecified
         if not probeNumbers:
-            f = open(path.join(self.subjList[0], self.probefile))
+            f = open(path.join(self.allen_subjList[0], self.probe_file))
             reader = csv.DictReader(f, delimiter=",", quotechar='"')
             probeNumbers = [l['probe_id'] for l in reader]
             del(reader)
@@ -692,14 +711,14 @@ class multiSubj:
         # set up out file
         out = open(outFile, "wb")
         headers = ["Gene"]
-        headers.extend([str(v) for v in self.c.G.nodes()])
+        headers.extend([str(v) for v in self.imaging_brain.G.nodes()])
         writer = csv.DictWriter(out, fieldnames = headers, delimiter=" ")
         writer.writeheader()
        
         # set up matrix
-        x = len(self.subjList)
+        x = len(self.allen_subjList)
         y = len(probeNumbers)
-        z = len(self.c.G.nodes())
+        z = len(self.imaging_brain.G.nodes())
         sT = np.max([np.max([len(v) for v in list(self.sIDDict[subj].values())]) for subj in list(self.sIDDict.keys())]) # max numbers of nodes for any region
         
         probeMat = np.memmap(tempMatName,
@@ -709,7 +728,7 @@ class multiSubj:
                             
         # set up gene list
         geneFlag = True
-        pFile = open(path.join(self.subjList[0], self.probefile))
+        pFile = open(path.join(self.allen_subjList[0], self.probe_file))
         pReader = csv.DictReader(pFile, delimiter=",", quotechar='"')
         pDict = {l['probe_id']:l['gene_symbol'] for l in pReader}
         geneList = list(pDict.values())
@@ -717,7 +736,7 @@ class multiSubj:
         geneList = {gene:[] for gene in geneList}
         
         sIDList = []
-        for subj in self.subjList:
+        for subj in self.allen_subjList:
             sIDList.extend([v for v in self.headers[subj] if not v=='probe'])
         sIDList = set(sIDList)
         
@@ -726,14 +745,14 @@ class multiSubj:
         #### PV modified line below which constructed cNodes by looping through allen nodes
         # but with PV's lax matching criteria several mri nodes can be matched to same allen node
         # the mri pair of these allen nodes gets overwritten in self.expr_brain.G.nodes and so not all mri nodes will appear 
-        # as pairs of allen nodes in this dict... need to look up pairs in self.c.G.nodes instead, where
+        # as pairs of allen nodes in this dict... need to look up pairs in self.imaging_brain.G.nodes instead, where
         # each mri node is matched to an allen region
         # cNodes = {str(self.expr_brain.G.node[v]['pair']):v for v in self.expr_brain.G.nodes()}
         
-        cNodes = {str(v):self.c.G.node[v]['pair'] for v in self.c.G.nodes()}
+        cNodes = {str(v):self.imaging_brain.G.node[v]['pair'] for v in self.imaging_brain.G.nodes()}
         
         # assign values to matrix
-        for x,subj in enumerate(self.subjList):
+        for x,subj in enumerate(self.allen_subjList):
             print((str(subj)))
             print('\n')
             # Generate custom fieldnames list for DictReader which doesn't rely on structure_id
@@ -749,7 +768,7 @@ class multiSubj:
             # *************************************
 
             # import probe data
-            f = open(path.join(subj, self.mafile), "rb")
+            f = open(path.join(subj, self.microarray_expression_file), "rb")
             reader = csv.DictReader(f, delimiter=",",
                                     fieldnames=fieldnames_pv,
                                     quotechar='"')
@@ -758,7 +777,7 @@ class multiSubj:
                 probe = l['probe']
                 if probe in probeNumbers:
                     # assign probe values to sample numbers
-                    for z,cNode in enumerate(self.c.G.nodes()):
+                    for z,cNode in enumerate(self.imaging_brain.G.nodes()):
                         aNode = cNodes[str(cNode)]
                         # *************************************
                         # Find structure_acronym corresponding to the matched allen node
@@ -814,7 +833,7 @@ class multiSubj:
                 probeMatTemp[y,z] = np.mean(np.ma.array(probeMat[y,z], mask=probeMat[y,z]==0.)) # mask out unused values, ie where there are less than the maximum number of homolous nodes in a structural region
                 if sd:
                     std = np.std(np.ma.array(probeMat[y,z], mask=probeMat[y,z]==0.))
-                    sdOut.writelines(' '.join([str(int(probeNumbers[y])), str(self.c.G.nodes()[z]), "{:2.5f}".format(float(std))])+'\n')
+                    sdOut.writelines(' '.join([str(int(probeNumbers[y])), str(self.imaging_brain.G.nodes()[z]), "{:2.5f}".format(float(std))])+'\n')
 
                         
         if sd:
@@ -825,7 +844,7 @@ class multiSubj:
         del(probeMatTemp)
         remove(tempMatName)
         
-        for g,gene in enumerate(geneNames):
+        for gene in geneNames:
             if (geneList[gene]):
                 x = probeMat.shape[1] # number of nodes
                 y = len(geneList[gene]) # number of probes
@@ -835,15 +854,15 @@ class multiSubj:
                 for n,p in enumerate(geneList[gene]): # nb: p is the position of the probe recorded above
                     geneMat[:,n] = probeMat[p,:]
                                
-                self.geneMat = geneMat
+                self.gene_matrix = geneMat
                 meanGene = np.mean(np.ma.array(geneMat, mask=np.isnan(geneMat)), axis=1) # collapse values across probes for each gene
                
-                outDict = dict(list(zip([str(v) for v in self.c.G.nodes()], ["{:10.20f}".format(v) for v in meanGene])))
+                outDict = dict(list(zip([str(v) for v in self.imaging_brain.G.nodes()], ["{:10.20f}".format(v) for v in meanGene])))
                 outDict["Gene"] = gene
                 writer.writerow(outDict)
        
         self.geneList = geneList
-        self.probeMat = probeMat
+        self.probe_matrix = probeMat
         out.close()
         remove("probeMatTemp.txt") # delete memory map file
    
@@ -855,7 +874,7 @@ class multiSubj:
         '''
         out = open(outFile, "wb")
         headers = ["Metric"]
-        headers.extend([str(v) for v in self.c.G.nodes()])
+        headers.extend([str(v) for v in self.imaging_brain.G.nodes()])
         writer = csv.DictWriter(out, fieldnames=headers)
         writer.writeheader()
        
@@ -864,7 +883,7 @@ class multiSubj:
             f = open(path.join(subj, metricDict[m]), "r")
             reader = csv.DictReader(f, delimiter=" ")
             l = next(reader)
-           
+
             # remove non-numeric keys
             for v in list(l.keys()):
                 try:
@@ -872,9 +891,9 @@ class multiSubj:
                 except:
                     del(l[v])
 
-            mDict = {v:l[v] for v in list(l.keys()) if int(v) in self.c.G.nodes()}
+            mDict = {v:l[v] for v in list(l.keys()) if int(v) in self.imaging_brain.G.nodes()}
             f.close()
-           
+
             # normalise within metric
             meanMetric = np.mean([float(v) for v in list(mDict.values())])
             sdMetric = np.std([float(v) for v in list(mDict.values())])
@@ -893,7 +912,7 @@ class multiSubj:
         '''
         out = open(outFile, "wb")
         headers = ["Metric", "Subject"]
-        headers.extend([str(v) for v in self.c.G.nodes()])
+        headers.extend([str(v) for v in self.imaging_brain.G.nodes()])
         writer = csv.DictWriter(out, fieldnames=headers)
         writer.writeheader()
        
@@ -911,7 +930,7 @@ class multiSubj:
                     except:
                         del(l[v])
    
-                mDict = {v:l[v] for v in list(l.keys()) if int(v) in self.c.G.nodes()}
+                mDict = {v:l[v] for v in list(l.keys()) if int(v) in self.imaging_brain.G.nodes()}
                 f.close()
                
                 # normalise within metric
