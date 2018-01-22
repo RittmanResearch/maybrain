@@ -17,7 +17,7 @@ install:
  - source activate test-environment
  #- conda install -c menpo mayavi=4.5.0
  - conda install networkx=2
- - conda install -c conda-forge nibabel=2.1
+ #- conda install -c conda-forge nibabel=2.1
  - conda install matplotlib=2.1
  #- conda install pyqt=4
  - pip install .

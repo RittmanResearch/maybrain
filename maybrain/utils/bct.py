@@ -16,7 +16,7 @@ def makebctmat(brain):
     for nn, x in enumerate(brain.G.nodes()):
         for y in list(brain.G.edge[x].keys()):
             try:
-                bctmat[nn, node_indices[y]] = brain.G.edge[x][y][ct.WEIGHT]
+                bctmat[nn, node_indices[y]] = brain.G.edge[x, y][ct.WEIGHT]
             except:
                 pass
     return bctmat
