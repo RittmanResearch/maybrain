@@ -24,7 +24,7 @@ class AllenBrain:
     An example will be available on the wiki soon.
     """
     def __init__(self, allen_subj, assoc_matrix, allen_dir="allen_data", 
-                 delim=",", spatial_file="atlas471_xyz_flip_xy.txt",
+                 delim=",", imaging_spatial_file="atlas471_xyz_flip_xy.txt",
                  nodesToExclude=[], symmetrise=False, mirror=False,
                  convertMNI=False):
         """
@@ -75,21 +75,21 @@ class AllenBrain:
         self.headers = ['probe']
         self.sIDDict = {}
 
-        for l in reader:
-            # n = int(l["structure_id"])
-            sID = l[self.sLab]
+        for line in reader:
+            sID = line[self.sLab]
             n = node_counter # GIVE NODES UNIQUE INCREMENTAL ID (across all subjects)
+            
             if not self.expr_brain.G.has_node(n):
                 self.expr_brain.G.add_node(n)
-                self.expr_brain.G.node[n] = l   ### 'NdeView' object does not support item assignment ###
+                brain.nx.set_node_attributes(self.expr_brain.G, {n: line})
                 
                 # store the structure_acronym/structure_name for the node
-                self.expr_brain.G.node[n]['sID'] = sID
+                brain.nx.set_node_attributes(self.expr_brain.G, {n: {'sID': sID}})
                 node_counter += 1
                
                 # self.headers[subj].append(l["structure_id"])
                 self.headers.append(sID) #STORE structure_acronym or structure_name depending on symmetrise
-               
+                
                 if not sID in list(self.sIDDict.keys()):
                     self.sIDDict[sID] = [n]
                 else:
@@ -118,7 +118,7 @@ class AllenBrain:
         self.imaging_brain = brain.Brain()
         self.imaging_brain.import_adj_file(assoc_matrix, delimiter=delim,
                                            nodes_to_exclude=nodesToExclude)
-        self.imaging_brain.import_spatial_info(spatial_file)
+        self.imaging_brain.import_spatial_info(imaging_spatial_file)
   
     def comparison(self):
         # set up dictionary to link nodes from probe data and graph
@@ -172,21 +172,10 @@ class AllenBrain:
             self.imaging_brain.G.node[node]['pair'] = n
             self.expr_brain.G.node[n]['pair'] = node
             nodePairs.append((node,n))
-            # if there is no other MRI node closer to the current MRI region 
-            # if nodeDictMRIs[node]['allen'][1] < nodeDictMRIs[node]['MRIs'][1]:
-            # if there is also no other MRI node closer to this allen region then match
-            #     n = nodeDictMRIs[node]['allen'][0]
-            #     if nodeDictAllen[n]['MRIs'][0] == node:
-            #         self.imaging_brain.G.node[node]['pair'] = n
-            #         self.expr_brain.G.node[n]['pair'] = node
-            #         nodePairs.append((node,n))
-            #     else:
-            # if there is another MRI node closer to this allen region then delete current regions (and do not match it)
-            #         self.imaging_brain.G.remove_node(node)
-            # else:
-            #     self.imaging_brain.G.remove_node(node)
-      
-        for node in self.expr_brain.G.nodes():
+        
+        # iterate through the list of nodes to assign pairs and remove unpaired nodes
+        nodeList = [v for v in self.expr_brain.G.nodes()]
+        for node in nodeList:
             if not 'pair' in list(self.expr_brain.G.node[node].keys()):
                 self.expr_brain.G.remove_node(node)             
                   
