@@ -359,6 +359,21 @@ class TestBrainObj(unittest.TestCase):
         utils.highlight_from_conds(self.a, 'y', 'eq', 2, mode='node', label='custom')
         self.assertEqual(sorted(utils.highlights['custom'].nodes), [2, 3])
         self.assertEqual(utils.highlights['custom'].edges, [])
+    
+    def test_bctpy(self):
+        self.a.import_adj_file(self.SMALL_FILE, nodes_to_exclude=[0])
+        self.a.apply_threshold()
+        bct_mat = utils.makebctmat(self.a)
+        self.assertEqual(bct_mat.shape, (3,3))
+        self.assertEqual(bct_mat[0][1], 0.843798947781)
+        self.assertEqual(bct_mat[1][0], 0.843798947781)
+        self.assertTrue(np.isnan(bct_mat[0][0]))
+        self.assertTrue(np.isnan(bct_mat[1][1]))
+        bct_mat = utils.makebctmat(self.a, nonedge=0)
+        self.assertEqual(bct_mat[0][0], 0)
+        self.assertEqual(bct_mat[1][1], 0)
+        self.assertDictEqual({1:1, 2:3, 3:5}, utils.assignbctresult(self.a, [1,3,5]))
+        
 
 if __name__ == '__main__':
     unittest.main()
