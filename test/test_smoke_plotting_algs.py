@@ -3,12 +3,13 @@ import unittest
 from maybrain import brain as mbt
 from maybrain import resources as rt
 import maybrain.plotting as mpt
+import maybrain.algorithms as mpa
 import matplotlib.pyplot as plt
 
 
-class TestPlotting(unittest.TestCase):
+class TestPlottingAndAlgs(unittest.TestCase):
     """
-    Test plotting features, for now just smoke tests to see that plotting doesn't raise exceptions while executing
+    Test plotting and algorithms features, for now just smoke tests to see that plotting doesn't raise exceptions while executing
     """
 
     def setUp(self):
@@ -30,6 +31,11 @@ class TestPlotting(unittest.TestCase):
 
         fig, _ = mpt.plot_strength_matrix(dummy_brain)
         plt.close(fig)
+
+    def test_robustness(self):
+        self.a.import_adj_file(self.SMALL_FILE)
+        self.a.apply_threshold()
+        mpa.robustness(self.a)
 
 
 if __name__ == '__main__':

@@ -1,28 +1,23 @@
 import numpy as np
-from maybrain import constants as ct
+import networkx as nx
 
-
-def makebctmat(brain):
+def makebctmat(brain, nonedge=np.nan):
     """
-    Create a matrix for use with brain connectivity toolbox measures.
-    See https://pypi.python.org/pypi/bctpy
+    Create a matrix from brain.G for use with Brain Connectivity Toolbox measures 
+    (https://github.com/aestrivex/bctpy/)
 
-    Note that missing nodes are not included, so the matrix order in
-    the resulting matrix may not match the node number in the maybrain
-    networkx object
+    Note that missing nodes are not included, so the matrix order in the resulting matrix
+    may not match the node number in the maybrain networkx object
+    
+    brain: an instance of the `Brain` class
+    nonedge: the value to be put in the bct matrix when there is no edge presented
     """
-    bctmat = np.zeros((len(brain.G.nodes()), len(brain.G.nodes())))
-    node_indices = dict(list(zip(brain.G.nodes(), list(range(len(brain.G.nodes()))))))
-    for nn, x in enumerate(brain.G.nodes()):
-        for y in list(brain.G.edge[x].keys()):
-            try:
-                bctmat[nn, node_indices[y]] = brain.G.edge[x][y][ct.WEIGHT]
-            except:
-                pass
-    return bctmat
+    return np.copy(nx.to_numpy_matrix(brain.G, nonedge=nonedge))
 
 
 def assignbctresult(brain, bct_res):
-    """ translate a maybrain connectome into a bct compatible format """
-    out = dict(list(zip(brain.G.nodes(), bct_res)))
-    return out
+    """ 
+    It assigns the results of a Brain Connectivity Toolbox matrix to the respective nodes in 
+    maybrain
+    """
+    return dict(list(zip(brain.G.nodes(), bct_res)))
