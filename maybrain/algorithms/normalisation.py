@@ -3,93 +3,84 @@ import numpy as np
 import networkx as nx
 from networkx import configuration_model
 
-
 from maybrain import constants as ct
+import numbers
 
-#TODO: meter lista de atributos em vez de "spatial
-#TODO indicar que considera que os edges no a têm que ter o attributo 'weight' ja atribuido para cada edge
-#   |-> se calhar meter um teste a ver se o atributo existe, e lançar excepçao se nao?-> meter isto nos testes!
-#TODO: Check inVal is not empty
-#TODO: criar normalise geral para que isto tudo fique reduzido, e no inicio testar o tipo
 
-def normalise(brain, func, n=500, retNorm=True, inVal=None, **kwargs):
+def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True, 
+              node_attrs=None, edge_attrs=None, **kwargs):
     """
-    This function normalises the function G by generating a series of n random
-    graphs and averaging the results. If retNorm is specified, the normalised
-    value is returned, else a list of n values for a random graph are returned.
+    See `normalise()` method's documentation for explanation. This method just expects a single
+    initial measure (init_val) to be averaged, instead of a dictionary
+    """
+    if brain.directed:
+        raise TypeError("normalise_single() not available for directed graphs")
+    if not isinstance(init_val, numbers.Real):
+        raise TypeError("normalise_single() expects init_val to be a real number")
+        
+    return normalise(brain, func, init_vals=init_val, n_iter=n_iter, ret_normalised=ret_normalised, 
+                     node_attrs=node_attrs, edge_attrs=edge_attrs, **kwargs)
+
+
+def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, 
+              node_attrs=None, edge_attrs=None, **kwargs):
+    """
+    See `normalise()` method's documentation for explanation. This method just expects init_vals
+    to be a dictionary with the measures, for each node, that will be averaged
     """
     if brain.directed:
         raise TypeError("normalise() not available for directed graphs")
-            
-    vals = []
-    for i in range(n):
-        rand = configuration_model(list(G.degree().values()))
-        rand = nx.Graph(rand) # convert to simple graph from multigraph
+    if not isinstance(init_vals, dict):
+        raise TypeError("normalise_node_wise() expects init_vals to be a dictionary")
+        
+    return normalise(brain, func, init_vals=init_vals, n_iter=n_iter, ret_normalised=ret_normalised, 
+                     node_attrs=node_attrs, edge_attrs=edge_attrs, **kwargs)
 
-        # check whether the graph is weighted
-        # if so, the algorithm randomly reassigns weights from the input graph to the random graph node by node
-        # this means that for each node the total weighted degree will be similar
-        # nb this depends on the random graph having the same or fewer vertices for each node
-        if isinstance(G.degree(weight=weight)[0], float):
-            randDegs = rand.degree()
-            for node in rand.nodes():
-                edgeVals = [v[2][weight] for v in G.edges(G.nodes()[node],data=True)]
-                shuffle(edgeVals)
-                for en,edge in enumerate(rand.edges(node)):
-                    rand.edge[edge[0]][edge[1]]['weight'] = edgeVals[en]
-
-        # remove unconnected nodes
-        nodeList = [rand.degree()[v] for v in rand.nodes() if rand.degree(v)==0]
-        rand.remove_nodes_from(nodeList)
-
-        # add spatial information if necessary
-        if spatial:
-            print("Adding spatial info")
-            nx.set_node_attributes(rand, 'xyz', {rn:G.node[v]['xyz'] for rn,v in enumerate(G.nodes())}) # copy across spatial information
-
-        try:
-            vals.append(func(rand),weight='weight') # collect values using the function
-        except:
-            vals.append(func(rand)) # collect values using the function
-
-    if retNorm: # return the normalised values
-        if not inVal:
-            inVal = func(G)
-        return(inVal/np.mean(vals))
-
-    else: # return a list of the values from the random graph
-        return(vals)
-
-def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, 
-                        node_attrs=None, edge_attrs=None, **kwargs):
+def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, 
+              node_attrs=None, edge_attrs=None, **kwargs):
     """
     It normalises measures taken from a brain by generating a series of n random graphs and
     averaging them.
 
     brain: an instance of the `Brain` class
     func: the function that calculates the measure in each node of brain
-    init_vals: the initial measures calculated from brain.G that will be averaged. If this is None,
-               this will be equal to func(brain.G, **kwargs)
+    init_vals: the initial measures calculated from brain.G that will be averaged. 
+                If this is None, this will be equal to func(brain.G, **kwargs)
+                If this is a dictionary, this will be a normalisation node-wise
+                Otherwise, it will be treated as a single measure to be averaged
     n_iter: number of iteratios that will be used to generate the random graphs
-    ret_normalised: if True, the normalised measures are returned
+    ret_normalised: if True, the normalised measures are returned, otherwise a list of n values 
+                    for a random graph is returned
     node_attrs: If the node attributes of brain.G are necessary to a correct calculation of func()
                 in the random graph, just pass the attributes as a list of strings in this parameter
     edge_attrs: If the edge attributes of brain.G are necessary to a correct calculation of func()
                 in the random graph, just pass the attributes as a list of strings in this parameter.
-                `ct.WEIGHT` is already passed to the edges of the random graphs, so need to pass it
-                in this parameter
+                `ct.WEIGHT` is already passed to the edges of the random graphs, so no need to pass 
+                it in this parameter
     **kwargs: keyword arguments if you need to pass them to func()
     """
     if brain.directed:
-        raise TypeError("normalise_node_wise() not available for directed graphs")
+        raise TypeError("normalise() not available for directed graphs")
     if init_vals is None:
         init_vals = func(brain.G, **kwargs)
     if node_attrs is None:
         node_attrs = []
     if edge_attrs is None:
         edge_attrs = []
+    # Checking there is the attribute ct.WEIGHT in the edges
+    try:
+        if list(brain.G.edges(data=True))[0][2][ct.WEIGHT]:
+            pass
+    except KeyError as error:
+        import sys
+        _, _, tb = sys.exc_info()
+        raise KeyError(error, "Edge doesn't have ct.WEIGHT property").with_traceback(tb)
+    
+    if isinstance(init_vals, dict):
+        nodes_dict = {v:[] for v in brain.G.nodes()}
+    else:
+        vals = []
         
-    nodes_dict = {v:[] for v in brain.G.nodes()}
     for _ in range(n_iter):
         rand = configuration_model(list(dict(brain.G.degree()).values()))
         rand = nx.Graph(rand) # convert to simple graph from multigraph
@@ -119,12 +110,20 @@ def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=
         # Applying func() to the random graph
         res = func(rand, **kwargs)
 
-        for x, node in enumerate(nodes_dict):
-            nodes_dict[node].append(res[x])
+        if isinstance(init_vals, dict):
+            for x, node in enumerate(nodes_dict):
+                nodes_dict[node].append(res[x])
+        else:
+            vals.append(res)
     
-    if ret_normalised: # update nodes_dict to return the normalised values
-        for node in nodes_dict:
-            nodes_dict[node] = init_vals[node]/np.mean(nodes_dict[node])
     
-    # Returns a list of the values from the random graph
-    return nodes_dict
+    if isinstance(init_vals, dict):
+        if ret_normalised: # update nodes_dict to return the normalised values
+            for node in nodes_dict:
+                nodes_dict[node] = init_vals[node]/np.mean(nodes_dict[node])
+        return nodes_dict
+    else:
+        if ret_normalised:
+            return init_vals / np.mean(vals)
+        else:
+            return vals

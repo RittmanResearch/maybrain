@@ -54,7 +54,7 @@ class Brain:
         else:
             self.G = nx.Graph()
 
-    def import_adj_file(self, fname, delimiter=None, nodes_to_exclude=[], na_vals=["NA"]):
+    def import_adj_file(self, fname, delimiter=None, nodes_to_exclude=None, na_vals=None):
         """
         Imports an adjacency matrix from a file.
         fname : file name
@@ -62,6 +62,10 @@ class Brain:
         nodes_to_exclude : Nodes you don't want to load, in an array format (nodes no. starts from zero)
         naVals : How the "Not a Number" values are represented in the file
         """
+        if nodes_to_exclude is None:
+            nodes_to_exclude = []
+        if na_vals is None:
+            na_vals = ["NA"]
         lines = []
         try:
             with open(fname, "r") as f:
