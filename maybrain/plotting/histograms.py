@@ -11,14 +11,14 @@ def show():
     plt.show()
 
 
-def plot_weight_distribution(brain, bins=None, output_file=None):
+def plot_weight_distribution(brain, output_file=None, **kwargs):
     """ 
     It uses matplotlib to plot a histogram of the weights of the edges.
     Requires that the brain was thresholded before
 
     brain: an instance of the Brain class
-    bins: the number of bins if you don't want to use the automatic ones calculated by matplotlib
     output_file: if you want to create a file. It then calls fig.savefig(output_file) from matplotlib
+    **kwargs: keyword arguments if you need to pass them to matplotlib's hist()
 
     return: if output_file is None, this returns (fig, ax) from the figure created
     """
@@ -35,7 +35,7 @@ def plot_weight_distribution(brain, bins=None, output_file=None):
         weights.extend(np.array(below_values))
 
     # the histogram of the data
-    ax.hist(weights, bins=bins)
+    ax.hist(weights, **kwargs)
     ax.set_title('Weights')
 
     # Tweak spacing to prevent clipping of ylabel

@@ -4,15 +4,15 @@ from setuptools import setup
 
 setup(
     name='maybrain',
-    version='0.5.3',
+    version='0.5.4',
     author='Martyn Rittman and Timothy Rittman',
     author_email='mrittman@physics.org',
     packages=['maybrain', 'maybrain.algorithms', 'maybrain.utils', 'maybrain.plotting', 'maybrain.resources'],
-    url='https://github.com/RittmanResearch/maybrain/releases',
+    url='https://github.com/RittmanResearch/maybrain',
     license='LICENSE',
     description='A module written in Python for visualising brain connectivity data. Its purpose is to allow easy '
                 'visualisation of brain connectome and related data, and perform various analyses.',
     long_description=open('README.md').read(),
-    requires=['networkx', 'numpy', 'matplotlib'],
+    requires=['networkx', 'numpy', 'matplotlib', 'nilearn'],
     include_package_data=True
 )

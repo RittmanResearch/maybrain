@@ -546,7 +546,7 @@ class Brain:
          to node 2, and vice-versa. If Graph is directed, thus node 1 is linked \
          to node 2, but not the other way around
         This property can be accessed through ct.LINKED_NODES
-        Be sure to call this method again if you threshold your brainObj again
+        Be sure to call this method again if you threshold your brain instance again
         """
 
         # Resetting all nodes from some past information (few edges might not \

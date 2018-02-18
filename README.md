@@ -15,6 +15,7 @@ To run Maybrain you will need a Python 3.5 installation and several other packag
 
 The following is required for plotting functions:
 * [Matplotlib](http://matplotlib.org/) 2.1
+* [Nilearn](https://nilearn.github.io/) 0.4
 
 The following provides some extra functionality for input of certain data types:
 * [NiBabel](http://nipy.org/nibabel/) 2.1.0

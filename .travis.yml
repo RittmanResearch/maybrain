@@ -19,6 +19,7 @@ install:
  - conda install networkx=2
  #- conda install -c conda-forge nibabel=2.1
  - conda install matplotlib=2.1
+ - conda install -c conda-forge nilearn=0.4
  #- conda install pyqt=4
  - pip install .
  - conda install -c conda-forge codecov
