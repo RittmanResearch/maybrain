@@ -1,14 +1,109 @@
 from random import shuffle
 import numpy as np
 import networkx as nx
-from networkx import configuration_model
 
 from maybrain import constants as ct
 import numbers
 
 
-def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True, 
-              node_attrs=None, edge_attrs=None, **kwargs):
+class RandomGenerationError(Exception):
+    """
+    Exception raised for errors in the generation of random graphs
+    """
+    def __init__(self, *args, **kwargs):
+        Exception.__init__(self, *args, **kwargs)
+
+
+def generate_random_graph_from_degree(brain, throw_exception=False, node_attrs=None, edge_attrs=None):
+    """
+    It returns a graph with the same degree sequence as the brain specified as argument.
+
+    This algorithm is an adaptation from Networkx's `degree_seq.configuration_model` in order to have a working version
+    for nx.Graph (no selfloops and parallel edges). As it is an adaptation using random shuffle under the hood,
+    sometimes it is not possible to have a new random graph with exactly the same degree sequence. The behaviour of
+    what to do in this case is specified in `throw_exception` parameter.
+
+    Parameters
+    ----------
+    brain: maybrain.brain.Brain
+        An instance of the `Brain` class
+    throw_exception: bool
+        If set to True, when the algorithm doesn't find a random graph with the same degree sequence, it throws an
+        exception. Usually, depending on the input brain, running this function again will probably solve the problem
+        as it is highly dependent on random behaviour.
+        If set to False, the returned graph might not have exaclty the same degree distribution as the original input
+        brain, because some edges are ignored
+    node_attrs: list of str
+        If the node attributes of brain.G are necessary for a correct calculation of func()
+        in the random graph, just pass the attributes as a list of strings in this parameter.
+        This is only used if random_location is None
+    edge_attrs: list of str
+        If the edge attributes of brain.G are necessary for a correct calculation of func()
+        in the random graph, just pass the attributes as a list of strings in this parameter.
+        `ct.WEIGHT` is already passed to the edges of the random graphs, so no need to pass it in this parameter.
+        This is only used if random_location is None
+
+    Returns
+    -------
+    new_g: nx.Graph
+        A graph with the same, or almost the same, degree sequence of original `brain`
+
+    Raises
+    ------
+    RandomGenerationError : Exception
+
+    """
+    if node_attrs is None:
+        node_attrs = []
+    if edge_attrs is None:
+        edge_attrs = []
+    nodes = []
+    for deg in brain.G.degree():
+        # Creating the list with the nodes according to degree
+        for _ in range(deg[1]):
+            nodes.append(deg[0])
+
+    shuffle(nodes)
+
+    added = set()
+    new_g = nx.Graph()
+    while len(nodes) >= 2:  # while there are 2 elements or more in nodes
+        elem = nodes.pop()
+        # Trying to find a pair to this node to form an edge
+        for i, n in enumerate(nodes):
+            edge = tuple(sorted((elem, n)))
+            # if edge is not a selfloop and not already added, we can add to the brain
+            if elem != n and edge not in added:
+                added.add(edge)
+                new_g.add_edge(edge[0], edge[1])
+                del nodes[i]
+
+                break  # break the for to come back to the while
+            # no pair found for this node
+            if throw_exception and i == len(nodes) - 1:  # no pair found for this node
+                raise RandomGenerationError(str(elem) + " without pair")
+
+    # Reassigning weights from the input graph to the random graph node by node
+    # this means that for each node the total weighted degree will be similar
+    # nb this depends on the random graph having the same or fewer vertices for each node
+    for node in sorted(new_g.nodes()):
+
+        for attr in node_attrs:
+            new_g.nodes[node][attr] = brain.G.nodes[node][attr]
+
+        edge_vals = [v[2] for v in brain.G.edges(node, data=True)]
+
+        shuffle(edge_vals)
+        for en, edge in enumerate(new_g.edges(node)):
+            new_g.edges[edge[0], edge[1]][ct.WEIGHT] = edge_vals[en][ct.WEIGHT]
+            for attr in edge_attrs:
+                new_g.edges[edge[0], edge[1]][attr] = edge_vals[en][attr]
+
+    return new_g
+
+
+def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True,
+                     node_attrs=None, edge_attrs=None, random_location=None, **kwargs):
     """
     See `normalise()` method's documentation for explanation. This method just expects a single
     initial measure (init_val) to be averaged, instead of a dictionary
@@ -17,13 +112,13 @@ def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True
         raise TypeError("normalise_single() not available for directed graphs")
     if not isinstance(init_val, numbers.Real):
         raise TypeError("normalise_single() expects init_val to be a real number")
-        
-    return normalise(brain, func, init_vals=init_val, n_iter=n_iter, ret_normalised=ret_normalised, 
-                     node_attrs=node_attrs, edge_attrs=edge_attrs, **kwargs)
+
+    return normalise(brain, func, init_vals=init_val, n_iter=n_iter, ret_normalised=ret_normalised,
+                     node_attrs=node_attrs, edge_attrs=edge_attrs, random_location=random_location, **kwargs)
 
 
-def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, 
-              node_attrs=None, edge_attrs=None, **kwargs):
+def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
+                        node_attrs=None, edge_attrs=None, random_location=None, **kwargs):
     """
     See `normalise()` method's documentation for explanation. This method just expects init_vals
     to be a dictionary with the measures, for each node, that will be averaged
@@ -32,32 +127,61 @@ def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=
         raise TypeError("normalise() not available for directed graphs")
     if not isinstance(init_vals, dict):
         raise TypeError("normalise_node_wise() expects init_vals to be a dictionary")
-        
-    return normalise(brain, func, init_vals=init_vals, n_iter=n_iter, ret_normalised=ret_normalised, 
-                     node_attrs=node_attrs, edge_attrs=edge_attrs, **kwargs)
 
-def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, 
-              node_attrs=None, edge_attrs=None, **kwargs):
+    return normalise(brain, func, init_vals=init_vals, n_iter=n_iter, ret_normalised=ret_normalised,
+                     node_attrs=node_attrs, edge_attrs=edge_attrs, random_location=random_location, **kwargs)
+
+
+def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
+              node_attrs=None, edge_attrs=None, random_location=None, **kwargs):
     """
-    It normalises measures taken from a brain by generating a series of n random graphs and
-    averaging them.
+    It normalises measures taken from a brain by generating a series of n random graphs and averaging them.
 
-    brain: an instance of the `Brain` class
-    func: the function that calculates the measure in each node of brain
-    init_vals: the initial measures calculated from brain.G that will be averaged. 
-                If this is None, this will be equal to func(brain.G, **kwargs)
-                If this is a dictionary, this will be a normalisation node-wise
-                Otherwise, it will be treated as a single measure to be averaged
-    n_iter: number of iteratios that will be used to generate the random graphs
-    ret_normalised: if True, the normalised measures are returned, otherwise a list of n values 
-                    for a random graph is returned
-    node_attrs: If the node attributes of brain.G are necessary to a correct calculation of func()
-                in the random graph, just pass the attributes as a list of strings in this parameter
-    edge_attrs: If the edge attributes of brain.G are necessary to a correct calculation of func()
-                in the random graph, just pass the attributes as a list of strings in this parameter.
-                `ct.WEIGHT` is already passed to the edges of the random graphs, so no need to pass 
-                it in this parameter
-    **kwargs: keyword arguments if you need to pass them to func()
+    Previously generated random graphs can be specified using parameter `random_location`
+
+    Parameters
+    ----------
+    brain: maybrain.brain.Brain
+        An instance of the `Brain` class
+    func
+        the function that calculates the measure in each node of brain
+    init_vals: dictionary or number
+        the initial measures calculated from brain.G that will be averaged.
+        If this is None, this will be equal to func(brain.G, **kwargs)
+        If this is a dictionary, this will be a normalisation node-wise
+        Otherwise, it will be treated as a single measure to be averaged
+    n_iter: int
+        number of iteratios that will be used to generate the random graphs
+    ret_normalised: bool
+        if True, the normalised measures are returned, otherwise a list of n values
+        for a random graph is returned
+    node_attrs: list of str
+        If the node attributes of brain.G are necessary for a correct calculation of func()
+        in the random graph, just pass the attributes as a list of strings in this parameter.
+        This is only used if random_location is None
+    edge_attrs: list of str
+        If the edge attributes of brain.G are necessary for a correct calculation of func()
+        in the random graph, just pass the attributes as a list of strings in this parameter.
+        `ct.WEIGHT` is already passed to the edges of the random graphs, so no need to pass it in this parameter.
+        This is only used if random_location is None
+    random_location: str
+        If the random graphs were previously generated, put here the location of them.
+        Consider that for each iteration `i = 0...n_iter`, "i" will be added at the end of this path to get
+        each random graph. Otherwise, `algorithms.generate_random_graph_from_degree()` will be used to
+        create the random graphs
+    kwargs
+        Keyword arguments if you need to pass them to func()
+
+    Returns
+    -------
+    vals: either a dictionary or set, depending on init_vals and ret_normalised
+
+    Raises
+    ------
+    TypeError : Exception
+        if the graph is directed
+    KeyError : Exception
+        if the edges don't have ct.WEIGHT property
     """
     if brain.directed:
         raise TypeError("normalise() not available for directed graphs")
@@ -75,52 +199,31 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
         import sys
         _, _, tb = sys.exc_info()
         raise KeyError(error, "Edge doesn't have ct.WEIGHT property").with_traceback(tb)
-    
+
     if isinstance(init_vals, dict):
-        nodes_dict = {v:[] for v in brain.G.nodes()}
+        nodes_dict = {v: [] for v in brain.G.nodes()}
     else:
         vals = []
-        
-    for _ in range(n_iter):
-        rand = configuration_model(list(dict(brain.G.degree()).values()))
-        rand = nx.Graph(rand) # convert to simple graph from multigraph
 
-        # Reassigning weights from the input graph to the random graph node by node
-        # this means that for each node the total weighted degree will be similar
-        # nb this depends on the random graph having the same or fewer vertices for each node
-        shift = 0 # Some nodes might not exist in brain.G. rand.nodes() will go [0, G.number_of_nodes()]
-        for node in sorted(rand.nodes()):
-            # rand.nodes() have all the values from 0 to brain.G.number_of_nodes() 
-            #  while brain.G.nodes() might not have all the nodes
-            #  Thus, a shift is necessary to map correctly
-            while not brain.G.has_node(node + shift):
-                shift += 1
-            
-            for attr in node_attrs:
-                rand.nodes[node][attr] = brain.G.nodes[node+shift][attr]
-            
-            edge_vals = [v[2] for v in brain.G.edges(node+shift, data=True)]
-            
-            shuffle(edge_vals)
-            for en, edge in enumerate(rand.edges(node)):
-                rand.edges[edge[0], edge[1]][ct.WEIGHT] = edge_vals[en][ct.WEIGHT]
-                for attr in edge_attrs:
-                    rand.edges[edge[0], edge[1]][attr] = edge_vals[en][attr] 
-        
+    for i in range(n_iter):
+        if random_location is not None:
+            rand = nx.read_gpickle(random_location + str(i))
+        else:
+            rand = generate_random_graph_from_degree(brain, node_attrs=node_attrs, edge_attrs=edge_attrs)
+
         # Applying func() to the random graph
         res = func(rand, **kwargs)
 
         if isinstance(init_vals, dict):
-            for x, node in enumerate(nodes_dict):
-                nodes_dict[node].append(res[x])
+            for node in nodes_dict:
+                nodes_dict[node].append(res[node])
         else:
             vals.append(res)
-    
-    
+
     if isinstance(init_vals, dict):
-        if ret_normalised: # update nodes_dict to return the normalised values
+        if ret_normalised:  # update nodes_dict to return the normalised values
             for node in nodes_dict:
-                nodes_dict[node] = init_vals[node]/np.mean(nodes_dict[node])
+                nodes_dict[node] = init_vals[node] / np.mean(nodes_dict[node])
         return nodes_dict
     else:
         if ret_normalised:

@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='maybrain',
-    version='0.5.4',
+    version='0.5.5',
     author='Martyn Rittman and Timothy Rittman',
     author_email='mrittman@physics.org',
     packages=['maybrain', 'maybrain.algorithms', 'maybrain.utils', 'maybrain.plotting', 'maybrain.resources'],
