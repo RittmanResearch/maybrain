@@ -36,13 +36,17 @@ def generate_random_graph_from_degree(brain, throw_exception=False, node_attrs=N
     node_attrs: list of str
         If the node attributes of brain.G are necessary for a correct calculation of func()
         in the random graph, just pass the attributes as a list of strings in this parameter.
-        This is only used if random_location is None
+        This way, these node attributes from the original brain will be presented in the random graph's nodes.
     edge_attrs: list of str
         If the edge attributes of brain.G are necessary for a correct calculation of func()
         in the random graph, just pass the attributes as a list of strings in this parameter.
-        `ct.WEIGHT` is already passed to the edges of the random graphs, so no need to pass it in this parameter.
-        This is only used if random_location is None
-
+        This way, these edge attributes from the original brain will be shuffled in the random graph's edges. This
+        shuffling is made in a way that each node in the random graph will have edges with similar attributes as in the
+        original brain. Although the degree sequence is maintained, as we are creating a random graph, it is impossible
+        to have the nodes with the same edges' attributes around it. This is made in a way that all attributes are
+        maintained in the random graph, regardless of their exact place. In the case the random graph doesn't maintain
+        the same degree distribution (check `throw_exception` parameter), obviously not all the edge's attributes will
+        be in the random graph
     Returns
     -------
     new_g: nx.Graph
@@ -51,22 +55,26 @@ def generate_random_graph_from_degree(brain, throw_exception=False, node_attrs=N
     Raises
     ------
     RandomGenerationError : Exception
-
+        This depends on the value of `throw_exception` parameter
     """
     if node_attrs is None:
         node_attrs = []
     if edge_attrs is None:
         edge_attrs = []
+
     nodes = []
+    new_g = nx.Graph()
     for deg in brain.G.degree():
         # Creating the list with the nodes according to degree
         for _ in range(deg[1]):
             nodes.append(deg[0])
+        # Adding node just so random graph will have the same nodes as original one
+        if deg[1] == 0:
+            new_g.add_node(deg[0])
 
     shuffle(nodes)
 
     added = set()
-    new_g = nx.Graph()
     while len(nodes) >= 2:  # while there are 2 elements or more in nodes
         elem = nodes.pop()
         # Trying to find a pair to this node to form an edge
@@ -83,21 +91,38 @@ def generate_random_graph_from_degree(brain, throw_exception=False, node_attrs=N
             if throw_exception and i == len(nodes) - 1:  # no pair found for this node
                 raise RandomGenerationError(str(elem) + " without pair")
 
-    # Reassigning weights from the input graph to the random graph node by node
-    # this means that for each node the total weighted degree will be similar
-    # nb this depends on the random graph having the same or fewer vertices for each node
+    # Reassigning attributes from the input graph to the random graph node by node
     for node in sorted(new_g.nodes()):
-
         for attr in node_attrs:
             new_g.nodes[node][attr] = brain.G.nodes[node][attr]
 
-        edge_vals = [v[2] for v in brain.G.edges(node, data=True)]
+    # Just return the graph straightaway if there are no edge attributes to handle
+    if not edge_attrs:
+        return new_g
 
-        shuffle(edge_vals)
-        for en, edge in enumerate(new_g.edges(node)):
-            new_g.edges[edge[0], edge[1]][ct.WEIGHT] = edge_vals[en][ct.WEIGHT]
-            for attr in edge_attrs:
-                new_g.edges[edge[0], edge[1]][attr] = edge_vals[en][attr]
+    # Putting the attributes from the original edges into the random graph's edges
+    edges = [v for v in brain.G.edges(data=True)]
+    # Finding the edges that need the attributes
+    # Copying the set is to make it easier to delete elements
+    for edg in list(added):
+        # Iterating until finding a similar one. Reversed for easier deletion
+        for pos, edg_orig in reversed(list(enumerate(edges))):
+            if edg_orig[0] == edg[0] or edg_orig[0] == edg[1] or edg_orig[1] == edg[0] or edg_orig[1] == edg[1]:
+                # Putting the attributes in the edge
+                for attr in edge_attrs:
+                    new_g.edges[edg[0], edg[1]][attr] = edg_orig[2][attr]
+                del edges[pos]
+                added.remove(edg)
+                break
+
+    # Add the rest of the edges left randomly
+    shuffle(edges)
+    for edg in list(added):
+        # Iterating until finding a similar one
+        edg_orig = edges.pop()
+        # Putting the attributes in the edge
+        for attr in edge_attrs:
+            new_g.edges[edg[0], edg[1]][attr] = edg_orig[2][attr]
 
     return new_g
 
@@ -110,8 +135,8 @@ def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True
     """
     if brain.directed:
         raise TypeError("normalise_single() not available for directed graphs")
-    if not isinstance(init_val, numbers.Real):
-        raise TypeError("normalise_single() expects init_val to be a real number")
+    if not isinstance(init_val, numbers.Number):
+        raise TypeError("normalise_single() expects init_val to be a number")
 
     return normalise(brain, func, init_vals=init_val, n_iter=n_iter, ret_normalised=ret_normalised,
                      node_attrs=node_attrs, edge_attrs=edge_attrs, random_location=random_location, **kwargs)
@@ -158,11 +183,13 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
     node_attrs: list of str
         If the node attributes of brain.G are necessary for a correct calculation of func()
         in the random graph, just pass the attributes as a list of strings in this parameter.
+        This way, these node attributes from the original brain will be presented in the random graph's nodes.
         This is only used if random_location is None
     edge_attrs: list of str
         If the edge attributes of brain.G are necessary for a correct calculation of func()
         in the random graph, just pass the attributes as a list of strings in this parameter.
         `ct.WEIGHT` is already passed to the edges of the random graphs, so no need to pass it in this parameter.
+        This way, these edge attributes from the original brain will be shuffled in the random graph's edges.
         This is only used if random_location is None
     random_location: str
         If the random graphs were previously generated, put here the location of them.
@@ -202,6 +229,8 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
 
     if isinstance(init_vals, dict):
         nodes_dict = {v: [] for v in brain.G.nodes()}
+    elif not isinstance(init_vals, numbers.Number):
+        raise TypeError("normalise() expects init_vals to be a number or a dict")
     else:
         vals = []
 
@@ -209,6 +238,7 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
         if random_location is not None:
             rand = nx.read_gpickle(random_location + str(i))
         else:
+            edge_attrs.append(ct.WEIGHT)
             rand = generate_random_graph_from_degree(brain, node_attrs=node_attrs, edge_attrs=edge_attrs)
 
         # Applying func() to the random graph
