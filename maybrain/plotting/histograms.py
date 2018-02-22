@@ -16,11 +16,19 @@ def plot_weight_distribution(brain, output_file=None, **kwargs):
     It uses matplotlib to plot a histogram of the weights of the edges.
     Requires that the brain was thresholded before and ignores NaNs for plotting
 
-    brain: an instance of the Brain class or nx.Graph
-    output_file: if you want to create a file. It then calls fig.savefig(output_file) from matplotlib
-    **kwargs: keyword arguments if you need to pass them to matplotlib's hist()
+    Parameters
+    ----------
+    brain: maybrain.brain.Brain
+        An instance of the `Brain` class
+    output_file: str
+        If you want to create a file. It then calls fig.savefig(output_file) from matplotlib
+    kwargs
+        keyword arguments if you need to pass them to matplotlib's hist()
 
-    return: if output_file is None, this returns (fig, ax) from the figure created
+    Returns
+    -------
+    fig, ax : tuple
+        if output_file is None, this returns (fig, ax) from the figure created
     """
     fig, ax = plt.subplots()
 

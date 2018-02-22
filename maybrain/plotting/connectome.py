@@ -19,11 +19,17 @@ def plot_connectome(brain, **kwargs):
 
     Brain's nodes should have `constants.XYZ` attribute (spatial information)
 
-    brain: an instance of the Brain class
-    output_file: if you want to create a file. It then calls fig.savefig(output_file) from matplotlib
-    **kwargs: keyword arguments if you need to pass them to nilearn's plot_connectome()
+    Parameters
+    ----------
+    brain: maybrain.brain.Brain
+        An instance of the `Brain` class
+    kwargs
+        Keyword arguments if you need to pass them to nilearn's plot_connectome()
 
-    return: the display from nilearn
+    Returns
+    -------
+    display
+        the display from nilearn (return from plot_connectome)
     """
     if 'edge_cmap' not in kwargs:
         kwargs['edge_cmap'] = plt.get_cmap('YlGnBu')

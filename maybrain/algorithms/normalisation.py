@@ -201,14 +201,15 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
 
     Returns
     -------
-    vals: either a dictionary or set, depending on init_vals and ret_normalised
+    vals
+        either a dictionary or set, depending on init_vals and ret_normalised
 
     Raises
     ------
-    TypeError : Exception
-        if the graph is directed
-    KeyError : Exception
-        if the edges don't have ct.WEIGHT property
+    TypeError: Exception
+        If the graph is directed
+    KeyError: Exception
+        If the edges don't have ct.WEIGHT property
     """
     if brain.directed:
         raise TypeError("normalise() not available for directed graphs")

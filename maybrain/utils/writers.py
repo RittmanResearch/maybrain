@@ -7,10 +7,14 @@ from numpy import array, sqrt, mean, sum, shape, zeros
 
 def output_adj_matrix(brain, filename):
     """
-    Outputs the adjacency matrix to file
+    Outputs the adjacency matrix to a file
 
-    brain: Instance of Brain class
-    filename: the filename to which the adjacency matrix will be written
+    Parameters
+    ----------
+    brain: maybrain.brain.Brain
+        An instance of the `Brain` class
+    filename: str
+        The filename to which the adjacency matrix will be written
     """
 
     try:
@@ -28,9 +32,14 @@ def output_edges(brain, filename, properties=[]):
     """
     Outputs the edges of a brain to file
 
-    brain: Instance of Brain class
-    filename: the filename to which the edges will be written
-    properties: the list of properties you want to save from each edge
+    Parameters
+    ----------
+    brain: maybrain.brain.Brain
+        An instance of the `Brain` class
+    filename: str
+        The filename to which the edges will be written
+    properties: list
+        The list of properties you want to save from each edge
     """
     try:
         with open(filename, "w") as f:

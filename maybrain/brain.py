@@ -57,10 +57,17 @@ class Brain:
     def import_adj_file(self, fname, delimiter=None, nodes_to_exclude=None, na_vals=None):
         """
         Imports an adjacency matrix from a file.
-        fname : file name
-        delimiter : the delimiter of the values inside the matrix, like ","
-        nodes_to_exclude : Nodes you don't want to load, in an array format (nodes no. starts from zero)
-        naVals : How the "Not a Number" values are represented in the file
+
+        Parameters
+        ----------
+        fname: str
+            File name
+        delimiter: str
+            The delimiter of the values inside the matrix, like ","
+        nodes_to_exclude: list of indexes
+            Nodes you don't want to load, in an array format (nodes no. starts from zero)
+        na_vals: list of str
+            How the "Not a Number" values are represented in the file
         """
         if nodes_to_exclude is None:
             nodes_to_exclude = []
@@ -90,10 +97,16 @@ class Brain:
 
     def import_spatial_info(self, fname, delimiter=None, convert_mni=False):
         """
-        Add 3D coordinate information for each node from a given file. It needs to be called after importAdjFile()
-        fname : file name
-        delimiter : the delimiter of the values inside the matrix, like ","
-        convert_mni : Whether you want to convert coordinates from voxel-wise (2 mm) to MNI space
+        Add 3D coordinate information for each node from a given file. It needs to be called after import_adj_file()
+
+        Parameters
+        ----------
+        fname: str
+            File name
+        delimiter: str
+            The delimiter of the values inside the matrix, like ","
+        convert_mni: bool
+            Whether you want to convert coordinates from voxel-wise (2 mm) to MNI space
         """
         # open file
         try:
@@ -123,7 +136,7 @@ class Brain:
 
     def import_properties(self, filename):
         """
-        Add properties from a file. First line should contain the property name and the following \
+        Add properties from a file. First line should contain the property name and the following
         lines spaced node indices and property value e.g.:
 
             colour
@@ -134,6 +147,16 @@ class Brain:
         Not that if 2 indices are given, the property is applied to edges instead.
         Properties will be treated as strings.
         You can mix nodes and edges in the same file.
+
+        Parameters
+        ----------
+        filename: str
+            Filepath to properties
+
+        Raises
+        ------
+        ValueError : Exception
+            If the file has some invalid structure
         """
         edges_p = []
         nodes_p = []
@@ -241,17 +264,27 @@ class Brain:
         """
         Threshold the adjacency matrix to determine which nodes are linked by edges.
 
-        threshold_type : The type of threshold applied. Four options are available:
+        Parameters
+        ----------
+        threshold_type: {'edgePC', 'totalEdges', 'tVal', None}
+            The type of threshold applied. Four options are available:
             "edgePC" -> retain the most connected edges as a percentage of the total possible number of edges.
                          "value" must be between 0 and 100
             "totalEdges" -> retain the most strongly connected edges
             "tVal" -> retain edges with a weight greater or equal than value
             None -> all possible edges are created
-        value : Value according to threshold_type
-        use_absolute : Thresholding by absolute value. For example, if this is set to False, a \
-            weight of 1 is stronger than -1. If this is set to True, these values are equally \
-            strong. This affects thresholding with "edgePC", "totalEdges" and "tVal". In case of \
-            "tVal", it will threshold for weights >= abs(tVal) and <= -abs(tVal)
+        value: float
+            Value according to threshold_type
+        use_absolute: bool
+            Thresholding by absolute value. For example, if this is set to False, a weight of 1 is stronger than -1.
+            If this is set to True, these values are equally strong.
+            This affects thresholding with "edgePC", "totalEdges" and "tVal". In case of "tVal", it will threshold
+            for weights >= abs(tVal) and <= -abs(tVal)
+
+        Raises
+        ------
+        TypeError: Exception
+            If a not valid threshold type is passed
         """
 
         # Controlling input
@@ -333,10 +366,19 @@ class Brain:
 
     def update_adj_mat(self, edge):
         """
-        It updates the adjacency matrix by bringing the weight of an edge in G \
-        to the adjacency matrix
+        It updates the adjacency matrix by bringing the weight of an edge in G to the adjacency matrix
 
-        edge : The edge in G to bring to adjMat
+        Parameters
+        ----------
+        edge: tuple
+            The edge in G to bring to adjMat
+
+        Raises
+        ------
+        KeyError: Exception
+            If edge in G does not exist or doesn't have constants.WEIGHT property
+        IndexError: Exception
+            If edge does not exist in adjMat
         """
 
         try:
@@ -348,7 +390,7 @@ class Brain:
         except KeyError as error:
             import sys
             _, _, tb = sys.exc_info()
-            raise KeyError(error, "Edge does not exist in G or doesn't have WEIGHT property").with_traceback(tb)
+            raise KeyError(error, "Edge does not exist in G or doesn't have constants.WEIGHT property").with_traceback(tb)
         except IndexError:
             import sys
             _, _, tb = sys.exc_info()
@@ -362,12 +404,21 @@ class Brain:
         retain the MST
         It only works for undirected graphs
 
-        threshold_type : The type of threshold applied. Three options are available:
+        Parameters
+        ----------
+        threshold_type: {'edgePC', 'totalEdges', None}
+            The type of threshold applied. Three options are available:
             "edgePC" -> retain the most connected edges as a percentage of the total possible number of edges. "value"
                         must be between 0 and 100
             "totalEdges" -> retain the most strongly connected edges
             None -> retain the minimum spanning tree
-        value : Value according to threshold_type
+        value: float
+            Value according to threshold_type
+
+        Raises
+        ------
+        TypeError: Exception
+            If a not valid threshold type is passed, the graph is directed, or G is not connected
         """
 
         # Controlling input
@@ -541,15 +592,14 @@ class Brain:
 
     def find_linked_nodes(self):
         """
-        It gives to each node a list containing the linked nodes.
-        If Graph is undirected, and there is an edge (1,2), node 1 is linked \
-         to node 2, and vice-versa. If Graph is directed, thus node 1 is linked \
-         to node 2, but not the other way around
-        This property can be accessed through ct.LINKED_NODES
+        It adds to each node a list containing the linked nodes.
+        If Graph is undirected, and there is an edge (1,2), node 1 is linked to node 2, and vice-versa.
+        If Graph is directed, thus node 1 is linked to node 2, but not the other way around.
+        This property can be accessed through constants.LINKED_NODES
         Be sure to call this method again if you threshold your brain instance again
         """
 
-        # Resetting all nodes from some past information (few edges might not \
+        # Resetting all nodes from some past information (few edges might not
         #  be able to reset this field in all nodes)
         for n in self.G.nodes(data=True):
             n[1][ct.LINKED_NODES] = []
@@ -563,12 +613,11 @@ class Brain:
 
     def weight_to_distance(self):
         """
-        It inverts all the edges' weights so they become equivalent to a distance measure. \
-        With a weight, the higher the value the stronger the connection. With a distance, \
-        the higher the value the "weaker" the connection.
-        In this case there is no measurement unit for the distance, as it is just \
-        a conversion from the weights.
-        The distances can be accessed in each node's property with ct.DISTANCE
+        It inverts all the edges' weights so they become equivalent to a distance measure.
+        With a weight, the higher the value the stronger the connection. With a distance, the higher the value
+        the "weaker" the connection.
+        In this case there is no measurement unit for the distance, as it is just a conversion from the weights.
+        The distances can be accessed in each node's property with constants.DISTANCE
         """
         edge_list = [v[2][ct.WEIGHT] for v in self.G.edges(data=True)]
 
