@@ -19,6 +19,8 @@ class TestPlottingAndAlgs(unittest.TestCase):
         self.a = mbt.Brain()
         self.SMALL_FILE = "test/data/3d_grid_adj.txt"
         self.SMALL_NEG_FILE = "test/data/3d_grid_adj_neg.txt"
+        self.COORD_FILE = "test/data/3d_grid_coords.txt"
+        self.PROPS_FILE = "test/data/3d_grid_properties_full.txt"
 
     def test_histograms(self):
         self.a.import_adj_file(self.SMALL_FILE)
@@ -62,6 +64,17 @@ class TestPlottingAndAlgs(unittest.TestCase):
         self.assertTrue(all(i == 1 for i in normalised.values()))
         self.assertEqual(sum(dict(nx.degree(rand, weight=ct.WEIGHT)).values()),
                          sum(dict(nx.degree(self.a.G, weight=ct.WEIGHT)).values()))
+
+    def test_connectome(self):
+        self.a.import_adj_file(self.SMALL_FILE)
+        self.a.import_spatial_info(self.COORD_FILE)
+        self.a.import_properties(self.PROPS_FILE)
+        display = mpt.plot_connectome(self.a)
+        display.close()
+        display = mpt.plot_connectome(self.a, only_nodes=True)
+        display.close()
+        display = mpt.plot_connectome(self.a, node_property="colour", node_attributes=["red", "green"])
+        display.close()
 
 
 if __name__ == '__main__':

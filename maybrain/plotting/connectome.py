@@ -8,9 +8,9 @@ from maybrain import constants as ct
 
 def plot_connectome(brain, only_nodes=False, node_property=None, node_attributes=None, **kwargs):
     """ 
-    Wrapper over `nilearn.plotting.plot_connectome` to plot the connectome of a brain.
+    Wrapper over `nilearn.plotting.plot_connectome` to plot the connectome of a brain (specifically `brain.G`).
 
-    Brain's nodes should have `constants.XYZ` attribute (spatial information)
+    Brain's nodes should have `constants.XYZ` attribute (spatial information) in the MNI space.
 
     Parameters
     ----------
@@ -18,9 +18,17 @@ def plot_connectome(brain, only_nodes=False, node_property=None, node_attributes
         An instance of the `Brain` class
     only_nodes: bool
         If True, only nodes will be plotted (no edges)
+    node_property: str
+        Property to look for in the nodes of brain.G in order to have different colours for the nodes.
+        Colours will be chosen depending on the values of those properties defined in `node_attributes`.
+        When defined, `node_color` attribute in `nilearn.plotting.plot_connectome` is overridden.
+    node_attributes: list of str
+        It indicates how the nodes will be coloured according to `node_property`. For example, if `node_property` is
+        "hemisphere", and `node_attributes` is ["R", "L"], Nodes will be coloured with three colours: one when a node
+        has the value "R" for the "hemisphere" attribute, another colour when the value is "L", and another colour
+        if the node has a value which is not "L" or "R".
     kwargs
         Keyword arguments if you need to pass them to nilearn's plot_connectome()
-if node_property is, node_color is overwritten
     Returns
     -------
     display
@@ -29,7 +37,7 @@ if node_property is, node_color is overwritten
     Raises
     ------
     KeyError: Exception
-        If the edges don't have ct.XYZ property
+        If the edges don't have constants.XYZ property
     """
     try:
         if list(brain.G.nodes(data=True))[0][1][ct.XYZ]:
