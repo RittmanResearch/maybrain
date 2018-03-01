@@ -13,7 +13,17 @@ def threshold_to_percentage(brain, threshold):
     possible edges are all the elements of adjMat except the diagonal and \
     np.nan
 
-    threshold : The threshold value
+    Parameters
+    ----------
+    brain: maybrain.brain.Brain
+        An instance of the `Brain` class
+    threshold: number
+        The threshold value
+
+    Returns
+    -------
+    ratio: float
+        The final result
     """
     upper_values = np.triu_indices(np.shape(brain.adjMat)[0], k=1)
     below_values = np.tril_indices(np.shape(brain.adjMat)[0], k=-1)
@@ -39,6 +49,10 @@ def percent_connected(brain):
     possible connections is (N * (N - 1))/2 for an undirected graph, and \
     N * (N-1) for a directed graph.
 
+    Parameters
+    ----------
+    brain: maybrain.brain.Brain
+        An instance of the `Brain` class
     """
     nodes = brain.G.number_of_nodes()
 

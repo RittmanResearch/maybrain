@@ -11,31 +11,45 @@ def show():
     plt.show()
 
 
-def plot_weight_distribution(brain, bins=None, output_file=None):
+def plot_weight_distribution(brain, output_file=None, **kwargs):
     """ 
     It uses matplotlib to plot a histogram of the weights of the edges.
-    Requires that the brain was thresholded before
+    Requires that the brain was thresholded before and ignores NaNs for plotting
 
-    brain: an instance of the Brain class
-    bins: the number of bins if you don't want to use the automatic ones calculated by matplotlib
-    output_file: if you want to create a file. It then calls fig.savefig(output_file) from matplotlib
+    Parameters
+    ----------
+    brain: maybrain.brain.Brain
+        An instance of the `Brain` class
+    output_file: str
+        If you want to create a file. It then calls fig.savefig(output_file) from matplotlib
+    kwargs
+        keyword arguments if you need to pass them to matplotlib's hist()
 
-    return: if output_file is None, this returns (fig, ax) from the figure created
+    Returns
+    -------
+    fig, ax : tuple
+        if output_file is None, this returns (fig, ax) from the figure created
     """
     fig, ax = plt.subplots()
 
-    arr = np.copy(nx.to_numpy_matrix(brain.G, nonedge=np.nan))
+    if type(brain) == nx.Graph:
+        arr = np.copy(nx.to_numpy_matrix(brain, nonedge=np.nan))
+    else:
+        arr = np.copy(nx.to_numpy_matrix(brain.G, nonedge=np.nan))
 
     upper_values = np.triu_indices(np.shape(arr)[0], k=1)
     weights = np.array(arr[upper_values])
 
     # If directed, also add the lower down part of the adjacency matrix
-    if brain.directed:
+    if type(brain) != nx.Graph and brain.directed:
         below_values = np.tril_indices(np.shape(arr)[0], k=-1)
         weights.extend(np.array(below_values))
 
+    # Removing NaNs for correct plotting
+    weights = weights[~np.isnan(weights)]
+
     # the histogram of the data
-    ax.hist(weights, bins=bins)
+    ax.hist(weights, **kwargs)
     ax.set_title('Weights')
 
     # Tweak spacing to prevent clipping of ylabel

@@ -86,15 +86,31 @@ def plot_avg_matrix(brains, output_file=None, dummy_adj_file=rr.DUMMY_ADJ_FILE_5
 
     For each edge, the final averaged connection strength ignores NaNs in the calculations.
 
-    brains: a dictionary where the values are instances of `Brain`s. The keys don't matter.
-    output_file: if you want to create a file. It then calls fig.savefig(output_file) from matplotlib
-    dummy_adj_file: an adjacency matrix needed to create a dummy instance of Brain
-    hemi_prop: hemisphere properties needed to create a dummy instance of Brain
-    hemi_name: name to lookup for the hemisphere property
-    lobes_prop: lobes properties needed to create a dummy instance of Brain
-    lobes_name: name to lookup for the lobe property
-    anat_prop: anatomical labels properties needed to create a dummy instance of Brain
-    anat_name: name to lookup for the anatomical labels property
+    Parameters
+    ----------
+    brains: dict
+        A dictionary where the values are instances of `Brain`s. The keys don't matter.
+    output_file: str
+        If you want to create a file. It then calls fig.savefig(output_file) from matplotlib
+    dummy_adj_file: str
+        The location/filepath of an adjacency matrix needed to create a dummy instance of Brain
+    hemi_prop: str
+        The location/filepath of hemisphere properties needed to create a dummy instance of Brain
+    hemi_name: str
+        Name to lookup for the hemisphere property
+    lobes_prop: str
+        The location/filepath of lobes properties needed to create a dummy instance of Brain
+    lobes_name: str
+        Name to lookup for the lobe property
+    anat_prop: str
+        The location/filepath of anatomical labels properties needed to create a dummy instance of Brain
+    anat_name: str
+        Name to lookup for the anatomical labels property
+
+    Returns
+    -------
+    fig, ax : tuple
+        if output_file is None, this returns (fig, ax) from the figure created
     """
     # With empty dictionary, nothing to do
     if not brains.values():
@@ -150,16 +166,33 @@ def plot_strength_matrix(brain, title="", output_file=None, dummy_adj_file=rr.DU
     It uses matplotlib to plot the connection strength matrix of the `adjMat` of `brain`.
     The nodes are ordered first by hemisphere, then by lobes, and then by anatomical labels.
 
-    brain: an instance of the `Brain` class
-    title: title to appear on top of the matrix
-    output_file: if you want to create a file. It then calls fig.savefig(output_file) from matplotlib
-    dummy_adj_file: an adjacency matrix needed to create a dummy instance of Brain
-    hemi_prop: hemisphere properties needed to create a dummy instance of Brain
-    hemi_name: name to lookup for the hemisphere property
-    lobes_prop: lobes properties needed to create a dummy instance of Brain
-    lobes_name: name to lookup for the lobe property
-    anat_prop: anatomical labels properties needed to create a dummy instance of Brain
-    anat_name: name to lookup for the anatomical labels property
+    Parameters
+    ----------
+    brain: maybrain.brain.Brain
+        An instance of the `Brain` class
+    title: str
+        Title to appear on top of the matrix
+    output_file: str
+        If you want to create a file. It then calls fig.savefig(output_file) from matplotlib
+    dummy_adj_file: str
+        The location/filepath of an adjacency matrix needed to create a dummy instance of Brain
+    hemi_prop: str
+        The location/filepath of hemisphere properties needed to create a dummy instance of Brain
+    hemi_name: str
+        Name to lookup for the hemisphere property
+    lobes_prop: str
+        The location/filepath of lobes properties needed to create a dummy instance of Brain
+    lobes_name: str
+        Name to lookup for the lobe property
+    anat_prop: str
+        The location/filepath of anatomical labels properties needed to create a dummy instance of Brain
+    anat_name: str
+        Name to lookup for the anatomical labels property
+
+    Returns
+    -------
+    fig, ax : tuple
+        if output_file is None, this returns (fig, ax) from the figure created
     """
     arr, labels = _get_ordered_array_and_labels(brain.adjMat, dummy_adj_file=dummy_adj_file,
                                                 hemi_prop=hemi_prop, lobes_prop=lobes_prop, anat_prop=anat_prop,

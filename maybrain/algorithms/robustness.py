@@ -16,9 +16,14 @@ def robustness(brain, iter_len=500, window_size=50):
     Note, this function is relatively slow compared to other metrics due to
     the multiple iterations.
 
-    brain: an instance of the Brain class
-    iter_len: number of iterations
-    window_size = size of the sliding window for smoothing the gradient
+    Parameters
+    ----------
+    brain: maybrain.brain.Brain
+        An instance of the `Brain` class
+    iter_len: int
+        number of iterations
+    window_size: int
+        size of the sliding window for smoothing the gradient
 
     """
     f_list = np.zeros(iter_len)

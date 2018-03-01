@@ -38,9 +38,14 @@ def make_highlight(edge_inds=None, nodes_inds=None, label=None):
     """
     It create a highlight object from some edge/nodes indices, and put it in the highlights global
 
-    edge_inds: a list of tuples of edges
-    nodes_inds: a list with nodes
-    label: the name given to the highlight. If non is provided, it will be automatically generated
+    Parameters
+    ----------
+    edge_inds: list of tuples
+        A list of tuples of edges
+    nodes_inds: list of nodes
+        A list of node's indexes
+    label
+        The name given to the highlight. If none is provided, it will be automatically generated
     """
     global highlights
 
@@ -61,10 +66,15 @@ def highlight_from_conds(brain, prop, rel, val, mode, label=None):
     """
     Creates a highlight by asking if the property `prop` is related to `val` by `rel`.
 
-    brain: An instance of Brain to highlight
-    prop: The property to look for in `brain`. If this value is equal to x/X/y/Y/z/Z, it will look out for the
-          respective value from the property ct.XYZ in the nodes
-    rel: The relation between the property and value that is being looked for in the brain. It can be:
+    Parameters
+    ----------
+    brain: maybrain.brain.Brain
+        An instance of the `Brain` class to highlight
+    prop: str
+        The property to look for in `brain`. If this value is equal to x/X/y/Y/z/Z, it will look out for the
+        respective value from the property ct.XYZ in the nodes. If it doesn't exist, it is ignored.
+    rel: str
+        The relation between the property and value that is being looked for in the brain. It can be:
         'geq' - greater than or equal to
         'leq' - less than or equal to
         'gt' - strictly greater than
@@ -73,9 +83,13 @@ def highlight_from_conds(brain, prop, rel, val, mode, label=None):
         'in()', 'in[)', 'in(]', 'in[]' - within an interval, in this case val is a list of two numbers
                                          "[" and "]" means inclusive, "(" and ")" means exclusive
         'in' - in `val`
-    val: The value, or range of values, to be compared to
-    mode: Whether looking for nodes and/or edges. It can be 'node', 'edge', 'node|edge' or 'edge|node'
-    label: Identification of the highlight for further access. If None, one will be automatically created
+    val
+        The value, or range of values, to be compared to
+    mode: {'node', 'edge', 'node|edge', 'edge|node'}
+        Whether looking for nodes and/or edges.
+    label
+        Identification of the highlight for further access. If None, one will be automatically created
+
     """
     global highlights
 

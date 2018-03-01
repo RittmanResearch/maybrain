@@ -10,14 +10,15 @@ Maybrain is a Python package for analysing and visualising brain connectome and 
 
 To run Maybrain you will need a Python 3.5 installation and several other packages on which parts of the code depend. The following are required for analysis:
 
-* [Numpy](http://www.numpy.org/) 1.13.1
+* [Numpy](http://www.numpy.org/) 1.13
 * [NetworkX](http://networkx.github.io/) 2.0
 
 The following is required for plotting functions:
 * [Matplotlib](http://matplotlib.org/) 2.1
+* [Nilearn](https://nilearn.github.io/) 0.4
 
 The following provides some extra functionality for input of certain data types:
-* [NiBabel](http://nipy.org/nibabel/) 2.1.0
+* [NiBabel](http://nipy.org/nibabel/) 2.1
 * [Mayavi](http://docs.enthought.com/mayavi/mayavi/) 4.5.0
 * [bctpy](https://github.com/aestrivex/bctpy) 0.5.0
 
