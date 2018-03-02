@@ -134,6 +134,57 @@ class Brain:
 
         f.close()
 
+    def import_node_properties_from_dict(self, prop_name, props):
+        """
+        Add properties to the nodes of the underlying G object from a dictionary.
+
+        Parameters
+        ----------
+        prop_name: str
+            The name of the property to add to the nodes
+        props: dict
+            Dictionary where the keys are the nodes' identification, and the value is the value of the property to add
+
+        Raises
+        ------
+        TypeError: Exception
+            If props is not a dictionary
+        """
+        if not isinstance(props, dict):
+            raise TypeError("import_node_properties_from_dict() expects props to be a dict")
+        nodes_p = []
+        for p in props.items():
+            nodes_p.append([prop_name, p[0], p[1]])
+
+        self._add_properties(nodes_p)
+        self.nodeProperties.extend(nodes_p)
+
+    def import_edge_properties_from_dict(self, prop_name, props):
+        """
+        Add properties to the edges of the underlying G object from a dictionary.
+
+        Parameters
+        ----------
+        prop_name: str
+            The name of the property to add to the edges
+        props: dict
+            Dictionary where the keys are the edges' identification (tuple), and the value is the value of the property
+            to add
+
+        Raises
+        ------
+        TypeError: Exception
+            If props is not a dictionary
+        """
+        if not isinstance(props, dict):
+            raise TypeError("import_edge_properties_from_dict() expects props to be a dict")
+        edges_p = []
+        for p in props.items():
+            edges_p.append([prop_name, p[0][0], p[0][1], p[1]])
+
+        self._add_properties(edges_p)
+        self.edgeProperties.extend(edges_p)
+
     def import_properties(self, filename):
         """
         Add properties from a file. First line should contain the property name and the following
@@ -390,7 +441,8 @@ class Brain:
         except KeyError as error:
             import sys
             _, _, tb = sys.exc_info()
-            raise KeyError(error, "Edge does not exist in G or doesn't have constants.WEIGHT property").with_traceback(tb)
+            raise KeyError(error, "Edge does not exist in G or doesn't have constants.WEIGHT property").with_traceback(
+                tb)
         except IndexError:
             import sys
             _, _, tb = sys.exc_info()

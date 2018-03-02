@@ -29,7 +29,7 @@ class TestBrainObj(unittest.TestCase):
         self.assertEqual(self.a.G.number_of_edges(), 0)
         self.assertEqual(self.a.adjMat, None)
 
-    def test_importAdjFile(self):
+    def test_import_adj_file(self):
         self.assertRaises(IOError, self.a.import_adj_file, "sdfasdf")
         self.a.import_adj_file(self.SMALL_FILE)
         self.assertEqual(self.a.adjMat.shape, (4, 4))
@@ -52,7 +52,7 @@ class TestBrainObj(unittest.TestCase):
         self.assertTrue(all(np.isnan(x) for x in b.adjMat[2, :]))
         self.assertTrue(all(np.isnan(x) for x in b.adjMat[4, :]))
 
-    def test_importSpatialInfo(self):
+    def test_import_spatial_info(self):
         self.assertRaises(FileNotFoundError, self.a.import_spatial_info, "sdfasdf")
         self.a.import_adj_file(self.SMALL_FILE)
         self.a.import_spatial_info(self.COORD_FILE)
@@ -71,7 +71,7 @@ class TestBrainObj(unittest.TestCase):
         self.assertEqual(attrs2[0], '0')
         self.assertEqual(attrs2[3], '3')
 
-    def test_applyThreshold(self):
+    def test_apply_threshold(self):
         self.a.import_adj_file(self.MODIF_FILE, delimiter=",", nodes_to_exclude=[2, 4])
         self.a.import_spatial_info(self.COORD_FILE)  # making sure this doesn't influence the rest
         self.a.apply_threshold()
@@ -163,7 +163,7 @@ class TestBrainObj(unittest.TestCase):
         c.make_edges_absolute()
         self.assertTrue(all(e[2][ct.WEIGHT] >= 0 for e in c.G.edges(data=True)))
 
-    def test_localThreshold(self):
+    def test_local_threshold(self):
         self.a.import_adj_file(self.MODIF_FILE, delimiter=",")
         self.a.apply_threshold()
         temp = nx.minimum_spanning_tree(self.a.G)
@@ -198,7 +198,7 @@ class TestBrainObj(unittest.TestCase):
         self.assertEqual(self.a.G.number_of_edges(), int(0.2 * all_edges))
         self.assertTrue(nx.is_connected(self.a.G))
 
-    def test_AdjMat(self):
+    def test_adj_mat(self):
         self.a.import_adj_file(self.MODIF_FILE, delimiter=",")
         self.a.apply_threshold(threshold_type="totalEdges", value=1)
         self.a.reconstruct_adj_mat()
@@ -223,7 +223,7 @@ class TestBrainObj(unittest.TestCase):
         self.a.G.edges[50, 50][ct.WEIGHT] = 12
         self.assertRaises(IndexError, self.a.update_adj_mat, (50, 50))
 
-    def test_removeUnconnectedNodes(self):
+    def test_remove_unconnected_nodes(self):
         self.a.import_adj_file(self.MODIF_FILE, delimiter=",")
         self.a.apply_threshold(threshold_type="totalEdges", value=1)
         self.assertEqual(self.a.G.number_of_nodes(), 15)  # info from the file
@@ -252,7 +252,7 @@ class TestBrainObj(unittest.TestCase):
         c.apply_threshold(threshold_type="totalEdges", value=0)
         self.assertEqual(utils.percent_connected(c), 0)
 
-    def test_linkedNodes(self):
+    def test_linked_nodes(self):
         self.a.import_adj_file(self.SMALL_FILE)
         self.a.apply_threshold()
         for n in self.a.G.nodes(data=True):
@@ -276,7 +276,7 @@ class TestBrainObj(unittest.TestCase):
         self.assertTrue(sorted(c.G.node[0][ct.LINKED_NODES]) == [1, 2, 3])
         self.assertTrue(sorted(c.G.node[1][ct.LINKED_NODES]) == [0, 2, 3])
 
-    def test_weightToDistance(self):
+    def test_weight_to_distance(self):
         self.a.import_adj_file(self.MODIF_FILE, delimiter=",")
         self.a.apply_threshold()
         self.a.weight_to_distance()
@@ -308,6 +308,21 @@ class TestBrainObj(unittest.TestCase):
             self.assertTrue(self.a.G.edges[0, 2]['colour'], 'red')
             self.assertTrue(self.a.G.edges[2, 0]['colour'], 'red')
             self.assertTrue(self.a.G.edges[1, 3]['colour'], 'green')
+
+        nodes_props = {0: "val1", 1: 3}
+        edges_props = {(0, 1): "edge_val1", (2,3): 3.4}
+
+        self.a.import_edge_properties_from_dict("own_property", edges_props)
+        self.a.import_node_properties_from_dict("own_property", nodes_props)
+
+        self.assertRaises(KeyError, lambda: self.a.G.node[2]['own_property'])
+        self.assertRaises(KeyError, lambda: self.a.G.edges[0, 2]['own_property'])
+
+        self.assertTrue(self.a.G.node[0]['own_property'], 'val1')
+        self.assertTrue(self.a.G.node[1]['own_property'], 3)
+
+        self.assertTrue(self.a.G.edges[0, 1]['own_property'], 'edge_val1')
+        self.assertTrue(self.a.G.edges[2, 3]['own_property'], 3.4)
 
     def test_highlights(self):
         self.a.import_adj_file(self.SMALL_FILE)
