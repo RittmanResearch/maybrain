@@ -682,29 +682,51 @@ class Brain:
             self.G.edges[edge[0], edge[1]][ct.DISTANCE] = emax - self.G.edges[edge[0], edge[1]][
                 ct.WEIGHT]  # convert weights to a positive distance
 
-    def copy_hemisphere(self, hsphere="R", midline=44.5):
+    def copy_hemisphere(self, hsphere="R", midline=0):
         """
         This copies all the nodes and attributes from one hemisphere to the other, deleting any pre-existing
         data on the contralateral side. Particularly useful when you only have data from a single
         hemisphere available.
-        """
-        if hsphere == "L":
-            for node in self.G.nodes():
-                if self.G.nodes[node][ct.XYZ][0] < midline:
-                    self.G.add_node(str(node) + "R")
-                    self.G.nodes[str(node) + "R"] = {v: w for v, w in self.G.nodes[node].items()}
-                    pos = self.G.nodes[node][ct.XYZ]
-                    pos = (midline + (midline - pos[0]), pos[1], pos[2])
-                    self.G.nodes[str(node) + "R"][ct.XYZ] = pos
-                else:
-                    self.G.remove_node(node)
 
-        elif hsphere == "R":
-            for node in self.G.nodes():
-                if self.G.nodes[node][ct.XYZ][0] > midline:
-                    self.G.add_node(str(node) + "L")
-                    self.G.nodes[str(node) + "L"] = {v: w for v, w in self.G.nodes[node].items()}
-                    pos = self.G.nodes[node][ct.XYZ]
-                    self.G.nodes[str(node) + "L"][ct.XYZ] = (midline - (pos[0] - midline), pos[1], pos[2])
-                else:
-                    self.G.remove_node(node)
+        Division of hemisphere is made through `midline` parameter, and it is considered that each node has space
+        information (constants.XYZ property)
+
+        Parameters
+        ----------
+        hsphere: {"R", "L"}
+            The hemisphere to copy. "R" stands for right hemisphere, and "L" for left hemisphere
+        midline: float
+            Where the midline dividing the hemisphere is located (in the X coordinate)
+
+        Raises
+        ------
+        TypeError: Exception
+            If `hsphere` argument is wrong
+        """
+        if not (hsphere in ['R', 'L']):
+            raise TypeError("Wrong hemisphere defined")
+
+        nodes_to_remove = []
+        nodes_iter = dict(self.G.nodes(data=True))  # Copying current nodes so we can edit G
+
+        new_name = 'L' if hsphere == 'R' else 'R'
+
+        for n in nodes_iter.items():
+            pos = self.G.nodes[n[0]][ct.XYZ]
+
+            if hsphere == 'L' and pos[0] < midline:
+                new_pos = (midline + (midline - pos[0]), pos[1], pos[2])
+            elif hsphere == 'R' and pos[0] > midline:
+                new_pos = (midline - (pos[0] - midline), pos[1], pos[2])
+            else:
+                nodes_to_remove.append(n[0])
+                continue
+
+            # Adding new node and its attributes
+            self.G.add_node(str(n[0]) + new_name)
+            for p in n[1].items():
+                self.G.nodes[str(n[0]) + new_name][p[0]] = p[1]
+
+            self.G.nodes[str(n[0]) + new_name][ct.XYZ] = new_pos
+
+        self.G.remove_nodes_from(nodes_to_remove)

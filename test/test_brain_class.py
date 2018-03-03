@@ -262,8 +262,8 @@ class TestBrainObj(unittest.TestCase):
         for n in self.a.G.nodes(data=True):
             n[1][ct.LINKED_NODES]  # it should not raise any exception
 
-        self.assertTrue(sorted(self.a.G.node[0][ct.LINKED_NODES]) == [1, 2, 3])
-        self.assertTrue(sorted(self.a.G.node[1][ct.LINKED_NODES]) == [0, 2, 3])
+        self.assertTrue(sorted(self.a.G.nodes[0][ct.LINKED_NODES]) == [1, 2, 3])
+        self.assertTrue(sorted(self.a.G.nodes[1][ct.LINKED_NODES]) == [0, 2, 3])
 
         # directed
         c = mbt.Brain(directed=True)
@@ -273,8 +273,8 @@ class TestBrainObj(unittest.TestCase):
         for n in c.G.nodes(data=True):
             n[1][ct.LINKED_NODES]  # it should not raise any exception
 
-        self.assertTrue(sorted(c.G.node[0][ct.LINKED_NODES]) == [1, 2, 3])
-        self.assertTrue(sorted(c.G.node[1][ct.LINKED_NODES]) == [0, 2, 3])
+        self.assertTrue(sorted(c.G.nodes[0][ct.LINKED_NODES]) == [1, 2, 3])
+        self.assertTrue(sorted(c.G.nodes[1][ct.LINKED_NODES]) == [0, 2, 3])
 
     def test_weight_to_distance(self):
         self.a.import_adj_file(self.MODIF_FILE, delimiter=",")
@@ -299,27 +299,27 @@ class TestBrainObj(unittest.TestCase):
                 self.a.update_properties_after_threshold = True
                 self.a.apply_threshold()
 
-            self.assertRaises(KeyError, lambda: self.a.G.node[2]['colour'])
-            self.assertRaises(KeyError, lambda: self.a.G.node[6])  # testing node 6 is not created
-            self.assertTrue(self.a.G.node[1]['colour'], 'red')
-            self.assertTrue(self.a.G.node[0]['colour'], 'blue')
-            self.assertTrue(self.a.G.node[3]['colour'], 'red')
+            self.assertRaises(KeyError, lambda: self.a.G.nodes[2]['colour'])
+            self.assertRaises(KeyError, lambda: self.a.G.nodes[6])  # testing node 6 is not created
+            self.assertTrue(self.a.G.nodes[1]['colour'], 'red')
+            self.assertTrue(self.a.G.nodes[0]['colour'], 'blue')
+            self.assertTrue(self.a.G.nodes[3]['colour'], 'red')
             # edges
             self.assertTrue(self.a.G.edges[0, 2]['colour'], 'red')
             self.assertTrue(self.a.G.edges[2, 0]['colour'], 'red')
             self.assertTrue(self.a.G.edges[1, 3]['colour'], 'green')
 
         nodes_props = {0: "val1", 1: 3}
-        edges_props = {(0, 1): "edge_val1", (2,3): 3.4}
+        edges_props = {(0, 1): "edge_val1", (2, 3): 3.4}
 
         self.a.import_edge_properties_from_dict("own_property", edges_props)
         self.a.import_node_properties_from_dict("own_property", nodes_props)
 
-        self.assertRaises(KeyError, lambda: self.a.G.node[2]['own_property'])
+        self.assertRaises(KeyError, lambda: self.a.G.nodes[2]['own_property'])
         self.assertRaises(KeyError, lambda: self.a.G.edges[0, 2]['own_property'])
 
-        self.assertTrue(self.a.G.node[0]['own_property'], 'val1')
-        self.assertTrue(self.a.G.node[1]['own_property'], 3)
+        self.assertTrue(self.a.G.nodes[0]['own_property'], 'val1')
+        self.assertTrue(self.a.G.nodes[1]['own_property'], 3)
 
         self.assertTrue(self.a.G.edges[0, 1]['own_property'], 'edge_val1')
         self.assertTrue(self.a.G.edges[2, 3]['own_property'], 3.4)
@@ -349,16 +349,20 @@ class TestBrainObj(unittest.TestCase):
         self.assertEqual(utils.highlights[5].nodes, [])
         self.assertEqual(utils.highlights[5].edges, [(0, 3)])
 
-        utils.highlight_from_conds(self.a, ct.WEIGHT, 'in[]', [0.16390494700200001, 0.60080034391699999], mode='node|edge', label=5)
+        utils.highlight_from_conds(self.a, ct.WEIGHT, 'in[]', [0.16390494700200001, 0.60080034391699999],
+                                   mode='node|edge', label=5)
         self.assertEqual(utils.highlights[5].nodes, [])
         self.assertEqual(sorted(utils.highlights[5].edges), [(0, 1), (0, 2), (0, 3), (1, 3)])
-        utils.highlight_from_conds(self.a, ct.WEIGHT, 'in(]', [0.16390494700200001, 0.60080034391699999], mode='edge|node', label=5)
+        utils.highlight_from_conds(self.a, ct.WEIGHT, 'in(]', [0.16390494700200001, 0.60080034391699999],
+                                   mode='edge|node', label=5)
         self.assertEqual(utils.highlights[5].nodes, [])
         self.assertEqual(sorted(utils.highlights[5].edges), [(0, 1), (0, 2), (1, 3)])
-        utils.highlight_from_conds(self.a, ct.WEIGHT, 'in[)', [0.16390494700200001, 0.60080034391699999], mode='edge', label=5)
+        utils.highlight_from_conds(self.a, ct.WEIGHT, 'in[)', [0.16390494700200001, 0.60080034391699999], mode='edge',
+                                   label=5)
         self.assertEqual(utils.highlights[5].nodes, [])
         self.assertEqual(sorted(utils.highlights[5].edges), [(0, 2), (0, 3), (1, 3)])
-        utils.highlight_from_conds(self.a, ct.WEIGHT, 'in()', [0.16390494700200001, 0.60080034391699999], mode='edge', label=5)
+        utils.highlight_from_conds(self.a, ct.WEIGHT, 'in()', [0.16390494700200001, 0.60080034391699999], mode='edge',
+                                   label=5)
         self.assertEqual(utils.highlights[5].nodes, [])
         self.assertEqual(sorted(utils.highlights[5].edges), [(0, 2), (1, 3)])
 
@@ -367,19 +371,19 @@ class TestBrainObj(unittest.TestCase):
         self.assertEqual(utils.highlights[6].edges, [(0, 2)])
 
         utils.make_highlight(edge_inds=[(1, 2), (4, 5)], nodes_inds=[2, 4], label='custom')
-        self.assertEqual(sorted(utils.highlights['custom'].nodes), [2,4])
+        self.assertEqual(sorted(utils.highlights['custom'].nodes), [2, 4])
         self.assertEqual(sorted(utils.highlights['custom'].edges), [(1, 2), (4, 5)])
 
         self.a.import_spatial_info(self.COORD_FILE)
         utils.highlight_from_conds(self.a, 'y', 'eq', 2, mode='node', label='custom')
         self.assertEqual(sorted(utils.highlights['custom'].nodes), [2, 3])
         self.assertEqual(utils.highlights['custom'].edges, [])
-    
+
     def test_bctpy(self):
         self.a.import_adj_file(self.SMALL_FILE, nodes_to_exclude=[0])
         self.a.apply_threshold()
         bct_mat = utils.makebctmat(self.a)
-        self.assertEqual(bct_mat.shape, (3,3))
+        self.assertEqual(bct_mat.shape, (3, 3))
         self.assertEqual(bct_mat[0][1], 0.843798947781)
         self.assertEqual(bct_mat[1][0], 0.843798947781)
         self.assertTrue(np.isnan(bct_mat[0][0]))
@@ -387,8 +391,31 @@ class TestBrainObj(unittest.TestCase):
         bct_mat = utils.makebctmat(self.a, nonedge=0)
         self.assertEqual(bct_mat[0][0], 0)
         self.assertEqual(bct_mat[1][1], 0)
-        self.assertDictEqual({1:1, 2:3, 3:5}, utils.assignbctresult(self.a, [1,3,5]))
-        
+        self.assertDictEqual({1: 1, 2: 3, 3: 5}, utils.assignbctresult(self.a, [1, 3, 5]))
+
+    def test_copy_hemisphere(self):
+        self.a.import_adj_file(self.SMALL_FILE)
+        self.a.import_properties(self.PROPS_FILE)
+        self.a.import_spatial_info(self.COORD_FILE)
+        self.a.apply_threshold()
+
+        self.a.copy_hemisphere("R", midline=0)
+        # Only nodes 1 and 3 are on the right of the midline
+        self.assertTrue(self.a.G.nodes[1][ct.ANAT_LABEL], self.a.G.nodes['1L'][ct.ANAT_LABEL])
+        self.assertTrue(self.a.G.nodes[1]['colour'], self.a.G.nodes['1L']['colour'])
+        self.assertTrue(self.a.G.nodes[3][ct.ANAT_LABEL], self.a.G.nodes['3L'][ct.ANAT_LABEL])
+        self.assertTrue(self.a.G.nodes[3]['colour'], self.a.G.nodes['3L']['colour'])
+
+        self.a.copy_hemisphere("L", midline=0)
+        # Only nodes 1L and 3L are on the left of the midline
+        self.assertTrue(self.a.G.nodes['1LR'][ct.ANAT_LABEL], self.a.G.nodes['1L'][ct.ANAT_LABEL])
+        self.assertTrue(self.a.G.nodes['1LR']['colour'], self.a.G.nodes['1L']['colour'])
+        self.assertTrue(self.a.G.nodes['3LR'][ct.ANAT_LABEL], self.a.G.nodes['3L'][ct.ANAT_LABEL])
+        self.assertTrue(self.a.G.nodes['3LR']['colour'], self.a.G.nodes['3L']['colour'])
+        # Testing that it removes the original right hemisphere
+        self.assertRaises(KeyError, lambda: self.a.G.nodes[1])
+        self.assertRaises(KeyError, lambda: self.a.G.nodes[3])
+
 
 if __name__ == '__main__':
     unittest.main()
