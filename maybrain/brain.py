@@ -134,6 +134,57 @@ class Brain:
 
         f.close()
 
+    def import_node_properties_from_dict(self, prop_name, props):
+        """
+        Add properties to the nodes of the underlying G object from a dictionary.
+
+        Parameters
+        ----------
+        prop_name: str
+            The name of the property to add to the nodes
+        props: dict
+            Dictionary where the keys are the nodes' identification, and the value is the value of the property to add
+
+        Raises
+        ------
+        TypeError: Exception
+            If props is not a dictionary
+        """
+        if not isinstance(props, dict):
+            raise TypeError("import_node_properties_from_dict() expects props to be a dict")
+        nodes_p = []
+        for p in props.items():
+            nodes_p.append([prop_name, p[0], p[1]])
+
+        self._add_properties(nodes_p)
+        self.nodeProperties.extend(nodes_p)
+
+    def import_edge_properties_from_dict(self, prop_name, props):
+        """
+        Add properties to the edges of the underlying G object from a dictionary.
+
+        Parameters
+        ----------
+        prop_name: str
+            The name of the property to add to the edges
+        props: dict
+            Dictionary where the keys are the edges' identification (tuple), and the value is the value of the property
+            to add
+
+        Raises
+        ------
+        TypeError: Exception
+            If props is not a dictionary
+        """
+        if not isinstance(props, dict):
+            raise TypeError("import_edge_properties_from_dict() expects props to be a dict")
+        edges_p = []
+        for p in props.items():
+            edges_p.append([prop_name, p[0][0], p[0][1], p[1]])
+
+        self._add_properties(edges_p)
+        self.edgeProperties.extend(edges_p)
+
     def import_properties(self, filename):
         """
         Add properties from a file. First line should contain the property name and the following
@@ -390,7 +441,8 @@ class Brain:
         except KeyError as error:
             import sys
             _, _, tb = sys.exc_info()
-            raise KeyError(error, "Edge does not exist in G or doesn't have constants.WEIGHT property").with_traceback(tb)
+            raise KeyError(error, "Edge does not exist in G or doesn't have constants.WEIGHT property").with_traceback(
+                tb)
         except IndexError:
             import sys
             _, _, tb = sys.exc_info()
@@ -630,29 +682,51 @@ class Brain:
             self.G.edges[edge[0], edge[1]][ct.DISTANCE] = emax - self.G.edges[edge[0], edge[1]][
                 ct.WEIGHT]  # convert weights to a positive distance
 
-    def copy_hemisphere(self, hsphere="R", midline=44.5):
+    def copy_hemisphere(self, hsphere="R", midline=0):
         """
         This copies all the nodes and attributes from one hemisphere to the other, deleting any pre-existing
         data on the contralateral side. Particularly useful when you only have data from a single
         hemisphere available.
-        """
-        if hsphere == "L":
-            for node in self.G.nodes():
-                if self.G.nodes[node][ct.XYZ][0] < midline:
-                    self.G.add_node(str(node) + "R")
-                    self.G.nodes[str(node) + "R"] = {v: w for v, w in self.G.nodes[node].items()}
-                    pos = self.G.nodes[node][ct.XYZ]
-                    pos = (midline + (midline - pos[0]), pos[1], pos[2])
-                    self.G.nodes[str(node) + "R"][ct.XYZ] = pos
-                else:
-                    self.G.remove_node(node)
 
-        elif hsphere == "R":
-            for node in self.G.nodes():
-                if self.G.nodes[node][ct.XYZ][0] > midline:
-                    self.G.add_node(str(node) + "L")
-                    self.G.nodes[str(node) + "L"] = {v: w for v, w in self.G.nodes[node].items()}
-                    pos = self.G.nodes[node][ct.XYZ]
-                    self.G.nodes[str(node) + "L"][ct.XYZ] = (midline - (pos[0] - midline), pos[1], pos[2])
-                else:
-                    self.G.remove_node(node)
+        Division of hemisphere is made through `midline` parameter, and it is considered that each node has space
+        information (constants.XYZ property)
+
+        Parameters
+        ----------
+        hsphere: {"R", "L"}
+            The hemisphere to copy. "R" stands for right hemisphere, and "L" for left hemisphere
+        midline: float
+            Where the midline dividing the hemisphere is located (in the X coordinate)
+
+        Raises
+        ------
+        TypeError: Exception
+            If `hsphere` argument is wrong
+        """
+        if not (hsphere in ['R', 'L']):
+            raise TypeError("Wrong hemisphere defined")
+
+        nodes_to_remove = []
+        nodes_iter = dict(self.G.nodes(data=True))  # Copying current nodes so we can edit G
+
+        new_name = 'L' if hsphere == 'R' else 'R'
+
+        for n in nodes_iter.items():
+            pos = self.G.nodes[n[0]][ct.XYZ]
+
+            if hsphere == 'L' and pos[0] < midline:
+                new_pos = (midline + (midline - pos[0]), pos[1], pos[2])
+            elif hsphere == 'R' and pos[0] > midline:
+                new_pos = (midline - (pos[0] - midline), pos[1], pos[2])
+            else:
+                nodes_to_remove.append(n[0])
+                continue
+
+            # Adding new node and its attributes
+            self.G.add_node(str(n[0]) + new_name)
+            for p in n[1].items():
+                self.G.nodes[str(n[0]) + new_name][p[0]] = p[1]
+
+            self.G.nodes[str(n[0]) + new_name][ct.XYZ] = new_pos
+
+        self.G.remove_nodes_from(nodes_to_remove)

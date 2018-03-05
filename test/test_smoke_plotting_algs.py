@@ -76,6 +76,16 @@ class TestPlottingAndAlgs(unittest.TestCase):
         display = mpt.plot_connectome(self.a, node_property="colour", node_attributes=["red", "green"])
         display.close()
 
+        # When all the property has the same value:
+        self.a.import_node_properties_from_dict("degree", dict(nx.degree(self.a.G)))
+        display = mpt.plot_connectome(self.a, node_size_property="degree")
+        display.close()
+        # Now with different values
+        self.a.apply_threshold()
+        self.a.import_node_properties_from_dict("degree", dict(nx.degree(self.a.G)))
+        display = mpt.plot_connectome(self.a, node_size_property="degree")
+        display.close()
+
 
 if __name__ == '__main__':
     unittest.main()
