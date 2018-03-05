@@ -483,6 +483,7 @@ class Brain:
 
         # Putting all the edges in the G object for local thresholding
         self.apply_threshold()
+        maximum_edges = self.G.number_of_edges()
 
         if not nx.is_connected(self.G):
             raise TypeError("Adjacency Matrix is not connected. Impossible to execute local_thresholding()")
@@ -507,7 +508,7 @@ class Brain:
         else:  # 'totalEdges' option
             edgenum = value
 
-        len_edges = len(t.edges())
+        len_edges = t.number_of_edges()
         if len_edges > edgenum:
             print("Warning: The minimum spanning tree already has: " + str(len_edges) + " edges, select more edges.",
                   "Local Threshold will be applied by just retaining the Minimum Spanning Tree")
@@ -518,12 +519,13 @@ class Brain:
         while len_edges < edgenum:
             # create nearest neighbour graph
             nng = self._nng(k)
+            number_before = nng.number_of_edges()
 
             # remove edges from the NNG that exist already in the new graph/MST
             nng.remove_edges_from(t.edges())
 
             # Ending condition. No more edges to add so break the cycle
-            if len(nng.edges()) == 0:
+            if nng.number_of_edges() == 0 and number_before >= maximum_edges:
                 break
 
             # add weights to NNG
@@ -536,7 +538,7 @@ class Brain:
             # add edges to graph in order of connectivity strength
             for edge in edge_list:
                 t.add_edges_from([edge])
-                len_edges = len(t.edges())
+                len_edges = t.number_of_edges()
                 if len_edges >= edgenum:
                     break
 
