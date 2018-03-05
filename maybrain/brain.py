@@ -488,7 +488,8 @@ class Brain:
             raise TypeError("Adjacency Matrix is not connected. Impossible to execute local_thresholding()")
 
         # create minimum spanning tree
-        t = nx.minimum_spanning_tree(self.G)
+        self.weight_to_distance()
+        t = nx.minimum_spanning_tree(self.G, weight="distance")
 
         if not threshold_type:
             self.G = t
