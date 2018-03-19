@@ -79,14 +79,14 @@ class AllenBrain:
         for line in reader:
             s_id = line[self.s_lab]
             node_count = node_counter # GIVE NODES UNIQUE INCREMENTAL sa_id (across all subjects)
-            print(node_count)
+
             if not self.expr_brain.G.has_node(node_count):
                 self.expr_brain.G.add_node(node_count)
                 brain.nx.set_node_attributes(self.expr_brain.G, {node_count: line})
 
                 # store the structure_acronym/structure_name for the node
                 brain.nx.set_node_attributes(self.expr_brain.G, {node_count: {'s_id': s_id}})
-#                node_counter += 1
+                node_counter += 1
 
                 #STORE structure_acronym or structure_name depending on symmetrise
                 self.headers.append(s_id)
@@ -95,7 +95,9 @@ class AllenBrain:
                     self.s_id_dict[s_id] = [node_count]
                 else:
                     self.s_id_dict[s_id].append(node_count)
+
             node_counter += 1
+
         file.close()
 
         if convertMNI:
@@ -309,109 +311,7 @@ class AllenBrain:
                                 quotechar='"')
         y = 0
         for line in reader:
-            probe = line['probe']
-            if probe in probe_numbers:
-                # assign probe values to sample numbers
-                for z, c_node in enumerate(self.imaging_brain.G.nodes()):
-                    a_node = c_nodes[str(c_node)]
-                    # *************************************
-                    # Find structure_acronym corresponding to the matched allen node
-                    acronym = self.expr_brain.G.node[a_node][self.s_lab]
-                    # Initialise list for summing expression values for allen nodes with
-                    # same structure_acronym
-                    total_expression = []
-                    # Loop over allen nodes to find all those with the correct acronym for
-                    # the current MRI node
-                    # and add their expression values to the list for averaging
-                    s = 0
-                    for sa_id, struct_ac in list(my_node_dict.items()):
-                        if struct_ac == acronym:
-                            # print(sa_id, struct_ac, line[str(sa_id)])
-                            # print('\node_count')
-                            # if line[str(sa_id)]:
-                            total_expression.append(float(line[str(sa_id)]))
-                            probe_mat[y, z, s] = float(line[str(sa_id)])
-                            s += 1
-
-                if gene_flag:
-                    # records the position of the probe in a dictionary with genes as a key
-                    gene_list[probe_dict[probe]].append(y)
-                y += 1
-        file.close()
-        del reader
-
-        # get values to normalise expression levels for each probe within subject
-        for y in range(probe_mat.shape[0]):
-            # create a masked array removing the 0. values
-            subj_mat = np.ma.array(probe_mat[y, :, st:st],
-                                   mask=probe_mat[y, :, st:st] == 0.,
-                                   dtype="float64")
-
-            subj_mat = (subj_mat - np.mean(np.ma.array(subj_mat, mask=subj_mat == 0.))) / np.std(np.ma.array(subj_mat, mask=subj_mat == 0.))
-            probe_mat[y, :, st:st] = subj_mat
-
-        gene_flag = False
-
-        # collapse across subjects and probes by gene
-        gene_names = list(gene_list.keys())
-        gene_names.sort() # sort in to alphabetical order
-
-        # collapse across nodes within regions (averaging across all subjects)
-        sh = probe_mat.shape
-        probe_mat_temp = np.memmap("probe_mat_temp.txt", mode="w+", dtype="float64", shape=sh[:2])
-
-        # write out the standard deviation for each probe if specified
-        if st_dev:
-            st_dev_out = open(st_dev_file, "wb")
-            st_dev_out.writelines("Probe Node st_dev\node_count")
-        for y in range(sh[0]):
-            for z in range(sh[1]):
-                # mask out unused values, ie where there are less than the maximum number
-                # of homolous nodes in a structural region
-                probe_mat_temp[y, z] = np.mean(np.ma.array(probe_mat[y, z],
-                                                           mask=probe_mat[y, z] == 0.))
-                if st_dev:
-                    std = np.std(np.ma.array(probe_mat[y, z], mask=probe_mat[y, z] == 0.))
-                    st_dev_out.writelines(' '.join([str(int(probe_numbers[y])),
-                                                    str(self.imaging_brain.G.nodes()[z]),
-                                                    "{:2.5f}".format(std)])+'\node_count')
-        if st_dev:
-            st_dev_out.close()
-
-        # reassign the probe matrix and delete temporary memory-mapped file
-        probe_mat = probe_mat_temp
-        del probe_mat_temp
-        remove(temp_mat_name)
-
-        for gene in gene_names:
-            if gene_list[gene]:
-                x = probe_mat.shape[1] # number of nodes
-                y = len(gene_list[gene]) # number of probes
-
-                gene_mat = np.zeros(shape=(x, y), dtype="float64")
-
-                for node_count, probe in enumerate(gene_list[gene]):
-                    gene_mat[:, node_count] = probe_mat[probe, :]
-
-                # collapse values across probes for each gene
-                mean_gene = np.mean(np.ma.array(gene_mat, mask=np.isnan(gene_mat)), axis=1)
-
-                out_dict = dict(list(zip([str(v) for v in self.imaging_brain.G.nodes()],
-                                         ["{:10.20f}".format(v) for v in mean_gene])))
-                out_dict["Gene"] = gene
-                writer.writerow(out_dict)
-
-        out.close()
-        remove("probe_mat_temp.txt") # delete memory map file
-
-    def probesub(self, line, prop_dict, probe_dict, scatter_plot,
-                 graph_metric_name, out_file, probe_numbers=None):
-        """
-        Needs completing
-        """
-        if probe_numbers:
-            if line['probe'] in probe_numbers:
-                # assign probe values to sample numbers
+            if line['probe']in probe_numbers:
                 for node in self.expr_brain.G.nodes():
                     if line[self.expr_brain.G.node[node][self.s_lab]]:
                         self.expr_brain.G.node[node][line['probe']] = line[self.expr_brain.G.node[node][self.s_lab]]
@@ -930,7 +830,8 @@ class multisubj:
             writer.writerow(m_dict)
 
     def ymatrixindividuals(self, metric_dict, subj_list,
-                           allen_dir="allen_data", out_file="YmatrixInd.csv"):
+                           allen_dir="allen_data",
+                           out_file="YmatrixInd.csv"):
         '''
         Collates metrics in to a matrix for use in partial least squares analysis.
         Note, the metric_dict contains the metric name as a key and filename as
