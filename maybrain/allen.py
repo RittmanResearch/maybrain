@@ -26,7 +26,7 @@ class AllenBrain:
     def __init__(self, allen_subj,
                  assoc_matrix,
                  allen_dir="allen_data",
-                 delim=", ",
+                 delim=None,
                  imaging_spatial_file="atlas471_xyz_flip_xy.txt",
                  nodesToExclude=[],
                  symmetrise=False,
@@ -71,7 +71,7 @@ class AllenBrain:
 
         # import probe data
         file = open(path.join(self.allen_dir, self.allen_subj, self.annotation_file), "r")
-        reader = csv.DictReader(file, delimiter=", ", quotechar='"')
+        reader = csv.DictReader(file, delimiter=",", quotechar='"')
 
         self.headers = ['probe']
         self.s_id_dict = {}
@@ -79,14 +79,14 @@ class AllenBrain:
         for line in reader:
             s_id = line[self.s_lab]
             node_count = node_counter # GIVE NODES UNIQUE INCREMENTAL sa_id (across all subjects)
-
+            print(node_count)
             if not self.expr_brain.G.has_node(node_count):
                 self.expr_brain.G.add_node(node_count)
                 brain.nx.set_node_attributes(self.expr_brain.G, {node_count: line})
 
                 # store the structure_acronym/structure_name for the node
                 brain.nx.set_node_attributes(self.expr_brain.G, {node_count: {'s_id': s_id}})
-                node_counter += 1
+#                node_counter += 1
 
                 #STORE structure_acronym or structure_name depending on symmetrise
                 self.headers.append(s_id)
@@ -95,6 +95,7 @@ class AllenBrain:
                     self.s_id_dict[s_id] = [node_count]
                 else:
                     self.s_id_dict[s_id].append(node_count)
+            node_counter += 1
         file.close()
 
         if convertMNI:
@@ -194,7 +195,7 @@ class AllenBrain:
         Explanation required.
         '''
         probes = open(path.join(self.allen_dir, self.allen_subj, "Probes.csv"), "r")
-        probe_reader = csv.DictReader(probes, delimiter=", ",
+        probe_reader = csv.DictReader(probes, delimiter=",",
                                       quotechar='"')
         probe_dict = {line['probe_id']:[line['gene_symbol'], line['gene_name']] for line in probe_reader}
         if probe_list:
@@ -222,7 +223,7 @@ class AllenBrain:
 
         # import probe data
         file = open(path.join(self.allen_dir, self.allen_subj, self.microarray_expression_file), "r")
-        reader = csv.DictReader(file, delimiter=", ",
+        reader = csv.DictReader(file, delimiter=",",
                                 fieldnames=self.headers,
                                 quotechar='"')
 
@@ -242,7 +243,7 @@ class AllenBrain:
         # get all probes if otherwise unspecified
         if not probe_numbers:
             file = open(path.join(self.allen_dir, self.allen_subj, self.probe_file))
-            probe_numbers = [line['probe_id'] for line in csv.DictReader(file, delimiter=", ", quotechar='"')]
+            probe_numbers = [line['probe_id'] for line in csv.DictReader(file, delimiter=",", quotechar='"')]
             file.close()
 
         # set up out file
@@ -265,7 +266,7 @@ class AllenBrain:
         # set up gene list
         gene_flag = True
         probe_file = open(path.join(self.allen_dir, self.allen_subj, self.probe_file))
-        probe_reader = csv.DictReader(probe_file, delimiter=", ", quotechar='"')
+        probe_reader = csv.DictReader(probe_file, delimiter=",", quotechar='"')
         probe_dict = {line['probe_id']:line['gene_symbol'] for line in probe_reader}
         gene_list = list(probe_dict.values())
         set(gene_list)
@@ -303,7 +304,7 @@ class AllenBrain:
 
         # import probe data
         file = open(path.join(self.allen_dir, self.allen_subj, self.microarray_expression_file), "r")
-        reader = csv.DictReader(file, delimiter=", ",
+        reader = csv.DictReader(file, delimiter=",",
                                 fieldnames=fieldnames_pv,
                                 quotechar='"')
         y = 0
@@ -539,7 +540,7 @@ class multisubj:
             self.s_id_dict[subj] = {}
             # import probe data
             file = open(path.join(self.allen_dir, subj, self.annotation_file), "r")
-            reader = csv.DictReader(file, delimiter=", ", quotechar='"')
+            reader = csv.DictReader(file, delimiter=",", quotechar='"')
 
             self.headers[subj] = ['probe']
             for line in reader:
@@ -684,7 +685,7 @@ class multisubj:
         for subj in self.allen_subj_list:
             # import probe data
             file = open(path.join(self.allen_dir, subj, self.microarray_expression_file), "r")
-            reader = csv.DictReader(file, delimiter=", ",
+            reader = csv.DictReader(file, delimiter=",",
                                     fieldnames=self.headers[subj],
                                     quotechar='"')
             for line in reader:
@@ -712,10 +713,13 @@ class multisubj:
     def xmatrix(self, out_file="Xmatrix.csv", allen_dir="allen_data",
                 probe_numbers=None, temp_mat_name="tempMat.txt", st_dev=False,
                 st_dev_file="NodesSd.txt"):
+        """
+        Needs writing
+        """
         # get all probes if otherwise unspecified
         if not probe_numbers:
             file = open(path.join(allen_dir, self.allen_subj_list[0], self.probe_file))
-            reader = csv.DictReader(file, delimiter=", ", quotechar='"')
+            reader = csv.DictReader(file, delimiter=",", quotechar='"')
             probe_numbers = [line['probe_id'] for line in reader]
             del reader
             file.close()
@@ -743,7 +747,7 @@ class multisubj:
         # set up gene list
         gene_flag = True
         probe_file = open(path.join(allen_dir, self.allen_subj_list[0], self.probe_file))
-        probe_reader = csv.DictReader(probe_file, delimiter=", ", quotechar='"')
+        probe_reader = csv.DictReader(probe_file, delimiter=",", quotechar='"')
         probe_dict = {line['probe_id']:line['gene_symbol'] for line in probe_reader}
         gene_list = list(probe_dict.values())
         set(gene_list)
@@ -783,7 +787,7 @@ class multisubj:
 
             # import probe data
             file = open(path.join(self.allen_dir, subj, self.microarray_expression_file), "r")
-            reader = csv.DictReader(file, delimiter=", ",
+            reader = csv.DictReader(file, delimiter=",",
                                     fieldnames=fieldnames_pv,
                                     quotechar='"')
             y = 0
@@ -886,11 +890,11 @@ class multisubj:
         out.close()
         remove("probe_mat_temp.txt") # delete memory map file
 
-    def ymatrixgroup(self, metricDict, subj="Control",
+    def ymatrixgroup(self, metric_dict, subj="Control",
                      allen_dir="allen_data", out_file="YmatrixGroup.csv"):
         '''
         Collates metrics in to a matrix for use in partial least squares analysis.
-        Note, the metricDict contains the metric name as a key and filename as
+        Note, the metric_dict contains the metric name as a key and filename as
         the value. Takes group level measures
         '''
         out = open(out_file, "wb")
@@ -900,8 +904,8 @@ class multisubj:
         writer.writeheader()
 
         # iterate through the metrics
-        for m in list(metricDict.keys()):
-            file = open(path.join(allen_dir, subj, metricDict[m]), "r")
+        for m in list(metric_dict.keys()):
+            file = open(path.join(allen_dir, subj, metric_dict[m]), "r")
             reader = csv.DictReader(file, delimiter=" ")
             line = next(reader)
 
@@ -925,11 +929,11 @@ class multisubj:
 
             writer.writerow(m_dict)
 
-    def ymatrixindividuals(self, metricDict, subj_list,
+    def ymatrixindividuals(self, metric_dict, subj_list,
                            allen_dir="allen_data", out_file="YmatrixInd.csv"):
         '''
         Collates metrics in to a matrix for use in partial least squares analysis.
-        Note, the metricDict contains the metric name as a key and filename as
+        Note, the metric_dict contains the metric name as a key and filename as
         the value. Takes metrics for individual subjects defined in the subject list.
         '''
         out = open(out_file, "wb")
@@ -939,9 +943,9 @@ class multisubj:
         writer.writeheader()
 
         # iterate through the metrics
-        for m in list(metricDict.keys()):
+        for m in list(metric_dict.keys()):
             for subj in subj_list:
-                file = open(path.join(allen_dir, subj, metricDict[m]), "r")
+                file = open(path.join(allen_dir, subj, metric_dict[m]), "r")
                 reader = csv.DictReader(file, delimiter=" ")
                 line = next(reader)
 

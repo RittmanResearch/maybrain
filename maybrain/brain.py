@@ -486,6 +486,7 @@ class Brain:
         maximum_edges = self.G.number_of_edges()
 
         if not nx.is_connected(self.G):
+            self.remove_unconnected_nodes()
             raise TypeError("Adjacency Matrix is not connected. Impossible to execute local_thresholding()")
 
         # create minimum spanning tree
