@@ -32,16 +32,19 @@ class AllenBrain:
                  symmetrise=False,
                  mirror=False,
                  signif_value=1.0,
-                 convertMNI=False):
+                 convert_mni=False):
         """
         This object contains two 'brain' network objects, one for the imaging
         data and one for the Allen data. Embedded functions make a comparison
         between the imaging and Allen data by pairing nodes between the two
         network objects.
+
+        Convert MNI converts 2mm space to MNI space - useful if comparing to
+        a standard template.
         """
 
         self.allen_dir = allen_dir # directory where data is located
-        self.allen_subj = allen_subj # sujbect number, eg 178236545
+        self.allen_subj = allen_subj # subject number, eg 178236545
 
         # files in the subject directory to assign gene properties
         self.annotation_file = "SampleAnnot.csv"
@@ -100,7 +103,7 @@ class AllenBrain:
 
         file.close()
 
-        if convertMNI:
+        if convert_mni:
             # convert location data for Allen brain from MNI space
             for node_count in self.expr_brain.G.nodes():
                 x = 45 - (float(self.expr_brain.G.node[node_count]['mni_x'])/2)
@@ -116,13 +119,14 @@ class AllenBrain:
 
         # copy hemisphere if required
         if self.mirror and len(self.expr_brain.G.nodes()) < 600:
-            self.expr_brain.copy_hemisphere()
+            self.expr_brain.copy_hemisphere(hsphere="L")
 
         # set up brain with graph properties
         self.imaging_brain = brain.Brain()
         self.imaging_brain.import_adj_file(assoc_matrix, delimiter=delim,
                                            nodes_to_exclude=nodesToExclude)
-        self.imaging_brain.import_spatial_info(imaging_spatial_file)
+        self.imaging_brain.import_spatial_info(imaging_spatial_file,
+                                               convert_mni=convert_mni)
 
     def comparison(self):
         """
@@ -404,7 +408,7 @@ class multisubj:
     """
     def __init__(self, assoc_matrix, allen_dir="allen_data", nodesToExclude=[], delim=" ",
                  subj_list=None, spatial_file="parcel_500.txt", symmetrise=False,
-                 convertMNI=False, mirror=True):
+                 convert_mni=True, mirror=True):
 
         self.allen_dir = allen_dir
 
@@ -464,7 +468,7 @@ class multisubj:
 
             file.close()
 
-            if convertMNI:
+            if convert_mni:
                 # convert location data for Allen brain from MNI space
                 for node_count in self.expr_brain.G.nodes():
                     x = 45 - (float(self.expr_brain.G.node[node_count]['mni_x'])/2)
