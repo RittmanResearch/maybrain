@@ -686,7 +686,7 @@ class Brain:
             self.G.edges[edge[0], edge[1]][ct.DISTANCE] = emax - self.G.edges[edge[0], edge[1]][
                 ct.WEIGHT]  # convert weights to a positive distance
 
-    def copy_hemisphere(self, hsphere="R", midline=0):
+    def copy_hemisphere(self, hsphere="R", midline=0, conv="neuro"):
         """
         This copies all the nodes and attributes from one hemisphere to the other, deleting any pre-existing
         data on the contralateral side. Particularly useful when you only have data from a single
@@ -701,6 +701,7 @@ class Brain:
             The hemisphere to copy. "R" stands for right hemisphere, and "L" for left hemisphere
         midline: float
             Where the midline dividing the hemisphere is located (in the X coordinate)
+        conv: convention, may be radiological ("radio") or neurological ("neurol")
 
         Raises
         ------
@@ -718,13 +719,24 @@ class Brain:
         for n in nodes_iter.items():
             pos = self.G.nodes[n[0]][ct.XYZ]
 
-            if hsphere == 'L' and pos[0] < midline:
-                new_pos = (midline + (midline - pos[0]), pos[1], pos[2])
-            elif hsphere == 'R' and pos[0] > midline:
-                new_pos = (midline - (pos[0] - midline), pos[1], pos[2])
-            else:
-                nodes_to_remove.append(n[0])
-                continue
+            if conv == "neuro":
+                if hsphere == 'L' and pos[0] < midline:
+                        new_pos = (midline + (midline - pos[0]), pos[1], pos[2])
+                elif hsphere == 'R' and pos[0] > midline:
+                    new_pos = (midline - (pos[0] - midline), pos[1], pos[2])
+                else:
+                    nodes_to_remove.append(n[0])
+                    continue
+
+            elif conv == "radio":
+                if hsphere == 'L' and pos[0] > midline:
+                        new_pos = (midline - (midline - pos[0]), pos[1], pos[2])
+                elif hsphere == 'R' and pos[0] < midline:
+                    new_pos = (midline + (pos[0] - midline), pos[1], pos[2])
+                else:
+                    nodes_to_remove.append(n[0])
+                    continue
+
 
             # Adding new node and its attributes
             self.G.add_node(str(n[0]) + new_name)

@@ -110,16 +110,21 @@ class AllenBrain:
                 y = 63 + (float(self.expr_brain.G.node[node_count]['mni_y'])/2)
                 z = 36 + (float(self.expr_brain.G.node[node_count]['mni_z'])/2)
                 self.expr_brain.G.node[node_count]['xyz'] = (x, y, z)
+            midline = 45 # midline for mirroring nodes
+            conv = "neuro"
         else:
             for node_count in self.expr_brain.G.nodes():
                 x = float(self.expr_brain.G.node[node_count]['mni_x'])
                 y = float(self.expr_brain.G.node[node_count]['mni_y'])
                 z = float(self.expr_brain.G.node[node_count]['mni_z'])
                 self.expr_brain.G.node[node_count]['xyz'] = (x, y, z)
+            midline = 0 # midline for mirroring nodes
+            conv = "radio"
 
         # copy hemisphere if required
         if self.mirror and len(self.expr_brain.G.nodes()) < 600:
-            self.expr_brain.copy_hemisphere(hsphere="L")
+            self.expr_brain.copy_hemisphere(hsphere="L", midline=midline,
+                                            conv=conv)
 
         # set up brain with graph properties
         self.imaging_brain = brain.Brain()
@@ -134,6 +139,9 @@ class AllenBrain:
         keys are the mri nodes and values are disctionaries containing two keys:
         key 1= allen, value= (node_count=sa_id of closest allen node, dist=distance to closest allen node)
         key 2= mri, value= (node_count=sa_id of closest other mri node, dist=distance to closest mri node)
+
+        max_dist is the maximum distance allowed between node pairs. This should be mandatory if 'mirror'
+        or 'symmetrise' is used, otherwise nodes will be paired across hemispheres.
         """
         imaging_node_dict = {}
 
