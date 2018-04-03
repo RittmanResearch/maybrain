@@ -128,7 +128,7 @@ class AllenBrain:
         self.imaging_brain.import_spatial_info(imaging_spatial_file,
                                                convert_mni=convert_mni)
 
-    def comparison(self):
+    def comparison(self, max_dist=None):
         """
         set up dictionary to link nodes from probe data and graph
         keys are the mri nodes and values are disctionaries containing two keys:
@@ -150,34 +150,24 @@ class AllenBrain:
                 if dist < d_other[1]:
                     d_other = (node_count, dist)
 
+            # check if the distance exceeds the maximum specified
+            if max_dist:
+                if d_other[1] > max_dist:
+                    d_other = (None, None)
+
             # now iterate through the imaging nodes to find the closest imaging node
             for node_count in [v for v in self.imaging_brain.G.nodes() if not v == node]:
                 dist = np.linalg.norm(np.array(self.imaging_brain.G.node[node]['xyz']
                                                - np.array(self.imaging_brain.G.node[node_count]['xyz'])))
                 if dist < d_own[1]:
                     d_own = (node_count, dist)
+
+            # check if the distance exceeds the maximum specified
+            if max_dist:
+                if d_own[1] > max_dist:
+                    d_own = (None, None)
+
             imaging_node_dict[node] = {"allen":d_other, "MRIs":d_own}
-
-        # set up dictionary to link nodes from probe data and graph
-        allen_node_dict = {}
-        for node in self.expr_brain.G.nodes():
-            d_other = (None, 999.)
-            d_own = (None, 999.)
-
-            # iterate through the imaging nodes to find the closest nodes
-            for node_count in self.imaging_brain.G.nodes():
-                dist = np.linalg.norm(np.array(self.expr_brain.G.node[node]['xyz']
-                                               - np.array(self.imaging_brain.G.node[node_count]['xyz'])))
-                if dist < d_other[1]:
-                    d_other = (node_count, dist)
-
-            # iterate through the allen nodes to find closest nodes
-            for node_count in [v for v in self.expr_brain.G.nodes() if not v == node]:
-                dist = np.linalg.norm(np.array(self.expr_brain.G.node[node]['xyz']
-                                               - np.array(self.expr_brain.G.node[node_count]['xyz'])))
-                if dist < d_own[1]:
-                    d_own = (node_count, dist)
-            allen_node_dict[node] = {"allen":d_own, "MRIs":d_other}
 
         node_pairs = [] # create a list of node pairs
 
@@ -186,7 +176,10 @@ class AllenBrain:
             # ...find closest allen node 'node_count'
             node_count = imaging_node_dict[node]['allen'][0]
             self.imaging_brain.G.node[node]['pair'] = node_count
-            self.expr_brain.G.node[node_count]['pair'] = node
+            try:
+                self.expr_brain.G.node[node_count]['pair'] = node
+            except KeyError:
+                pass
             node_pairs.append((node, node_count))
 
         # iterate through the list of nodes to assign pairs and remove unpaired nodes

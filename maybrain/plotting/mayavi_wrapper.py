@@ -80,7 +80,7 @@ class MayaviWrapper:
         #        # get nodes from networkx object
         #        else:
         coords = []
-        for x in brain.G.nodes():
+        for x in node_list:
             # put into list
             try:
                 coords.append(brain.G.nodes[x][ct.XYZ])
