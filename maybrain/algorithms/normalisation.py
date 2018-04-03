@@ -10,6 +10,7 @@ class RandomGenerationError(Exception):
     """
     Exception raised for errors in the generation of random graphs
     """
+
     def __init__(self, *args, **kwargs):
         Exception.__init__(self, *args, **kwargs)
 
@@ -127,7 +128,7 @@ def generate_random_graph_from_degree(brain, throw_exception=False, node_attrs=N
     return new_g
 
 
-def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True,
+def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True, exact_random=False,
                      node_attrs=None, edge_attrs=None, random_location=None, **kwargs):
     """
     See `normalise()` method's documentation for explanation. This method just expects a single
@@ -138,11 +139,12 @@ def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True
     if not isinstance(init_val, numbers.Number):
         raise TypeError("normalise_single() expects init_val to be a number")
 
-    return normalise(brain, func, init_vals=init_val, n_iter=n_iter, ret_normalised=ret_normalised,
+    return normalise(brain, func, init_vals=init_val, n_iter=n_iter,
+                     ret_normalised=ret_normalised, exact_random=exact_random,
                      node_attrs=node_attrs, edge_attrs=edge_attrs, random_location=random_location, **kwargs)
 
 
-def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
+def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exact_random=False,
                         node_attrs=None, edge_attrs=None, random_location=None, **kwargs):
     """
     See `normalise()` method's documentation for explanation. This method just expects init_vals
@@ -153,11 +155,12 @@ def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=
     if not isinstance(init_vals, dict):
         raise TypeError("normalise_node_wise() expects init_vals to be a dictionary")
 
-    return normalise(brain, func, init_vals=init_vals, n_iter=n_iter, ret_normalised=ret_normalised,
+    return normalise(brain, func, init_vals=init_vals, n_iter=n_iter,
+                     ret_normalised=ret_normalised, exact_random=exact_random,
                      node_attrs=node_attrs, edge_attrs=edge_attrs, random_location=random_location, **kwargs)
 
 
-def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
+def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exact_random=False,
               node_attrs=None, edge_attrs=None, random_location=None, **kwargs):
     """
     It normalises measures taken from a brain by generating a series of n random graphs and averaging them.
@@ -180,6 +183,8 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
     ret_normalised: bool
         if True, the normalised measures are returned, otherwise a list of n values
         for a random graph is returned
+    exact_random: bool
+        This is passed to `throw_exception` argument in `algorithms.generate_random_graph_from_degree()`
     node_attrs: list of str
         If the node attributes of brain.G are necessary for a correct calculation of func()
         in the random graph, just pass the attributes as a list of strings in this parameter.
@@ -240,7 +245,13 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
             rand = nx.read_gpickle(random_location + str(i))
         else:
             edge_attrs.append(ct.WEIGHT)
-            rand = generate_random_graph_from_degree(brain, node_attrs=node_attrs, edge_attrs=edge_attrs)
+            while True:
+                try:
+                    rand = generate_random_graph_from_degree(brain, throw_exception=exact_random,
+                                                             node_attrs=node_attrs, edge_attrs=edge_attrs)
+                    break  # if it reaches here, means randomiser didn't throw any exception, so break While
+                except RandomGenerationError:
+                    pass
 
         # Applying func() to the random graph
         res = func(rand, **kwargs)
