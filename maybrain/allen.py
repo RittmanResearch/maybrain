@@ -67,9 +67,6 @@ class AllenBrain:
                   ignoring mirror=True")
             self.mirror = False
 
-        # set up brain for expression data
-        self.expr_brain = brain.Brain()
-
         node_counter = 0
 
         # import probe data
@@ -79,52 +76,59 @@ class AllenBrain:
         self.headers = ['probe']
         self.s_id_dict = {}
 
-        for line in reader:
-            s_id = line[self.s_lab]
-            node_count = node_counter # GIVE NODES UNIQUE INCREMENTAL sa_id (across all subjects)
+        self.expr_brain = load_allen(self.allen_subj,
+                                     self.allen_dir,
+                                     self.annotation_file,
+                                     self.s_lab,
+                                     convert_mni,
+                                     mirror)
 
-            if not self.expr_brain.G.has_node(node_count):
-                self.expr_brain.G.add_node(node_count)
-                brain.nx.set_node_attributes(self.expr_brain.G, {node_count: line})
-
-                # store the structure_acronym/structure_name for the node
-                brain.nx.set_node_attributes(self.expr_brain.G, {node_count: {'s_id': s_id}})
-                node_counter += 1
-
-                #STORE structure_acronym or structure_name depending on symmetrise
-                self.headers.append(s_id)
-
-                if not s_id in list(self.s_id_dict.keys()):
-                    self.s_id_dict[s_id] = [node_count]
-                else:
-                    self.s_id_dict[s_id].append(node_count)
-
-            node_counter += 1
-
-        file.close()
-
-        if convert_mni:
-            # convert location data for Allen brain from MNI space
-            for node_count in self.expr_brain.G.nodes():
-                x = 45 - (float(self.expr_brain.G.node[node_count]['mni_x'])/2)
-                y = 63 + (float(self.expr_brain.G.node[node_count]['mni_y'])/2)
-                z = 36 + (float(self.expr_brain.G.node[node_count]['mni_z'])/2)
-                self.expr_brain.G.node[node_count]['xyz'] = (x, y, z)
-            midline = 45 # midline for mirroring nodes
-            conv = "neuro"
-        else:
-            for node_count in self.expr_brain.G.nodes():
-                x = float(self.expr_brain.G.node[node_count]['mni_x'])
-                y = float(self.expr_brain.G.node[node_count]['mni_y'])
-                z = float(self.expr_brain.G.node[node_count]['mni_z'])
-                self.expr_brain.G.node[node_count]['xyz'] = (x, y, z)
-            midline = 0 # midline for mirroring nodes
-            conv = "radio"
-
-        # copy hemisphere if required
-        if self.mirror and len(self.expr_brain.G.nodes()) < 600:
-            self.expr_brain.copy_hemisphere(hsphere="L", midline=midline,
-                                            conv=conv)
+#        for line in reader:
+#            s_id = line[self.s_lab]
+#            node_count = node_counter # GIVE NODES UNIQUE INCREMENTAL sa_id (across all subjects)
+#
+#            if not self.expr_brain.G.has_node(node_count):
+#                self.expr_brain.G.add_node(node_count)
+#                brain.nx.set_node_attributes(self.expr_brain.G, {node_count: line})
+#
+#                # store the structure_acronym/structure_name for the node
+#                brain.nx.set_node_attributes(self.expr_brain.G, {node_count: {'s_id': s_id}})
+#                node_counter += 1
+#
+#                #STORE structure_acronym or structure_name depending on symmetrise
+#                self.headers.append(s_id)
+#
+#                if not s_id in list(self.s_id_dict.keys()):
+#                    self.s_id_dict[s_id] = [node_count]
+#                else:
+#                    self.s_id_dict[s_id].append(node_count)
+#
+#            node_counter += 1
+#
+#        file.close()
+#
+#        if convert_mni:
+#            # convert location data for Allen brain from MNI space
+#            for node_count in self.expr_brain.G.nodes():
+#                x = 45 - (float(self.expr_brain.G.node[node_count]['mni_x'])/2)
+#                y = 63 + (float(self.expr_brain.G.node[node_count]['mni_y'])/2)
+#                z = 36 + (float(self.expr_brain.G.node[node_count]['mni_z'])/2)
+#                self.expr_brain.G.node[node_count]['xyz'] = (x, y, z)
+#            midline = 45 # midline for mirroring nodes
+#            conv = "neuro"
+#        else:
+#            for node_count in self.expr_brain.G.nodes():
+#                x = float(self.expr_brain.G.node[node_count]['mni_x'])
+#                y = float(self.expr_brain.G.node[node_count]['mni_y'])
+#                z = float(self.expr_brain.G.node[node_count]['mni_z'])
+#                self.expr_brain.G.node[node_count]['xyz'] = (x, y, z)
+#            midline = 0 # midline for mirroring nodes
+#            conv = "radio"
+#
+#        # copy hemisphere if required
+#        if self.mirror and len(self.expr_brain.G.nodes()) < 600:
+#            self.expr_brain.copy_hemisphere(hsphere="L", midline=midline,
+#                                            conv=conv)
 
         # set up brain with graph properties
         self.imaging_brain = brain.Brain()
@@ -407,16 +411,23 @@ class multisubj:
     one for the Allen data. Embedded functions make a comparison between the imaging
     and Allen data by pairing nodes between the two network objects.
     """
-    def __init__(self, assoc_matrix, allen_dir="allen_data", nodesToExclude=[], delim=" ",
-                 subj_list=None, spatial_file="parcel_500.txt", symmetrise=False,
-                 convert_mni=True, mirror=True):
+    def __init__(self,
+                 assoc_matrix,
+                 allen_dir="allen_data",
+                 nodesToExclude=[],
+                 delim=" ",
+                 subj_list=None,
+                 imaging_spatial_file="parcel_500.txt",
+                 symmetrise=False,
+                 convert_mni=True,
+                 mirror=True):
 
         self.allen_dir = allen_dir
 
         if subj_list:
             self.allen_subj_list = subj_list
         else:
-            self.allen_subj_list = [v for v in glob("17823*") if path.isdir(path.join(self.allen_dir, v))]
+            self.allen_subj_list = [path.basename(v) for v in glob(path.join(self.allen_dir, "17823*")) if path.isdir(path.join(self.allen_dir, v))]
 
         self.annotation_file = "SampleAnnot.csv"
         self.microarray_expression_file = "MicroarrayExpression.csv"
@@ -443,55 +454,67 @@ class multisubj:
         self.s_id_dict = {}
         for subj in self.allen_subj_list:
             self.s_id_dict[subj] = {}
-            # import probe data
-            file = open(path.join(self.allen_dir, subj, self.annotation_file), "r")
-            reader = csv.DictReader(file, delimiter=",", quotechar='"')
 
-            self.headers[subj] = ['probe']
-            for line in reader:
-                # node_count = int(line["structure_id"])
-                s_id = line[self.s_lab]
-                node_count = node_counter # GIVE NODES UNIQUE INCREMENTAL sa_id (across all subjects)
-                if not self.expr_brain.G.has_node(node_count):
-                    self.expr_brain.G.add_node(node_count)
-                    self.expr_brain.G.node[node_count] = line
+            self.expr_brain = load_allen(subj,
+                                         self.allen_dir,
+                                         self.annotation_file,
+                                         self.s_lab,
+                                         convert_mni,
+                                         mirror,
+                                         node_counter,
+                                         input_brain=self.expr_brain)
 
-                    # store the structure_acronym/structure_name for the node
-                    self.expr_brain.G.node[node_count]['s_id'] = s_id
-                    node_counter += 1
-                    #STORE structure_acronym or structure_name depending on symmetrise
-                    self.headers[subj].append(s_id)
-
-                    if not s_id in list(self.s_id_dict[subj].keys()):
-                        self.s_id_dict[subj][s_id] = [node_count]
-                    else:
-                        self.s_id_dict[subj][s_id].append(node_count)
-
-            file.close()
-
-            if convert_mni:
-                # convert location data for Allen brain from MNI space
-                for node_count in self.expr_brain.G.nodes():
-                    x = 45 - (float(self.expr_brain.G.node[node_count]['mni_x'])/2)
-                    y = 63 + (float(self.expr_brain.G.node[node_count]['mni_y'])/2)
-                    z = 36 + (float(self.expr_brain.G.node[node_count]['mni_z'])/2)
-                    self.expr_brain.G.node[node_count]['xyz'] = (x, y, z)
-            else:
-                for node_count in self.expr_brain.G.nodes():
-                    x = float(self.expr_brain.G.node[node_count]['mni_x'])
-                    y = float(self.expr_brain.G.node[node_count]['mni_y'])
-                    z = float(self.expr_brain.G.node[node_count]['mni_z'])
-                    self.expr_brain.G.node[node_count]['xyz'] = (x, y, z)
-
-            if self.mirror and len(self.expr_brain.G.nodes()) < 600:
-                self.expr_brain.copy_hemisphere()
+            node_counter = len(self.expr_brain.G.nodes())
+       
+#            # import probe data
+#            file = open(path.join(self.allen_dir, subj, self.annotation_file), "r")
+#            reader = csv.DictReader(file, delimiter=",", quotechar='"')
+#
+#            self.headers[subj] = ['probe']
+#            for line in reader:
+#                # node_count = int(line["structure_id"])
+#                s_id = line[self.s_lab]
+#                node_count = node_counter # GIVE NODES UNIQUE INCREMENTAL sa_id (across all subjects)
+#                if not self.expr_brain.G.has_node(node_count):
+#                    self.expr_brain.G.add_node(node_count)
+#                    self.expr_brain.G.node[node_count] = line
+#
+#                    # store the structure_acronym/structure_name for the node
+#                    self.expr_brain.G.node[node_count]['s_id'] = s_id
+#                    node_counter += 1
+#                    #STORE structure_acronym or structure_name depending on symmetrise
+#                    self.headers[subj].append(s_id)
+#
+#                    if not s_id in list(self.s_id_dict[subj].keys()):
+#                        self.s_id_dict[subj][s_id] = [node_count]
+#                    else:
+#                        self.s_id_dict[subj][s_id].append(node_count)
+#
+#            file.close()
+#
+#            if convert_mni:
+#                # convert location data for Allen brain from MNI space
+#                for node_count in self.expr_brain.G.nodes():
+#                    x = 45 - (float(self.expr_brain.G.node[node_count]['mni_x'])/2)
+#                    y = 63 + (float(self.expr_brain.G.node[node_count]['mni_y'])/2)
+#                    z = 36 + (float(self.expr_brain.G.node[node_count]['mni_z'])/2)
+#                    self.expr_brain.G.node[node_count]['xyz'] = (x, y, z)
+#            else:
+#                for node_count in self.expr_brain.G.nodes():
+#                    x = float(self.expr_brain.G.node[node_count]['mni_x'])
+#                    y = float(self.expr_brain.G.node[node_count]['mni_y'])
+#                    z = float(self.expr_brain.G.node[node_count]['mni_z'])
+#                    self.expr_brain.G.node[node_count]['xyz'] = (x, y, z)
+#
+#            if self.mirror and len(self.expr_brain.G.nodes()) < 600:
+#                self.expr_brain.copy_hemisphere()
 
         # set up brain with graph properties
         self.imaging_brain = brain.Brain()
         self.imaging_brain.import_adj_file(assoc_matrix,
                                            delimiter=delim,
                                            nodes_to_exclude=nodesToExclude)
-        self.imaging_brain.import_spatial_info(spatial_file)
+        self.imaging_brain.import_spatial_info(imaging_spatial_file)
 
     def comparison(self):
         """
@@ -875,3 +898,74 @@ class multisubj:
                 m_dict["Subject"] = subj
 
                 writer.writerow(m_dict)
+
+def load_allen(subject,
+               allen_dir,
+               annotation_file,
+               s_lab,
+               convert_mni,
+               mirror,
+               node_counter=0,
+               input_brain=None
+               ):
+    """
+    function for loading the data from a single Allen Brain atlas subject
+    """
+    # import probe data
+    file = open(path.join(allen_dir, subject, annotation_file), "r")
+    reader = csv.DictReader(file, delimiter=",", quotechar='"')
+
+    # define brain object
+    if input_brain:
+        expr_brain = input_brain
+    else:
+        expr_brain = brain.Brain()
+
+    # import probe data
+    file = open(path.join(allen_dir, subject, annotation_file), "r")
+    reader = csv.DictReader(file, delimiter=",", quotechar='"')
+
+    for line in reader:
+        s_id = line[s_lab]
+        
+        expr_brain.G.add_node(node_counter) # GIVE NODES UNIQUE INCREMENTAL sa_id (across all subjects)
+        brain.nx.set_node_attributes(expr_brain.G, {node_counter: line})
+
+        # store the structure_acronym/structure_name for the node
+        brain.nx.set_node_attributes(expr_brain.G, {node_counter: {'s_id': s_id}})
+        node_counter += 1
+        print(node_counter)
+
+        #STORE structure_acronym or structure_name depending on symmetrise
+        #headers.append(s_id)
+
+#            if not s_id in list(s_id_dict.keys()):
+#                s_id_dict[s_id] = [node_count]
+#            else:
+#                s_id_dict[s_id].append(node_count)
+    file.close()
+
+    if convert_mni:
+        # convert location data for Allen brain from MNI space
+        for node_count in expr_brain.G.nodes():
+            x = 45 - (float(expr_brain.G.node[node_count]['mni_x'])/2)
+            y = 63 + (float(expr_brain.G.node[node_count]['mni_y'])/2)
+            z = 36 + (float(expr_brain.G.node[node_count]['mni_z'])/2)
+            expr_brain.G.node[node_count]['xyz'] = (x, y, z)
+        midline = 45 # midline for mirroring nodes
+        conv = "neuro"
+    else:
+        for node_count in expr_brain.G.nodes():
+            x = float(expr_brain.G.node[node_count]['mni_x'])
+            y = float(expr_brain.G.node[node_count]['mni_y'])
+            z = float(expr_brain.G.node[node_count]['mni_z'])
+            expr_brain.G.node[node_count]['xyz'] = (x, y, z)
+        midline = 0 # midline for mirroring nodes
+        conv = "radio"
+
+    # copy hemisphere if required
+    if mirror and len(expr_brain.G.nodes()) < 600:
+        expr_brain.copy_hemisphere(hsphere="L", midline=midline,
+                                        conv=conv)
+    
+    return(expr_brain)
