@@ -453,8 +453,9 @@ class Brain:
         Threshold the adjacency matrix by building from the minimum spanning tree (MST) and adding successive N-nearest
         neighbour degree graphs.
         Thus, if you want to have a local thresholding of N edges when the MST has more than N edges, thresholding will
-        retain the MST
-        It only works for undirected graphs
+        retain the MST.
+        In order to generate the MST, `self.weight_to_distance()` will need to be called.
+        It only works for undirected graphs.
 
         Parameters
         ----------

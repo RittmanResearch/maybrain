@@ -64,6 +64,14 @@ class TestPlottingAndAlgs(unittest.TestCase):
         self.assertTrue(all(i == 1 for i in normalised.values()))
         self.assertEqual(sum(dict(nx.degree(rand, weight=ct.WEIGHT)).values()),
                          sum(dict(nx.degree(self.a.G, weight=ct.WEIGHT)).values()))
+        normalised = mba.normalise_node_wise(self.a,
+                                             nx.degree,
+                                             init_vals=dict(orig_deg),
+                                             n_iter=5,
+                                             exact_random=True)
+        self.assertTrue(all(i == 1 for i in normalised.values()))
+        self.assertEqual(sum(dict(nx.degree(rand, weight=ct.WEIGHT)).values()),
+                         sum(dict(nx.degree(self.a.G, weight=ct.WEIGHT)).values()))
 
     def test_connectome(self):
         self.a.import_adj_file(self.SMALL_FILE)
