@@ -78,7 +78,8 @@ class Brain:
             with open(fname, "r") as f:
                 for l in f:
                     l = l.strip()
-                    lines.append(list(map(float, [v if v not in na_vals else np.nan for v in l.split(sep=delimiter)])))
+                    list_tmp = [v if v not in na_vals else np.nan for v in l.split(sep=delimiter)]
+                    lines.append(list(map(float, list_tmp)))
         except IOError as error:
             error.strerror = 'Problem with opening file "' + fname + '": ' + error.strerror
             raise error
@@ -97,7 +98,8 @@ class Brain:
 
     def import_spatial_info(self, fname, delimiter=None, convert_mni=False):
         """
-        Add 3D coordinate information for each node from a given file. It needs to be called after import_adj_file()
+        Add 3D coordinate information for each node from a given file. It needs to be called after
+        import_adj_file()
 
         Parameters
         ----------
@@ -112,7 +114,8 @@ class Brain:
         try:
             f = open(fname, "r")
         except IOError as error:
-            error.strerror = 'Problem with opening 3D position file "' + fname + '": ' + error.strerror
+            error.strerror = 'Problem with opening 3D position file "'
+                             + fname + '": ' + error.strerror
             raise error
 
         # get data from file
@@ -143,7 +146,8 @@ class Brain:
         prop_name: str
             The name of the property to add to the nodes
         props: dict
-            Dictionary where the keys are the nodes' identification, and the value is the value of the property to add
+            Dictionary where the keys are the nodes' identification, and the value is the value of
+            the property to add
 
         Raises
         ------
@@ -168,8 +172,8 @@ class Brain:
         prop_name: str
             The name of the property to add to the edges
         props: dict
-            Dictionary where the keys are the edges' identification (tuple), and the value is the value of the property
-            to add
+            Dictionary where the keys are the edges' identification (tuple), and the value is the
+            value of the property to add
 
         Raises
         ------
@@ -222,7 +226,8 @@ class Brain:
                     edges_p.append([prop, int(info[0]), int(info[1]), info[2]])
                 else:
                     raise ValueError(
-                        'Problem in parsing %s, it has an invalid structure at line %d' % (filename, file.tell()))
+                        'Problem in parsing %s, it has an invalid structure at line %d' 
+                        % (filename, file.tell()))
 
         self._add_properties(edges_p)
         self._add_properties(nodes_p)
@@ -232,12 +237,15 @@ class Brain:
 
     def _add_properties(self, properties):
         """
-        It receives a list with properties and add them to either the nodes or edges according to the structure.
+        It receives a list with properties and add them to either the nodes or edges according to
+        the structure.
         For nodes properties, the format is:
-            [ [property_name, node_id, property_value], [property_name, node_id, property_value], ...]
+            [ [property_name_1, node_id_1, property_value_1],
+              [property_name_2, node_id_2, property_value_2], ...]
 
         For edges properties, the format is:
-            [ [property_name, edge1, edge2, property_value], [property_name, edge1, edge2, property_value], ...]
+            [ [property_name_1, edge1, edge2, property_value_3],
+              [property_name_2, edge1, edge2, property_value_4], ...]
         """
         for prop in properties:
             try:
@@ -319,18 +327,19 @@ class Brain:
         ----------
         threshold_type: {'edgePC', 'totalEdges', 'tVal', None}
             The type of threshold applied. Four options are available:
-            "edgePC" -> retain the most connected edges as a percentage of the total possible number of edges.
-                         "value" must be between 0 and 100
+            "edgePC" -> retain the most connected edges as a percentage of the total possible
+                        number of edges. `value` in this case must be between 0 and 100.
             "totalEdges" -> retain the most strongly connected edges
             "tVal" -> retain edges with a weight greater or equal than value
             None -> all possible edges are created
         value: float
             Value according to threshold_type
         use_absolute: bool
-            Thresholding by absolute value. For example, if this is set to False, a weight of 1 is stronger than -1.
+            Thresholding by absolute value. For example, if this is set to False, a weight of 1 is
+            stronger than -1.
             If this is set to True, these values are equally strong.
-            This affects thresholding with "edgePC", "totalEdges" and "tVal". In case of "tVal", it will threshold
-            for weights >= abs(tVal) and <= -abs(tVal)
+            This affects thresholding with "edgePC", "totalEdges" and "tVal".
+            In case of "tVal", it will threshold for weights >= abs(tVal) and <= -abs(tVal)
 
         Raises
         ------
@@ -417,7 +426,8 @@ class Brain:
 
     def update_adj_mat(self, edge):
         """
-        It updates the adjacency matrix by bringing the weight of an edge in G to the adjacency matrix
+        It updates the adjacency matrix by bringing the weight of an edge in G to
+        the adjacency matrix
 
         Parameters
         ----------
@@ -441,17 +451,17 @@ class Brain:
         except KeyError as error:
             import sys
             _, _, tb = sys.exc_info()
-            raise KeyError(error, "Edge does not exist in G or doesn't have constants.WEIGHT property").with_traceback(
-                tb)
+            error_msg = "Edge does not exist in G or doesn't have constants.WEIGHT property"
+            raise KeyError(error, error_ms).with_traceback(tb)
         except IndexError:
             import sys
             _, _, tb = sys.exc_info()
-            raise IndexError("adjMat too small to have such an edge").with_traceback(tb).with_traceback(tb)
+            raise IndexError("adjMat too small to have such an edge").with_traceback(tb)
 
     def local_thresholding(self, threshold_type=None, value=0.):
         """
-        Threshold the adjacency matrix by building from the minimum spanning tree (MST) and adding successive N-nearest
-        neighbour degree graphs.
+        Threshold the adjacency matrix by building from the minimum spanning tree (MST) and adding
+        successive N-nearest neighbour degree graphs.
         Thus, if you want to have a local thresholding of N edges when the MST has more than N edges, thresholding will
         retain the MST.
         In order to generate the MST, `self.weight_to_distance()` will need to be called.

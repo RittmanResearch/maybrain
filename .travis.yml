@@ -21,18 +21,20 @@ install:
  - conda install matplotlib=2.1
  - conda install -c conda-forge nilearn=0.4
  #- conda install pyqt=4
+ - pip install pylint
  - pip install .
  - conda install -c conda-forge codecov
 before_script:
   - "export DISPLAY=:99.0"
   - "sh -e /etc/init.d/xvfb start"
   - sleep 3 # give xvfb some time to start
-script: 
+script:
  - python test/test_brain_class.py
  - python test/test_smoke_plotting_algs.py
  - coverage run --append test/test_brain_class.py
  - coverage run --append test/test_smoke_plotting_algs.py
 # - coverage combine
+ - pylint maybrain
 branches:
   only:
   - gh-pages
