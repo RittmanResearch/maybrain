@@ -5,11 +5,11 @@ import copy
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+import numpy as np
+
 from maybrain import brain as mbt
 from maybrain import resources as rr
 from maybrain import constants as ct
-
-import numpy as np
 
 
 def _get_ordered_array_and_labels(matrix, dummy_adj_file, hemi_prop, lobes_prop, anat_prop,
