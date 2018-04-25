@@ -1,9 +1,13 @@
+"""
+Module for normalisation of the graphs representing the brain and respective measures
+"""
+import numbers
+
 from random import shuffle
 import numpy as np
 import networkx as nx
 
 from maybrain import constants as ct
-import numbers
 
 
 class RandomGenerationError(Exception):
@@ -230,8 +234,8 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exac
             pass
     except KeyError as error:
         import sys
-        _, _, tb = sys.exc_info()
-        raise KeyError(error, "Edge doesn't have constants.WEIGHT property").with_traceback(tb)
+        _, _, tbb = sys.exc_info()
+        raise KeyError(error, "Edge doesn't have constants.WEIGHT property").with_traceback(tbb)
 
     if isinstance(init_vals, dict):
         nodes_dict = {v: [] for v in brain.G.nodes()}
@@ -267,8 +271,7 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exac
             for node in nodes_dict:
                 nodes_dict[node] = init_vals[node] / np.mean(nodes_dict[node])
         return nodes_dict
-    else:
-        if ret_normalised:
-            return init_vals / np.mean(vals)
-        else:
-            return vals
+
+    if ret_normalised:
+        return init_vals / np.mean(vals)
+    return vals

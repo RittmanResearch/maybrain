@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-
-import numpy as np
+"""
+Utility module with recipes to calculate some common measures
+"""
 from os import path, rename
+import numpy as np
 
 
 def threshold_to_percentage(brain, threshold):
@@ -63,23 +65,23 @@ def percent_connected(brain):
     return float(brain.G.number_of_edges()) / float(total_connections)
 
 
-def writeResults(results, measure,
-                 outfilebase="brain",
-                 append=True,
-                 propDict=None):
+def write_results(results, measure,
+                  outfilebase="brain",
+                  append=True,
+                  propdict=None):
     """
     Function to write out results
     """
-    outFile = outfilebase + measure + '.txt'
-    if not path.exists(outFile) or not append:
-        if path.exists(outFile):
-            rename(outFile, outFile + '.old')
-        f = open(outFile, "w")
-        writeHeadFlag = True
+    outfile = outfilebase + measure + '.txt'
+    if not path.exists(outfile) or not append:
+        if path.exists(outfile):
+            rename(outfile, outfile + '.old')
+        file = open(outfile, "w")
+        writeheadflag = True
 
     else:
-        f = open(outFile, "a")
-        writeHeadFlag = False
+        file = open(outfile, "a")
+        writeheadflag = False
 
     # check to see what form the results take
     if isinstance(results, (dict)):
@@ -89,82 +91,84 @@ def writeResults(results, measure,
         out = ' '.join([str(results[v]) if v in list(results.keys()) else 'NA' for v in headers])
 
     elif isinstance(results, (list)):
-        if writeHeadFlag:
+        if writeheadflag:
             headers = ' '.join([str(v) for v in range(len(results))])
         out = ' '.join([str(v) for v in results])
 
     else:
-        if writeHeadFlag:
+        if writeheadflag:
             headers = [measure]
         out = str(results)
 
     # write headers
-    if propDict:
-        propHeaders = list(propDict.keys())
-        propHeaders.sort()
+    if propdict:
+        propheaders = list(propdict.keys())
+        propheaders.sort()
 
-    if writeHeadFlag:
+    if writeheadflag:
         headers = ' '.join([str(v) for v in headers])
-        if propDict:
-            headers = ' '.join([' '.join(propHeaders), headers])
+        if propdict:
+            headers = ' '.join([' '.join(propheaders), headers])
 
-        f.writelines(headers + '\n')
+        file.writelines(headers + '\n')
 
     # add on optional extras
-    if propDict:
-        outProps = ' '.join([str(propDict[v]) for v in propHeaders])
-        out = ' '.join([outProps, out])
+    if propdict:
+        outprops = ' '.join([str(propdict[v]) for v in propheaders])
+        out = ' '.join([outprops, out])
 
-    f.writelines(out + '\n')
-    f.close()
+    file.writelines(out + '\n')
+    file.close()
 
 
-def extractCoordinates(template, outFile="ROI_xyz.txt"):
+def extract_coordinates(template, outfile="ROI_xyz.txt"):
+    """
+    Legacy code
+    """
     import nibabel as nb
     import csv
 
     # load image
-    f = nb.load(template)
-    fData = f.get_data()
+    file = nb.load(template)
+    f_data = file.get_data()
 
     # extract voxel coordinates
-    I, J, K = fData.shape
-    coords = np.zeros((I, J, K, 3))
-    coords[..., 0] = np.arange(I)[:, np.newaxis, np.newaxis]
-    coords[..., 1] = np.arange(J)[np.newaxis, :, np.newaxis]
-    coords[..., 2] = np.arange(K)[np.newaxis, np.newaxis, :]
+    i, j, k = f_data.shape
+    coords = np.zeros((i, j, k, 3))
+    coords[..., 0] = np.arange(i)[:, np.newaxis, np.newaxis]
+    coords[..., 1] = np.arange(j)[np.newaxis, :, np.newaxis]
+    coords[..., 2] = np.arange(k)[np.newaxis, np.newaxis, :]
 
     # convert voxel coordinates to mm values using affine values
-    M = f.affine[:3, :3]
-    abc = f.affine[:3, 3]
+    mmm = file.affine[:3, :3]
+    abc = file.affine[:3, 3]
 
     for x in range(len(coords[:, 0, 0, 0])):
         for y in range(len(coords[0, :, 0, 0])):
             for z in range(len(coords[0, 0, :, 0])):
-                coords[x, y, z, :] = M.dot(coords[x, y, z, :]) + abc
+                coords[x, y, z, :] = mmm.dot(coords[x, y, z, :]) + abc
 
     # get unique values in the mask
-    valList = np.unique(fData)
-    valList = valList[valList != 0]
+    val_list = np.unique(f_data)
+    val_list = val_list[val_list != 0]
 
-    out = open(outFile, "w")
+    out = open(outfile, "w")
     writer = csv.DictWriter(out,
                             fieldnames=["Node", "x", "y", "z"],
-                            delimiter=" "
-                            )
-    for v in valList:
-        tempArr = np.zeros((I, J, K, 3), dtype=bool)
-        tfArray = fData == v
-        tempArr[..., 0] = tfArray
-        tempArr[..., 1] = tfArray
-        tempArr[..., 2] = tfArray
+                            delimiter=" ")
+    for val in val_list:
+        temp_arr = np.zeros((i, j, k, 3), dtype=bool)
+        tf_array = f_data == val
+        temp_arr[..., 0] = tf_array
+        temp_arr[..., 1] = tf_array
+        temp_arr[..., 2] = tf_array
 
-        tempArr = coords[tempArr]
-        tempArr = np.mean(tempArr.reshape([tempArr.shape[0] / 3, 3]), axis=0)
-        outList = [str(int(v))]
-        outList.extend(["{:.2f}".format(x) for x in tempArr])
-        outDict = dict(list(zip(writer.fieldnames,
-                                outList)))
-        writer.writerow(outDict)
+        temp_arr = coords[temp_arr]
+        temp_arr = np.mean(temp_arr.reshape([temp_arr.shape[0] / 3, 3]), axis=0)
+        outlist = [str(int(val))]
+        outlist.extend(["{:.2f}".format(x) for x in temp_arr])
+        outdict = dict(list(zip(writer.fieldnames,
+                                outlist)))
+        writer.writerow(outdict)
 
     out.close()
