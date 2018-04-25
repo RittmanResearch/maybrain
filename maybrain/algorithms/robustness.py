@@ -31,7 +31,7 @@ def robustness(brain, iter_len=500, window_size=50):
     """
     f_list = np.zeros(iter_len)
     for i in range(iter_len):
-        a_max = max(nx.connected.connected_component_subgraphs(brain.G), key=len)
+        a_max = max(nx.connected_component_subgraphs(brain.G), key=len)
         n_list = [v for v in brain.G.nodes()]
         random.shuffle(n_list)
         n_list = n_list[:-1]
@@ -44,7 +44,7 @@ def robustness(brain, iter_len=500, window_size=50):
             if n in a_max.nodes():
                 a_max.remove_node(n)
                 if not nx.is_connected(a_max):  # only recalculate if the further fragmentation
-                    a_max = max(nx.connected.connected_component_subgraphs(a_max), key=len)
+                    a_max = max(nx.connected_component_subgraphs(a_max), key=len)
                     a_len = a_max.number_of_nodes()
                 else:
                     a_len -= 1

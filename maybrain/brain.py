@@ -42,6 +42,7 @@ class Brain:
         self.nbiso = None  # all the isosurface info, nibabel object
         self.iso = None  # the isosurface
         self.iso_header = None  # header information
+        self.parcel_list = None
 
         self.risk_edges = None
 

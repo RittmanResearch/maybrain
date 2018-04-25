@@ -1,3 +1,7 @@
+"""
+Initialisation file for resources package
+
+"""
 import pkg_resources
 
 PROPERTIES_ANATLABEL_500 = pkg_resources.resource_filename('maybrain', 'resources/properties_anatlabels_500.txt')

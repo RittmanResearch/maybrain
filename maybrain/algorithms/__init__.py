@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Initialisation file for algorithms module
+Initialisation file for algorithms package
 
 """
 

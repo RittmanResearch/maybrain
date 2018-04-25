@@ -97,7 +97,7 @@ def plot_connectome(brain,
         colours = []
         for n in brain.G.nodes(data=True):
             we_r = np.where(np.array(node_attributes) == n[1][node_property])
-            if len(we_r[0]) > 0:
+            if we_r[0]:
                 colours.append(palette[we_r[0][0]])
             else:
                 colours.append(palette[-1])  # not found, so another colour

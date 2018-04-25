@@ -49,7 +49,7 @@ class TestPlottingAndAlgs(unittest.TestCase):
         # Getting random graph
         while True:
             try:
-                rand = mba.generate_random_graph_from_degree(self.a, throw_exception=True, edge_attrs=[ct.WEIGHT])
+                rand = mba.generate_rand_from_degree(self.a, throw_exception=True, edge_attrs=[ct.WEIGHT])
                 break  # if it reaches here, means randomiser didn't throw any exception, so break while
             except mba.RandomGenerationError as error:
                 pass
