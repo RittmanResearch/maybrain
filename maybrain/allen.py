@@ -936,7 +936,7 @@ def load_allen(subject,
         node_counter += 1
         print(node_counter)
 
-        #STORE structure_acronym or structure_name depending on symmetrise
+        STORE structure_acronym or structure_name depending on symmetrise
         #headers.append(s_id)
 
 #            if not s_id in list(s_id_dict.keys()):
