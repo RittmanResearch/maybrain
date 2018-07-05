@@ -1,5 +1,7 @@
+"""
+Utility module for easy handling of highlights (nodes or edges) from brains
+"""
 from maybrain import constants as ct
-import numpy as np
 
 
 __number_of_highlights = 1  # Used for automatic labeling
@@ -13,11 +15,11 @@ def _get_auto_label():
     # If number doesn't exist in highlights, use it
     if __number_of_highlights not in highlights:
         return __number_of_highlights
+
     # Otherwise, try until a key is available
-    else:
-        while __number_of_highlights in highlights:
-            __number_of_highlights += 1
-        return __number_of_highlights
+    while __number_of_highlights in highlights:
+        __number_of_highlights += 1
+    return __number_of_highlights
 
 
 class Highlight:
@@ -54,12 +56,12 @@ def make_highlight(edge_inds=None, nodes_inds=None, label=None):
     if not all(isinstance(item, tuple) and len(item) == 2 for item in edge_inds):
         raise TypeError("The list of edges is not a list of tuples")
 
-    h = Highlight(edges=edge_inds, nodes=nodes_inds)
+    highl = Highlight(edges=edge_inds, nodes=nodes_inds)
 
     if not label:
         label = _get_auto_label()
 
-    highlights[label] = h
+    highlights[label] = highl
 
 
 def highlight_from_conds(brain, prop, rel, val, mode, label=None):
@@ -101,7 +103,7 @@ def highlight_from_conds(brain, prop, rel, val, mode, label=None):
         label = _get_auto_label()
 
     # make an instance of Highlight
-    h = Highlight()
+    highl = Highlight()
 
     # extract lists from edges
     if mode in ['edge', 'node|edge', 'edge|node']:
@@ -113,7 +115,7 @@ def highlight_from_conds(brain, prop, rel, val, mode, label=None):
 
             # add to highlight if good
             if _prop_compare(val_to_compare, rel, val):
-                h.edges.append((e[0], e[1]))
+                highl.edges.append((e[0], e[1]))
 
     # extract lists from nodes
     if mode in ['node', 'node|edge', 'edge|node']:
@@ -134,10 +136,10 @@ def highlight_from_conds(brain, prop, rel, val, mode, label=None):
 
             # add to highlight if good
             if _prop_compare(val_to_compare, rel, val):
-                h.nodes.append(node[0])
+                highl.nodes.append(node[0])
 
     # add highlight to dictionary
-    highlights[label] = h
+    highlights[label] = highl
 
 
 def _prop_compare(val_to_compare, rel, val):
@@ -145,28 +147,28 @@ def _prop_compare(val_to_compare, rel, val):
     Compare `val_to_compare` relative to `val`
     This is meant to be used just by highlight_from_conds()
     """
-    d = val_to_compare  # making code more readily down here
+    orig = val_to_compare  # making code more readily down here
     if rel == 'eq':
-        b = d == val
+        comp = orig == val
     elif rel == 'gt':
-        b = d > val
+        comp = orig > val
     elif rel == 'lt':
-        b = d < val
+        comp = orig < val
     elif rel == 'leq':
-        b = d <= val
+        comp = orig <= val
     elif rel == 'geq':
-        b = d >= val
+        comp = orig >= val
     elif rel == 'in()':
-        b = (d > val[0]) and (d < val[1])
+        comp = (orig > val[0]) and (orig < val[1])
     elif rel == 'in[)':
-        b = (d >= val[0]) and (d < val[1])
+        comp = (orig >= val[0]) and (orig < val[1])
     elif rel == 'in(]':
-        b = (d > val[0]) and (d <= val[1])
+        comp = (orig > val[0]) and (orig <= val[1])
     elif rel == 'in[]':
-        b = (d >= val[0]) and (d <= val[1])
+        comp = (orig >= val[0]) and (orig <= val[1])
     elif rel == 'in':
-        b = d in val
+        comp = orig in val
     else:
         raise TypeError('Relation not recognised: ' + str(rel))
 
-    return b
+    return comp

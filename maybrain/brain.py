@@ -2,9 +2,11 @@
 """
 Module which contains the definition of Brain class.
 """
+import random
+
 import networkx as nx
 import numpy as np
-import random
+
 from maybrain import constants as ct
 
 
@@ -34,19 +36,20 @@ class Brain:
         # background info imported by nibabel
         self.nbbackground = None  # the nibabel object
         self.background = None  # coordinates of background
-        self.backgroundHeader = None  # header of nibabel data
+        self.background_header = None  # header of nibabel data
 
         # isosurface information imported by nibabel
         self.nbiso = None  # all the isosurface info, nibabel object
         self.iso = None  # the isosurface
-        self.isoHeader = None  # header information
+        self.iso_header = None  # header information
+        self.parcel_list = None
 
         self.risk_edges = None
 
         # For the properties features
-        self.nodeProperties = []
-        self.edgeProperties = []
-        self.update_properties_after_threshold = False
+        self.node_properties = []
+        self.edge_properties = []
+        self.update_props_after_threshold = False
 
         # create a new networkX graph object
         if self.directed:
@@ -75,10 +78,11 @@ class Brain:
             na_vals = ["NA"]
         lines = []
         try:
-            with open(fname, "r") as f:
-                for l in f:
-                    l = l.strip()
-                    lines.append(list(map(float, [v if v not in na_vals else np.nan for v in l.split(sep=delimiter)])))
+            with open(fname, "r") as file:
+                for line in file:
+                    line = line.strip()
+                    list_tmp = [v if v not in na_vals else np.nan for v in line.split(sep=delimiter)]
+                    lines.append(list(map(float, list_tmp)))
         except IOError as error:
             error.strerror = 'Problem with opening file "' + fname + '": ' + error.strerror
             raise error
@@ -91,13 +95,14 @@ class Brain:
 
         # update adjacency matrix to null values of excluded nodes
         if nodes_to_exclude:
-            for en in nodes_to_exclude:
-                self.adjMat[:, en] = np.nan
-                self.adjMat[en, :] = np.nan
+            for n_exc in nodes_to_exclude:
+                self.adjMat[:, n_exc] = np.nan
+                self.adjMat[n_exc, :] = np.nan
 
     def import_spatial_info(self, fname, delimiter=None, convert_mni=False):
         """
-        Add 3D coordinate information for each node from a given file. It needs to be called after import_adj_file()
+        Add 3D coordinate information for each node from a given file. It needs to be called after
+        import_adj_file()
 
         Parameters
         ----------
@@ -110,31 +115,32 @@ class Brain:
         """
         # open file
         try:
-            f = open(fname, "r")
+            file = open(fname, "r")
         except IOError as error:
-            error.strerror = 'Problem with opening 3D position file "' + fname + '": ' + error.strerror
+            error.strerror = 'Problem with opening 3D position file "' \
+                             + fname + '": ' + error.strerror
             raise error
 
         # get data from file
-        lines = f.readlines()
+        lines = file.readlines()
         node_count = 0
         for line in lines:
-            l = line.strip().split(sep=delimiter)
+            line = line.strip().split(sep=delimiter)
 
             if convert_mni:
-                l[1] = 45 - (float(l[1]) / 2)
-                l[2] = 63 + (float(l[2]) / 2)
-                l[3] = 36 + (float(l[3]) / 2)
+                line[1] = 45 - (float(line[1]) / 2)
+                line[2] = 63 + (float(line[2]) / 2)
+                line[3] = 36 + (float(line[3]) / 2)
 
             if node_count in self.G.nodes():
-                self.G.nodes[node_count][ct.XYZ] = (float(l[1]), float(l[2]), float(l[3]))
-                self.G.nodes[node_count][ct.ANAT_LABEL] = l[0]
+                self.G.nodes[node_count][ct.XYZ] = (float(line[1]), float(line[2]), float(line[3]))
+                self.G.nodes[node_count][ct.ANAT_LABEL] = line[0]
 
             node_count += 1
 
-        f.close()
+        file.close()
 
-    def import_node_properties_from_dict(self, prop_name, props):
+    def import_node_props_from_dict(self, prop_name, props):
         """
         Add properties to the nodes of the underlying G object from a dictionary.
 
@@ -143,7 +149,8 @@ class Brain:
         prop_name: str
             The name of the property to add to the nodes
         props: dict
-            Dictionary where the keys are the nodes' identification, and the value is the value of the property to add
+            Dictionary where the keys are the nodes' identification, and the value is the value of
+            the property to add
 
         Raises
         ------
@@ -151,15 +158,15 @@ class Brain:
             If props is not a dictionary
         """
         if not isinstance(props, dict):
-            raise TypeError("import_node_properties_from_dict() expects props to be a dict")
+            raise TypeError("import_node_props_from_dict() expects props to be a dict")
         nodes_p = []
-        for p in props.items():
-            nodes_p.append([prop_name, p[0], p[1]])
+        for prop in props.items():
+            nodes_p.append([prop_name, prop[0], prop[1]])
 
         self._add_properties(nodes_p)
-        self.nodeProperties.extend(nodes_p)
+        self.node_properties.extend(nodes_p)
 
-    def import_edge_properties_from_dict(self, prop_name, props):
+    def import_edge_props_from_dict(self, prop_name, props):
         """
         Add properties to the edges of the underlying G object from a dictionary.
 
@@ -168,8 +175,8 @@ class Brain:
         prop_name: str
             The name of the property to add to the edges
         props: dict
-            Dictionary where the keys are the edges' identification (tuple), and the value is the value of the property
-            to add
+            Dictionary where the keys are the edges' identification (tuple), and the value is the
+            value of the property to add
 
         Raises
         ------
@@ -177,13 +184,13 @@ class Brain:
             If props is not a dictionary
         """
         if not isinstance(props, dict):
-            raise TypeError("import_edge_properties_from_dict() expects props to be a dict")
+            raise TypeError("import_edge_props_from_dict() expects props to be a dict")
         edges_p = []
-        for p in props.items():
-            edges_p.append([prop_name, p[0][0], p[0][1], p[1]])
+        for prop in props.items():
+            edges_p.append([prop_name, prop[0][0], prop[0][1], prop[1]])
 
         self._add_properties(edges_p)
-        self.edgeProperties.extend(edges_p)
+        self.edge_properties.extend(edges_p)
 
     def import_properties(self, filename):
         """
@@ -222,22 +229,26 @@ class Brain:
                     edges_p.append([prop, int(info[0]), int(info[1]), info[2]])
                 else:
                     raise ValueError(
-                        'Problem in parsing %s, it has an invalid structure at line %d' % (filename, file.tell()))
+                        'Problem in parsing %s, it has an invalid structure at line %d'
+                        % (filename, file.tell()))
 
         self._add_properties(edges_p)
         self._add_properties(nodes_p)
 
-        self.nodeProperties.extend(nodes_p)
-        self.edgeProperties.extend(edges_p)
+        self.node_properties.extend(nodes_p)
+        self.edge_properties.extend(edges_p)
 
     def _add_properties(self, properties):
         """
-        It receives a list with properties and add them to either the nodes or edges according to the structure.
+        It receives a list with properties and add them to either the nodes or edges according to
+        the structure.
         For nodes properties, the format is:
-            [ [property_name, node_id, property_value], [property_name, node_id, property_value], ...]
+            [ [property_name_1, node_id_1, property_value_1],
+              [property_name_2, node_id_2, property_value_2], ...]
 
         For edges properties, the format is:
-            [ [property_name, edge1, edge2, property_value], [property_name, edge1, edge2, property_value], ...]
+            [ [property_name_1, edge1, edge2, property_value_3],
+              [property_name_2, edge1, edge2, property_value_4], ...]
         """
         for prop in properties:
             try:
@@ -245,21 +256,21 @@ class Brain:
                     self.G.nodes[prop[1]][prop[0]] = prop[2]
                 elif len(prop) == 4:  # edges
                     self.G.edges[prop[1], prop[2]][prop[0]] = prop[3]
-            except:
+            except BaseException:
                 print('Warning! Unable to process property %s' % prop)
 
     def import_background(self, fname):
+        """
+        Import a file for background info using nbbabel
+        gives a 3D array with data range 0 to 255 for test data
+        could be 4d??
+        defines an nibabel object, plus ndarrays with data and header info in
+        """
         import nibabel as nb
-        ''' Import a file for background info using nbbabel
-            gives a 3D array with data range 0 to 255 for test data
-            could be 4d??
-            defines an nibabel object, plus ndarrays with data and header info in
-
-        '''
 
         self.nbbackground = nb.load(fname)
         self.background = self.nbbackground.get_data()
-        self.backgroundHeader = self.nbbackground.get_header()
+        self.background_header = self.nbbackground.get_header()
 
     def import_iso(self, fname):
         """
@@ -272,7 +283,7 @@ class Brain:
         import nibabel as nb
         self.nbiso = nb.load(fname)
         self.iso = self.nbiso.get_data()
-        self.isoHeader = self.nbiso.get_header()
+        self.iso_header = self.nbiso.get_header()
 
     def parcels(self, node_list):
         """
@@ -292,11 +303,11 @@ class Brain:
             zero_arr = zero_arr + n_arr
             zero_arr.mask = None
 
-        self.parcelList = np.ma.masked_values(zero_arr, 0.0)
+        self.parcel_list = np.ma.masked_values(zero_arr, 0.0)
 
     def export_parcels_nii(self, outname='brain', value_dict=None):
         """
-        This function saves the parcelList as a nifti file. It requires the
+        This function saves the parcel_list as a nifti file. It requires the
         brain.parcels function has been run first.
         """
         import nibabel as nb
@@ -305,9 +316,9 @@ class Brain:
             for n in list(value_dict.keys()):
                 out_mat[np.where(self.nbiso.get_data() == n + 1)] = value_dict[n]
         else:
-            out_mat = self.parcelList
+            out_mat = self.parcel_list
 
-        n = nb.Nifti1Image(out_mat, self.nbiso.get_affine(), header=self.isoHeader)
+        n = nb.Nifti1Image(out_mat, self.nbiso.get_affine(), header=self.iso_header)
 
         nb.save(n, outname + '.nii')
 
@@ -319,18 +330,19 @@ class Brain:
         ----------
         threshold_type: {'edgePC', 'totalEdges', 'tVal', None}
             The type of threshold applied. Four options are available:
-            "edgePC" -> retain the most connected edges as a percentage of the total possible number of edges.
-                         "value" must be between 0 and 100
+            "edgePC" -> retain the most connected edges as a percentage of the total possible
+                        number of edges. `value` in this case must be between 0 and 100.
             "totalEdges" -> retain the most strongly connected edges
             "tVal" -> retain edges with a weight greater or equal than value
             None -> all possible edges are created
         value: float
             Value according to threshold_type
         use_absolute: bool
-            Thresholding by absolute value. For example, if this is set to False, a weight of 1 is stronger than -1.
+            Thresholding by absolute value. For example, if this is set to False, a weight of 1 is
+            stronger than -1.
             If this is set to True, these values are equally strong.
-            This affects thresholding with "edgePC", "totalEdges" and "tVal". In case of "tVal", it will threshold
-            for weights >= abs(tVal) and <= -abs(tVal)
+            This affects thresholding with "edgePC", "totalEdges" and "tVal".
+            In case of "tVal", it will threshold for weights >= abs(tVal) and <= -abs(tVal)
 
         Raises
         ------
@@ -401,9 +413,9 @@ class Brain:
                 self.G.add_edge(e[0], e[1], weight=e[2])
 
         # Apply existing properties
-        if self.update_properties_after_threshold:
-            self._add_properties(self.nodeProperties)
-            self._add_properties(self.edgeProperties)
+        if self.update_props_after_threshold:
+            self._add_properties(self.node_properties)
+            self._add_properties(self.edge_properties)
 
     def reconstruct_adj_mat(self):
         """
@@ -417,7 +429,8 @@ class Brain:
 
     def update_adj_mat(self, edge):
         """
-        It updates the adjacency matrix by bringing the weight of an edge in G to the adjacency matrix
+        It updates the adjacency matrix by bringing the weight of an edge in G to
+        the adjacency matrix
 
         Parameters
         ----------
@@ -433,25 +446,25 @@ class Brain:
         """
 
         try:
-            w = self.G.edges[edge[0], edge[1]][ct.WEIGHT]
-            self.adjMat[edge[0], edge[1]] = w
+            e_wei = self.G.edges[edge[0], edge[1]][ct.WEIGHT]
+            self.adjMat[edge[0], edge[1]] = e_wei
 
             if not self.directed:
-                self.adjMat[edge[1], edge[0]] = w
+                self.adjMat[edge[1], edge[0]] = e_wei
         except KeyError as error:
             import sys
-            _, _, tb = sys.exc_info()
-            raise KeyError(error, "Edge does not exist in G or doesn't have constants.WEIGHT property").with_traceback(
-                tb)
+            _, _, tbb = sys.exc_info()
+            error_msg = "Edge does not exist in G or doesn't have constants.WEIGHT property"
+            raise KeyError(error, error_msg).with_traceback(tbb)
         except IndexError:
             import sys
-            _, _, tb = sys.exc_info()
-            raise IndexError("adjMat too small to have such an edge").with_traceback(tb).with_traceback(tb)
+            _, _, tbb = sys.exc_info()
+            raise IndexError("adjMat too small to have such an edge").with_traceback(tbb)
 
     def local_thresholding(self, threshold_type=None, value=0.):
         """
-        Threshold the adjacency matrix by building from the minimum spanning tree (MST) and adding successive N-nearest
-        neighbour degree graphs.
+        Threshold the adjacency matrix by building from the minimum spanning tree (MST) and adding
+        successive N-nearest neighbour degree graphs.
         Thus, if you want to have a local thresholding of N edges when the MST has more than N edges, thresholding will
         retain the MST.
         In order to generate the MST, `self.weight_to_distance()` will need to be called.
@@ -491,10 +504,10 @@ class Brain:
 
         # create minimum spanning tree
         self.weight_to_distance()
-        t = nx.minimum_spanning_tree(self.G, weight="distance")
+        min_t = nx.minimum_spanning_tree(self.G, weight="distance")
 
         if not threshold_type:
-            self.G = t
+            self.G = min_t
             return  # Nothing else to do, just return
         elif threshold_type == 'edgePC':
             # find threshold as a percentage of total possible edges
@@ -509,7 +522,7 @@ class Brain:
         else:  # 'totalEdges' option
             edgenum = value
 
-        len_edges = t.number_of_edges()
+        len_edges = min_t.number_of_edges()
         if len_edges > edgenum:
             print("Warning: The minimum spanning tree already has: " + str(len_edges) + " edges, select more edges.",
                   "Local Threshold will be applied by just retaining the Minimum Spanning Tree")
@@ -523,7 +536,7 @@ class Brain:
             number_before = nng.number_of_edges()
 
             # remove edges from the NNG that exist already in the new graph/MST
-            nng.remove_edges_from(t.edges())
+            nng.remove_edges_from(min_t.edges())
 
             # Ending condition. No more edges to add so break the cycle
             if nng.number_of_edges() == 0 and number_before >= maximum_edges:
@@ -538,19 +551,19 @@ class Brain:
 
             # add edges to graph in order of connectivity strength
             for edge in edge_list:
-                t.add_edges_from([edge])
-                len_edges = t.number_of_edges()
+                min_t.add_edges_from([edge])
+                len_edges = min_t.number_of_edges()
                 if len_edges >= edgenum:
                     break
 
             k += 1
 
-        self.G = t
+        self.G = min_t
 
         # Apply existing properties
-        if self.update_properties_after_threshold:
-            self._add_properties(self.nodeProperties)
-            self._add_properties(self.edgeProperties)
+        if self.update_props_after_threshold:
+            self._add_properties(self.node_properties)
+            self._add_properties(self.edge_properties)
 
     def binarise(self):
         """
@@ -575,26 +588,29 @@ class Brain:
 
     def _nng(self, k):
         """ Private method to help local thresholding by creating a k-nearest neighbour graph"""
-        g = nx.Graph()
+        gra = nx.Graph()
         nodes = list(range(len(self.adjMat[0])))
 
-        g.add_nodes_from(nodes)
+        gra.add_nodes_from(nodes)
 
         for i in nodes:
-            l = np.ma.masked_array(self.adjMat[i, :], mask=np.isnan(self.adjMat[i]))
-            l.mask[i] = True
+            line = np.ma.masked_array(self.adjMat[i, :], mask=np.isnan(self.adjMat[i]))
+            line.mask[i] = True
 
-            for j in range(k):
-                node = np.argmax(l)
+            for _ in range(k):
+                node = np.argmax(line)
 
                 if not np.isnan(self.adjMat[i, node]):
-                    g.add_edge(i, node)
+                    gra.add_edge(i, node)
 
-                l.mask[node] = True
+                line.mask[node] = True
 
-        return g
+        return gra
 
     def find_spatially_nearest(self, node_list, contra=False, midline=44.5, connected=True, threshold=None):
+        """
+        Legacy code
+        """
         # find the spatially closest node as no topologically close nodes exist
         if isinstance(node_list, list):
             duff_node = random.choice(node_list)
@@ -620,10 +636,10 @@ class Brain:
 
         for node in nodes:
             try:
-                distance = np.linalg.norm(np.array(pos - np.array(self.G.nodes[node]['xyz'])))
+                distance = np.linalg.norm(np.array(pos - np.array(self.G.nodes[node][ct.XYZ])))
                 if distance < tval:
                     tlist.append(node)
-            except:
+            except BaseException:
                 print("Finding the spatially nearest node requires x,y,z values")
 
             if shortestnode[0]:
@@ -643,8 +659,7 @@ class Brain:
 
         if threshold:
             return tlist
-        else:
-            return shortestnode[0]
+        return shortestnode[0]
 
     def find_linked_nodes(self):
         """
@@ -660,12 +675,12 @@ class Brain:
         for n in self.G.nodes(data=True):
             n[1][ct.LINKED_NODES] = []
 
-        for l in self.G.edges():
+        for edg in self.G.edges():
             # add to list of connecting nodes for each participating node
-            self.G.nodes[l[0]][ct.LINKED_NODES].append(l[1])
+            self.G.nodes[edg[0]][ct.LINKED_NODES].append(edg[1])
 
             if not self.directed:
-                self.G.nodes[l[1]][ct.LINKED_NODES].append(l[0])
+                self.G.nodes[edg[1]][ct.LINKED_NODES].append(edg[0])
 
     def weight_to_distance(self):
         """
@@ -707,7 +722,7 @@ class Brain:
         TypeError: Exception
             If `hsphere` argument is wrong
         """
-        if not (hsphere in ['R', 'L']):
+        if hsphere not in ['R', 'L']:
             raise TypeError("Wrong hemisphere defined")
 
         nodes_to_remove = []
@@ -728,8 +743,8 @@ class Brain:
 
             # Adding new node and its attributes
             self.G.add_node(str(n[0]) + new_name)
-            for p in n[1].items():
-                self.G.nodes[str(n[0]) + new_name][p[0]] = p[1]
+            for prop in n[1].items():
+                self.G.nodes[str(n[0]) + new_name][prop[0]] = prop[1]
 
             self.G.nodes[str(n[0]) + new_name][ct.XYZ] = new_pos
 

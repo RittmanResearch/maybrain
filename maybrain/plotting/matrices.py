@@ -1,11 +1,15 @@
+"""
+Module which plotting functions to visualise adjacency matrices
+"""
+import copy
+
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+import numpy as np
+
 from maybrain import brain as mbt
 from maybrain import resources as rr
 from maybrain import constants as ct
-
-import numpy as np
-import copy
 
 
 def _get_ordered_array_and_labels(matrix, dummy_adj_file, hemi_prop, lobes_prop, anat_prop,
@@ -17,7 +21,8 @@ def _get_ordered_array_and_labels(matrix, dummy_adj_file, hemi_prop, lobes_prop,
     dummy_brain.import_properties(lobes_prop)
     dummy_brain.import_properties(hemi_prop)
 
-    # Sorting the nodes, first by hemisphere, then by lobe, then by anatomical label, and then by node number
+    # Sorting the nodes, first by hemisphere, then by lobe,
+    # then by anatomical label, and then by node number
     nodes = copy.deepcopy(list(dummy_brain.G.nodes(data=True)))
     nodes.sort(key=lambda x: (x[1][hemi_name], x[1][lobes_name], x[1][anat_name], x[0]))
 
@@ -38,7 +43,7 @@ def _get_ordered_array_and_labels(matrix, dummy_adj_file, hemi_prop, lobes_prop,
 def _plot_array(arr, title, labels, output_file):
     fig, ax = plt.subplots(figsize=(len(arr) / 50, len(arr) / 50))
     # Plotting
-    im = ax.imshow(arr, interpolation='none')  # plotting the ordered adjacency matrix
+    img = ax.imshow(arr, interpolation='none')  # plotting the ordered adjacency matrix
     # setting the labels by anatlabels name instead of numbers
     ax.set_xticklabels(labels)
     ax.set_yticklabels(labels)
@@ -53,22 +58,23 @@ def _plot_array(arr, title, labels, output_file):
     ax.tick_params(axis='both', which='both', labelsize=1, length=0.2, width=0.1)
 
     ax.tick_params(axis='both', pad=0.9)
-    ax.set_xticks(np.arange(len(arr) + 1))  # +1 creates an extra tick but otherwise plt would clip the image
-    ax.set_yticks(np.arange(len(arr) + 1))
-    # vertical labels
-    for label in im.axes.xaxis.get_ticklabels():
-        label.set_rotation(90)
-
-    plt.colorbar(im)
-    ax.set_title(title, y=1.08)
-
-    # Removing outer lines because they hide part of the first line/column
+    ax.set_xticks(np.arange(len(arr) + 1))  # +1 creates an extra tick so plt doesn't clip image
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
+    ax.set_yticks(np.arange(len(arr) + 1))
+    # vertical labels
+    for label in img.axes.xaxis.get_ticklabels():
+        label.set_rotation(90)
+
+    plt.colorbar(img)
+    ax.set_title(title, y=1.08)
+
+    # Removing outer lines because they hide part of the first line/column
     ax.spines['left'].set_visible(False)
 
-    # If outputfile is defined, fig is correctly closed, otherwise returned so others can add more information to it
+    # If outputfile is defined, fig is correctly closed,
+    # otherwise returned so others can add more information to it
     if output_file is not None:
         fig.savefig(output_file)
         plt.close(fig)
@@ -103,7 +109,8 @@ def plot_avg_matrix(brains, output_file=None, dummy_adj_file=rr.DUMMY_ADJ_FILE_5
     lobes_name: str
         Name to lookup for the lobe property
     anat_prop: str
-        The location/filepath of anatomical labels properties needed to create a dummy instance of Brain
+        The location/filepath of anatomical labels properties needed to create
+        a dummy instance of Brain
     anat_name: str
         Name to lookup for the anatomical labels property
 
@@ -125,8 +132,8 @@ def plot_avg_matrix(brains, output_file=None, dummy_adj_file=rr.DUMMY_ADJ_FILE_5
 
     # The final matrix with the averaged connection strength
     avg_matrix = np.empty([size_brain, size_brain])
-    # For each edge, it says how many brains contain that edge. Used to calculate the mean (we have to divide by the
-    #  total number)
+    # For each edge, it says how many brains contain that edge.
+    # Used to calculate the mean (we have to divide by the total number)
     elements = np.zeros([size_brain, size_brain], dtype=int)
 
     avg_matrix[:] = np.nan
@@ -152,10 +159,15 @@ def plot_avg_matrix(brains, output_file=None, dummy_adj_file=rr.DUMMY_ADJ_FILE_5
             avg_matrix[x][y] /= elements[x][y]
 
     arr, labels = _get_ordered_array_and_labels(avg_matrix, dummy_adj_file=dummy_adj_file,
-                                                hemi_prop=hemi_prop, lobes_prop=lobes_prop, anat_prop=anat_prop,
-                                                hemi_name=hemi_name, lobes_name=lobes_name, anat_name=anat_name)
+                                                hemi_prop=hemi_prop, lobes_prop=lobes_prop,
+                                                anat_prop=anat_prop,
+                                                hemi_name=hemi_name, lobes_name=lobes_name,
+                                                anat_name=anat_name)
 
-    return _plot_array(arr, title="Average Connection Strength Matrix", labels=labels, output_file=output_file)
+    return _plot_array(arr,
+                       title="Average Connection Strength Matrix",
+                       labels=labels,
+                       output_file=output_file)
 
 
 def plot_strength_matrix(brain, title="", output_file=None, dummy_adj_file=rr.DUMMY_ADJ_FILE_500,
@@ -185,7 +197,8 @@ def plot_strength_matrix(brain, title="", output_file=None, dummy_adj_file=rr.DU
     lobes_name: str
         Name to lookup for the lobe property
     anat_prop: str
-        The location/filepath of anatomical labels properties needed to create a dummy instance of Brain
+        The location/filepath of anatomical labels properties needed to create
+        a dummy instance of Brain
     anat_name: str
         Name to lookup for the anatomical labels property
 
@@ -195,7 +208,9 @@ def plot_strength_matrix(brain, title="", output_file=None, dummy_adj_file=rr.DU
         if output_file is None, this returns (fig, ax) from the figure created
     """
     arr, labels = _get_ordered_array_and_labels(brain.adjMat, dummy_adj_file=dummy_adj_file,
-                                                hemi_prop=hemi_prop, lobes_prop=lobes_prop, anat_prop=anat_prop,
-                                                hemi_name=hemi_name, lobes_name=lobes_name, anat_name=anat_name)
+                                                hemi_prop=hemi_prop, lobes_prop=lobes_prop,
+                                                anat_prop=anat_prop,
+                                                hemi_name=hemi_name, lobes_name=lobes_name,
+                                                anat_name=anat_name)
 
     return _plot_array(arr, title=title, labels=labels, output_file=output_file)

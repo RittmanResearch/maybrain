@@ -1,3 +1,6 @@
+"""
+Module to calculate robustness of a brain's graph
+"""
 import random
 import networkx as nx
 import numpy as np
@@ -28,30 +31,30 @@ def robustness(brain, iter_len=500, window_size=50):
     """
     f_list = np.zeros(iter_len)
     for i in range(iter_len):
-        a = max(nx.connected.connected_component_subgraphs(brain.G), key=len)
+        a_max = max(nx.connected_component_subgraphs(brain.G), key=len)
         n_list = [v for v in brain.G.nodes()]
         random.shuffle(n_list)
         n_list = n_list[:-1]
         mat = np.zeros(len(n_list))
         count = 0
-        S = a.number_of_nodes()
+        a_len = a_max.number_of_nodes()
 
-        while n_list and S > 1:
+        while n_list and a_len > 1:
             n = n_list.pop()
-            if n in a.nodes():
-                a.remove_node(n)
-                if not nx.is_connected(a):  # only recalculate if the further fragmentation
-                    a = max(nx.connected.connected_component_subgraphs(a), key=len)
-                    S = a.number_of_nodes()
+            if n in a_max.nodes():
+                a_max.remove_node(n)
+                if not nx.is_connected(a_max):  # only recalculate if the further fragmentation
+                    a_max = max(nx.connected_component_subgraphs(a_max), key=len)
+                    a_len = a_max.number_of_nodes()
                 else:
-                    S -= 1
-            mat[count] = S
+                    a_len -= 1
+            mat[count] = a_len
             count += 1
 
-        g = np.gradient(mat)
-        run_mean = np.convolve(g, np.ones((window_size,)) / window_size)[(window_size - 1):]
+        grad = np.gradient(mat)
+        run_mean = np.convolve(grad, np.ones((window_size,)) / window_size)[(window_size - 1):]
         diffs = np.diff(run_mean)
-        nr = np.argmin(diffs)
+        nr_arg = np.argmin(diffs)
 
-        f_list[i] = nr
+        f_list[i] = nr_arg
     return np.mean(f_list) / brain.G.number_of_nodes()

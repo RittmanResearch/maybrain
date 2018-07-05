@@ -1,10 +1,6 @@
-from os import path, rename, remove
-from csv import writer, DictWriter
-from networkx.algorithms import centrality
-from networkx import degree_histogram
-from numpy import array, sqrt, mean, sum, shape, zeros
-
-
+"""
+Utility functions for writing maybrain entities to files
+"""
 def output_adj_matrix(brain, filename):
     """
     Outputs the adjacency matrix to a file
@@ -18,17 +14,17 @@ def output_adj_matrix(brain, filename):
     """
 
     try:
-        with open(filename, "w") as f:
+        with open(filename, "w") as file:
             for line in brain.adjMat:
                 for num in line[:-1]:
-                    f.write(str(num) + '\t')
-                f.write(str(line[-1]) + '\n')
+                    file.write(str(num) + '\t')
+                file.write(str(line[-1]) + '\n')
     except IOError as error:
         error.strerror = 'Problem with opening file "' + filename + '": ' + error.strerror
         raise error
 
 
-def output_edges(brain, filename, properties=[]):
+def output_edges(brain, filename, properties=None):
     """
     Outputs the edges of a brain to file
 
@@ -41,27 +37,29 @@ def output_edges(brain, filename, properties=[]):
     properties: list
         The list of properties you want to save from each edge
     """
+    if properties is None:
+        properties = []
     try:
-        with open(filename, "w") as f:
+        with open(filename, "w") as file:
             # write column headers
             line = 'n1' + '\t' + 'n2'
-            for p in properties:
-                line = line + '\t' + p
+            for prop in properties:
+                line = line + '\t' + prop
             line = line + '\n'
-            f.write(line)
+            file.write(line)
 
             for e in brain.G.edges(data=True):
                 # add coordinates
                 line = str(e[0]) + '\t' + str(e[1])
                 # add other properties
-                for p in properties:
+                for prop in properties:
                     try:
-                        line = line + '\t' + str(e[2][p])
-                    except:
+                        line = line + '\t' + str(e[2][prop])
+                    except BaseException:
                         continue  # Property doesn't exist, just continue
                 line = line + '\n'
                 # write out
-                f.write(line)
+                file.write(line)
     except IOError as error:
         error.strerror = 'Problem with opening file "' + filename + '": ' + error.strerror
         raise error

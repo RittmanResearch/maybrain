@@ -49,7 +49,7 @@ class TestPlottingAndAlgs(unittest.TestCase):
         # Getting random graph
         while True:
             try:
-                rand = mba.generate_random_graph_from_degree(self.a, throw_exception=True, edge_attrs=[ct.WEIGHT])
+                rand = mba.generate_rand_from_degree(self.a, throw_exception=True, edge_attrs=[ct.WEIGHT])
                 break  # if it reaches here, means randomiser didn't throw any exception, so break while
             except mba.RandomGenerationError as error:
                 pass
@@ -85,12 +85,12 @@ class TestPlottingAndAlgs(unittest.TestCase):
         display.close()
 
         # When all the property has the same value:
-        self.a.import_node_properties_from_dict("degree", dict(nx.degree(self.a.G)))
+        self.a.import_node_props_from_dict("degree", dict(nx.degree(self.a.G)))
         display = mpt.plot_connectome(self.a, node_size_property="degree")
         display.close()
         # Now with different values
         self.a.apply_threshold()
-        self.a.import_node_properties_from_dict("degree", dict(nx.degree(self.a.G)))
+        self.a.import_node_props_from_dict("degree", dict(nx.degree(self.a.G)))
         display = mpt.plot_connectome(self.a, node_size_property="degree")
         display.close()
 
