@@ -1,42 +1,39 @@
 # Maybrain
 
 
-[![Python v3.5](https://img.shields.io/badge/python-v3.5-blue.svg)]() [![Build Status](https://travis-ci.org/RittmanResearch/maybrain.svg?branch=master)](https://travis-ci.org/RittmanResearch/maybrain) [![Release](https://img.shields.io/github/release/rittman/maybrain/all.svg)](https://github.com/rittman/maybrain/releases) [![License CC-BY-4.0](https://img.shields.io/badge/license-CC--BY--4.0-lightgrey.svg)](https://github.com/rittman/maybrain/blob/master/LICENSE)
+[![Python v3.5, v3.6](https://img.shields.io/badge/python-v3.5,v3.6-blue.svg)]() [![Build Status](https://travis-ci.org/RittmanResearch/maybrain.svg?branch=master)](https://travis-ci.org/RittmanResearch/maybrain) [![codecov](https://codecov.io/gh/RittmanResearch/maybrain/branch/master/graph/badge.svg)](https://codecov.io/gh/RittmanResearch/maybrain) [![Release](https://img.shields.io/github/release/RittmanResearch/maybrain/all.svg)](https://github.com/RittmanResearch/maybrain/releases) [![License Apache-2.0](https://img.shields.io/github/license/RittmanResearch/maybrain.svg)](https://github.com/rittman/maybrain/blob/master/LICENSE)
 
 
-Maybrain is a module written in Python for visualising brain connectivity data. Its purpose is to allow easy visualisation of brain connectome and related data, and perform various analyses. 
+Maybrain is a Python package for analysing and visualising brain connectome and related data. 
 
 ## Dependencies
 
-To run Maybrain you will need a Python 3.5 installtion and several other packages on which parts of the code depend. The following are required for analysis:
+To run Maybrain you will need a Python 3.5 installation and several other packages on which parts of the code depend. The following are required for analysis:
 
-* [Numpy](http://www.numpy.org/) 1.13.1
-* [NetworkX](http://networkx.github.io/) 1.11
+* [Numpy](http://www.numpy.org/) 1.13
+* [NetworkX](http://networkx.github.io/) 2.0
 
 The following is required for plotting functions:
-* [Mayavi](http://docs.enthought.com/mayavi/mayavi/) 4.5.0
+* [Matplotlib](http://matplotlib.org/) 2.1
+* [Nilearn](https://nilearn.github.io/) 0.4
 
 The following provides some extra functionality for input of certain data types:
-* [NiBabel](http://nipy.org/nibabel/) 2.1.0
+* [NiBabel](http://nipy.org/nibabel/) 2.1
+* [Mayavi](http://docs.enthought.com/mayavi/mayavi/) 4.5.0
+* [bctpy](https://github.com/aestrivex/bctpy) 0.5.0
 
 Software versions higher than those given may also work. If you are not familiar with Python, or you don't want to manually install and deal with each package separately, it is recommended that you install a pre-packaged version that will include most of the above, for example [Anaconda](https://www.anaconda.com). Installation for each package can be found on the individual websites, but if you want to use [Anaconda](https://www.anaconda.com) you will find instructions in our [documentation page](https://github.com/RittmanResearch/maybrain/wiki).
 
 
 ## Installation
 
-To install, simply copy the files that are inside the `maybrain` folder into the **site-packages** folder of your Python installation.
+To install, simply run `setup.py` throughout `pip`:
 
-If you are not sure where this folder is located, you can open a Python terminal and run the following code to find where Python searches for installed packages:
-
-```python
-import sys
-print('\n'.join(sys.path))
-```
-
-Another possibility is to run our `setup.py` script:
 ```bash
-$ python setup.py install
+$ pip install .
 ```
+
+If you want more detailed instructions about installing maybrain using Anaconda, please go to our [Wiki pages](https://github.com/RittmanResearch/maybrain/wiki).
 
 ## Documentation
 For a detailed documentation, with usage examples and explanations, please go to our [Wiki pages](https://github.com/RittmanResearch/maybrain/wiki).
@@ -55,8 +52,10 @@ The authors are happy for developers to extend, customise, improve or simply to 
 
 ## Credits
 
-Maybrain has been written by Timothy Rittman and Martyn Rittman.
+Maybrain was originally written by Timothy Rittman and Martyn Rittman, but with substantial improvements and updates from Tiago Azevedo.
 
-## License
 
-<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+## Licence
+
+Maybrain is licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/RittmanResearch/maybrain/blob/master/LICENSE) for the full license text.
+

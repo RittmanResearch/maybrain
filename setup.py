@@ -1,23 +1,18 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
+from setuptools import setup
 
 setup(
-    name='Maybrain', 
-    version='0.3.0',
-    author='Martyn Rittman and Timothy Rittman',
+    name='maybrain',
+    version='0.7.3',
+    author='Martyn Rittman, Timothy Rittman and Tiago Azevedo',
     author_email='mrittman@physics.org',
-    packages=['maybrain', 'maybrain.gui'],
-#    scripts=['brainObj.py','extraFns.py', 'highlightObj.py', 'mbplot.py', 'writeFns.py'],
-    url='https://github.com/RittmanResearch/maybrain/releases',
+    packages=['maybrain', 'maybrain.algorithms', 'maybrain.utils', 'maybrain.plotting', 'maybrain.resources'],
+    url='https://github.com/RittmanResearch/maybrain',
     license='LICENSE',
-    description='A package for visualizing brain network data',
+    description='A module written in Python for visualising brain connectivity data. Its purpose is to allow easy '
+                'visualisation of brain connectome and related data, and perform various analyses.',
     long_description=open('README.md').read(),
-#    install_requires=[
-#        'networkX == v1.8.1',
-#        'nibabel >= v1.3.0',
-#        'numpy >= v1.8.1',
-#        'mayavi == v4.4.2'
-#   ],
+    requires=['networkx', 'numpy', 'matplotlib', 'nilearn'],
+    include_package_data=True
 )
-

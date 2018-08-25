@@ -1,0 +1,5 @@
+colour
+1 red
+3 red
+2 blue
+0 blue

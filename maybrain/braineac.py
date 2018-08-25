@@ -85,11 +85,11 @@ class braineac:
         to create a brain object and import an association matrix.
         """
         self.a = mbo.brainObj()
-        self.a.importAdjFile(assMat, delimiter=delim)
+        self.a.import_adj_file(assMat, delimiter=delim)
         
         # get the spatial information and parcellation scheme
-        self.a.importSpatialInfo(spatialFile)
-        self.a.importISO(parcellation)
+        self.a.import_spatial_info(spatialFile)
+        self.a.import_iso(parcellation)
         self.a.parcels(self.a.G.nodes())
         
         # set up output file
