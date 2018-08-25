@@ -461,7 +461,7 @@ class Brain:
             _, _, tbb = sys.exc_info()
             raise IndexError("adjMat too small to have such an edge").with_traceback(tbb)
 
-    def local_thresholding(self, threshold_type=None, value=0.):
+    def local_thresholding(self, threshold_type=None, value=0., remove_unconnected=True):
         """
         Threshold the adjacency matrix by building from the minimum spanning tree (MST) and adding
         successive N-nearest neighbour degree graphs.
@@ -481,6 +481,8 @@ class Brain:
         value: float
             Value according to threshold_type
 
+        remove_unconnected: this removes any unconnected nodes to prevent
+            an error being raised about unconnected graphs
         Raises
         ------
         TypeError: Exception
@@ -500,7 +502,10 @@ class Brain:
         maximum_edges = self.G.number_of_edges()
 
         if not nx.is_connected(self.G):
-            raise TypeError("Adjacency Matrix is not connected. Impossible to execute local_thresholding()")
+            if remove_unconnected:
+                self.remove_unconnected_nodes() 
+            else:
+                raise TypeError("Adjacency Matrix is not connected. Impossible to execute local_thresholding()")
 
         # create minimum spanning tree
         self.weight_to_distance()
