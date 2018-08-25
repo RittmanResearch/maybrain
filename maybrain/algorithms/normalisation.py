@@ -1,20 +1,25 @@
+"""
+Module for normalisation of the graphs representing the brain and respective measures
+"""
+import numbers
+
 from random import shuffle
 import numpy as np
 import networkx as nx
 
 from maybrain import constants as ct
-import numbers
 
 
 class RandomGenerationError(Exception):
     """
     Exception raised for errors in the generation of random graphs
     """
+
     def __init__(self, *args, **kwargs):
         Exception.__init__(self, *args, **kwargs)
 
 
-def generate_random_graph_from_degree(brain, throw_exception=False, node_attrs=None, edge_attrs=None):
+def generate_rand_from_degree(brain, throw_exception=False, node_attrs=None, edge_attrs=None):
     """
     It returns a graph with the same degree sequence as the brain specified as argument.
 
@@ -127,7 +132,7 @@ def generate_random_graph_from_degree(brain, throw_exception=False, node_attrs=N
     return new_g
 
 
-def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True,
+def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True, exact_random=False,
                      node_attrs=None, edge_attrs=None, random_location=None, **kwargs):
     """
     See `normalise()` method's documentation for explanation. This method just expects a single
@@ -138,11 +143,12 @@ def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True
     if not isinstance(init_val, numbers.Number):
         raise TypeError("normalise_single() expects init_val to be a number")
 
-    return normalise(brain, func, init_vals=init_val, n_iter=n_iter, ret_normalised=ret_normalised,
+    return normalise(brain, func, init_vals=init_val, n_iter=n_iter,
+                     ret_normalised=ret_normalised, exact_random=exact_random,
                      node_attrs=node_attrs, edge_attrs=edge_attrs, random_location=random_location, **kwargs)
 
 
-def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
+def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exact_random=False,
                         node_attrs=None, edge_attrs=None, random_location=None, **kwargs):
     """
     See `normalise()` method's documentation for explanation. This method just expects init_vals
@@ -153,11 +159,12 @@ def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=
     if not isinstance(init_vals, dict):
         raise TypeError("normalise_node_wise() expects init_vals to be a dictionary")
 
-    return normalise(brain, func, init_vals=init_vals, n_iter=n_iter, ret_normalised=ret_normalised,
+    return normalise(brain, func, init_vals=init_vals, n_iter=n_iter,
+                     ret_normalised=ret_normalised, exact_random=exact_random,
                      node_attrs=node_attrs, edge_attrs=edge_attrs, random_location=random_location, **kwargs)
 
 
-def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
+def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exact_random=False,
               node_attrs=None, edge_attrs=None, random_location=None, **kwargs):
     """
     It normalises measures taken from a brain by generating a series of n random graphs and averaging them.
@@ -180,6 +187,8 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
     ret_normalised: bool
         if True, the normalised measures are returned, otherwise a list of n values
         for a random graph is returned
+    exact_random: bool
+        This is passed to `throw_exception` argument in `algorithms.generate_rand_from_degree()`
     node_attrs: list of str
         If the node attributes of brain.G are necessary for a correct calculation of func()
         in the random graph, just pass the attributes as a list of strings in this parameter.
@@ -194,7 +203,7 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
     random_location: str
         If the random graphs were previously generated, put here the location of them.
         Consider that for each iteration `i = 0...n_iter`, "i" will be added at the end of this path to get
-        each random graph. Otherwise, `algorithms.generate_random_graph_from_degree()` will be used to
+        each random graph. Otherwise, `algorithms.generate_rand_from_degree()` will be used to
         create the random graphs
     kwargs
         Keyword arguments if you need to pass them to func()
@@ -225,8 +234,8 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
             pass
     except KeyError as error:
         import sys
-        _, _, tb = sys.exc_info()
-        raise KeyError(error, "Edge doesn't have constants.WEIGHT property").with_traceback(tb)
+        _, _, tbb = sys.exc_info()
+        raise KeyError(error, "Edge doesn't have constants.WEIGHT property").with_traceback(tbb)
 
     if isinstance(init_vals, dict):
         nodes_dict = {v: [] for v in brain.G.nodes()}
@@ -240,7 +249,13 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
             rand = nx.read_gpickle(random_location + str(i))
         else:
             edge_attrs.append(ct.WEIGHT)
-            rand = generate_random_graph_from_degree(brain, node_attrs=node_attrs, edge_attrs=edge_attrs)
+            while True:
+                try:
+                    rand = generate_rand_from_degree(brain, throw_exception=exact_random,
+                                                     node_attrs=node_attrs, edge_attrs=edge_attrs)
+                    break  # if it reaches here, means randomiser didn't throw any exception, so break While
+                except RandomGenerationError:
+                    pass
 
         # Applying func() to the random graph
         res = func(rand, **kwargs)
@@ -256,8 +271,7 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True,
             for node in nodes_dict:
                 nodes_dict[node] = init_vals[node] / np.mean(nodes_dict[node])
         return nodes_dict
-    else:
-        if ret_normalised:
-            return init_vals / np.mean(vals)
-        else:
-            return vals
+
+    if ret_normalised:
+        return init_vals / np.mean(vals)
+    return vals
