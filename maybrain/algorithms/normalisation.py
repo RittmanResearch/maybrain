@@ -138,8 +138,8 @@ def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True
     See `normalise()` method's documentation for explanation. This method just expects a single
     initial measure (init_val) to be averaged, instead of a dictionary
     """
-    if brain.directed:
-        raise TypeError("normalise_single() not available for directed graphs")
+#    if brain.directed:
+#        raise TypeError("normalise_single() not available for directed graphs")
     if not isinstance(init_val, numbers.Number):
         raise TypeError("normalise_single() expects init_val to be a number")
 
@@ -154,8 +154,8 @@ def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=
     See `normalise()` method's documentation for explanation. This method just expects init_vals
     to be a dictionary with the measures, for each node, that will be averaged
     """
-    if brain.directed:
-        raise TypeError("normalise() not available for directed graphs")
+#    if brain.directed:
+#        raise TypeError("normalise() not available for directed graphs")
     if not isinstance(init_vals, dict):
         raise TypeError("normalise_node_wise() expects init_vals to be a dictionary")
 
@@ -220,8 +220,8 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exac
     KeyError: Exception
         If the edges don't have ct.WEIGHT property
     """
-    if brain.directed:
-        raise TypeError("normalise() not available for directed graphs")
+#    if brain.directed:
+#        raise TypeError("normalise() not available for directed graphs")
     if init_vals is None:
         init_vals = func(brain.G, **kwargs)
     if node_attrs is None:
@@ -261,7 +261,10 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exac
         res = func(rand, **kwargs)
 
         if isinstance(init_vals, dict):
-            for node in nodes_dict:
+            # convert results to a dictionary if not already so
+            if not isinstance(res, dict):
+                res = {v[0]:v[1] for v in res}
+            for node in res:
                 nodes_dict[node].append(res[node])
         else:
             vals.append(res)
@@ -269,7 +272,7 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exac
     if isinstance(init_vals, dict):
         if ret_normalised:  # update nodes_dict to return the normalised values
             for node in nodes_dict:
-                nodes_dict[node] = init_vals[node] / np.mean(nodes_dict[node])
+                nodes_dict[node] = init_vals[node] / np.nanmean(nodes_dict[node])
         return nodes_dict
 
     if ret_normalised:
