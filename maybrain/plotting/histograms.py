@@ -1,3 +1,6 @@
+"""
+Module which plotting functions to visualise histograms
+"""
 import matplotlib.pyplot as plt
 import numpy as np
 import networkx as nx
@@ -12,7 +15,7 @@ def show():
 
 
 def plot_weight_distribution(brain, output_file=None, **kwargs):
-    """ 
+    """
     It uses matplotlib to plot a histogram of the weights of the edges.
     Requires that the brain was thresholded before and ignores NaNs for plotting
 
@@ -32,7 +35,7 @@ def plot_weight_distribution(brain, output_file=None, **kwargs):
     """
     fig, ax = plt.subplots()
 
-    if type(brain) == nx.Graph:
+    if isinstance(brain, nx.Graph):
         arr = np.copy(nx.to_numpy_matrix(brain, nonedge=np.nan))
     else:
         arr = np.copy(nx.to_numpy_matrix(brain.G, nonedge=np.nan))
@@ -41,7 +44,7 @@ def plot_weight_distribution(brain, output_file=None, **kwargs):
     weights = np.array(arr[upper_values])
 
     # If directed, also add the lower down part of the adjacency matrix
-    if type(brain) != nx.Graph and brain.directed:
+    if not isinstance(brain, nx.Graph) and brain.directed:
         below_values = np.tril_indices(np.shape(arr)[0], k=-1)
         weights.extend(np.array(below_values))
 
@@ -55,10 +58,10 @@ def plot_weight_distribution(brain, output_file=None, **kwargs):
     # Tweak spacing to prevent clipping of ylabel
     fig.tight_layout()
 
-    # If outputfile is defined, fig is correctly closed, otherwise returned so others can add more information to it
+    # If outputfile is defined, fig is correctly closed,
+    # otherwise returned so others can add more information to it
     if output_file is not None:
         fig.savefig(output_file)
         plt.close(fig)
     else:
         return fig, ax
-

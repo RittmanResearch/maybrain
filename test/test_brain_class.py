@@ -296,7 +296,7 @@ class TestBrainObj(unittest.TestCase):
             # 2nd iteration
             if e == 1:
                 self.a.apply_threshold(threshold_type="totalEdges", value=0)
-                self.a.update_properties_after_threshold = True
+                self.a.update_props_after_threshold = True
                 self.a.apply_threshold()
 
             self.assertRaises(KeyError, lambda: self.a.G.nodes[2]['colour'])
@@ -312,8 +312,8 @@ class TestBrainObj(unittest.TestCase):
         nodes_props = {0: "val1", 1: 3}
         edges_props = {(0, 1): "edge_val1", (2, 3): 3.4}
 
-        self.a.import_edge_properties_from_dict("own_property", edges_props)
-        self.a.import_node_properties_from_dict("own_property", nodes_props)
+        self.a.import_edge_props_from_dict("own_property", edges_props)
+        self.a.import_node_props_from_dict("own_property", nodes_props)
 
         self.assertRaises(KeyError, lambda: self.a.G.nodes[2]['own_property'])
         self.assertRaises(KeyError, lambda: self.a.G.edges[0, 2]['own_property'])
