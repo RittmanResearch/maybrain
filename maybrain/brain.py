@@ -122,22 +122,18 @@ class Brain:
             raise error
 
         # get data from file
-        lines = file.readlines()
-        node_count = 0
-        for line in lines:
-            line = line.strip().split(sep=delimiter)
+        lines = f.readlines()
+        for node_count,line in enumerate(lines): 
+            if node_count in self.G.nodes(): # ensure excluded nodes are not used
+                l = line.strip().split(sep=delimiter)
 
-            if convert_mni:
-                line[1] = 45 - (float(line[1]) / 2)
-                line[2] = 63 + (float(line[2]) / 2)
-                line[3] = 36 + (float(line[3]) / 2)
+                if convert_mni:
+                    l[1] = 45 - (float(l[1]) / 2)
+                    l[2] = 63 + (float(l[2]) / 2)
+                    l[3] = 36 + (float(l[3]) / 2)
 
-            if node_count in self.G.nodes():
-                self.G.nodes[node_count][ct.XYZ] = (float(line[1]), float(line[2]), float(line[3]))
-                self.G.nodes[node_count][ct.ANAT_LABEL] = line[0]
-
-            node_count += 1
-
+                self.G.node[node_count][ct.XYZ] = (float(l[1]), float(l[2]), float(l[3]))
+                self.G.node[node_count][ct.ANAT_LABEL] = l[0]
         file.close()
 
     def import_node_props_from_dict(self, prop_name, props):
