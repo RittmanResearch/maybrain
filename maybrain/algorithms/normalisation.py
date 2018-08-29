@@ -6,6 +6,7 @@ import numbers
 from random import shuffle
 import numpy as np
 import networkx as nx
+import numbers
 
 from maybrain import constants as ct
 
@@ -133,7 +134,7 @@ def generate_rand_from_degree(brain, throw_exception=False, node_attrs=None, edg
 
 
 def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True, exact_random=False,
-                     node_attrs=None, edge_attrs=None, random_location=None, **kwargs):
+                     node_attrs=None, edge_attrs=None, random_location=None, connected=False, **kwargs):
     """
     See `normalise()` method's documentation for explanation. This method just expects a single
     initial measure (init_val) to be averaged, instead of a dictionary
@@ -145,7 +146,7 @@ def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True
 
     return normalise(brain, func, init_vals=init_val, n_iter=n_iter,
                      ret_normalised=ret_normalised, exact_random=exact_random,
-                     node_attrs=node_attrs, edge_attrs=edge_attrs, random_location=random_location, **kwargs)
+                     node_attrs=node_attrs, edge_attrs=edge_attrs, random_location=random_location, connected=connected, **kwargs)
 
 
 def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exact_random=False,
@@ -165,7 +166,7 @@ def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=
 
 
 def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exact_random=False,
-              node_attrs=None, edge_attrs=None, random_location=None, **kwargs):
+              node_attrs=None, edge_attrs=None, random_location=None, connected=False, **kwargs):
     """
     It normalises measures taken from a brain by generating a series of n random graphs and averaging them.
 
@@ -256,6 +257,17 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exac
                     break  # if it reaches here, means randomiser didn't throw any exception, so break While
                 except RandomGenerationError:
                     pass
+
+        # Check to see if the graph is connected
+        if connected:
+            # firstly try removing any single unconnected nodes
+            node_list = [v for v in rand.nodes() if rand.degree(v) == 0]
+            rand.remove_nodes_from(node_list)
+
+            # if still disconnected add the minimum spanning tree
+            if not nx.is_connected(rand):
+                min_t = nx.minimum_spanning_tree(brain.G)
+                rand.add_edges_from(min_t.edges())
 
         # Applying func() to the random graph
         res = func(rand, **kwargs)
