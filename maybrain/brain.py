@@ -117,20 +117,17 @@ class Brain:
 
         # get data from file
         lines = f.readlines()
-        node_count = 0
-        for line in lines:
-            l = line.strip().split(sep=delimiter)
+        for node_count,line in enumerate(lines): 
+            if node_count in self.G.nodes(): # ensure excluded nodes are not used
+                l = line.strip().split(sep=delimiter)
 
-            if convert_mni:
-                l[1] = 45 - (float(l[1]) / 2)
-                l[2] = 63 + (float(l[2]) / 2)
-                l[3] = 36 + (float(l[3]) / 2)
+                if convert_mni:
+                    l[1] = 45 - (float(l[1]) / 2)
+                    l[2] = 63 + (float(l[2]) / 2)
+                    l[3] = 36 + (float(l[3]) / 2)
 
-            if node_count in self.G.nodes():
-                self.G.nodes[node_count][ct.XYZ] = (float(l[1]), float(l[2]), float(l[3]))
-                self.G.nodes[node_count][ct.ANAT_LABEL] = l[0]
-
-            node_count += 1
+                self.G.node[node_count][ct.XYZ] = (float(l[1]), float(l[2]), float(l[3]))
+                self.G.node[node_count][ct.ANAT_LABEL] = l[0]
 
         f.close()
 
