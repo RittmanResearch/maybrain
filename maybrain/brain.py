@@ -511,7 +511,7 @@ class Brain:
         if not threshold_type:
             self.G = min_t
             return  # Nothing else to do, just return
-        elif threshold_type == 'edgePC':
+        if threshold_type == 'edgePC':
             # find threshold as a percentage of total possible edges
             upper_values = np.triu_indices(np.shape(self.adjMat)[0], k=1)
             # only flatten the upper right part of the matrix

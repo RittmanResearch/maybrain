@@ -236,7 +236,7 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exac
         import sys
         _, _, tbb = sys.exc_info()
         raise KeyError(error, "Edge doesn't have constants.WEIGHT property").with_traceback(tbb)
-      
+
     if isinstance(init_vals, dict):
         nodes_dict = {v: [] for v in brain.G.nodes()}
     elif not isinstance(init_vals, numbers.Number):
