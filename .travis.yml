@@ -3,6 +3,11 @@ language: python
 python:
  - 3.5
  - 3.6
+env:
+ - MATPLOTLIB=2 NETWORKX=2.2
+ - MATPLOTLIB=2 NETWORKX=2.1
+ - MATPLOTLIB=3 NETWORKX=2.2
+ - MATPLOTLIB=3 NETWORKX=2.1
 install:
  - sudo apt-get update
  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
@@ -16,10 +21,10 @@ install:
  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
  - source activate test-environment
  #- conda install -c menpo mayavi=4.5.0
- - conda install networkx=2
+ - conda install networkx=$NETWORKX
  #- conda install -c conda-forge nibabel=2.1
- - conda install matplotlib=2.1
- - conda install -c conda-forge nilearn=0.4
+ - conda install matplotlib=$MATPLOTLIB
+ - conda install -c conda-forge nilearn=0.5
  #- conda install pyqt=4
  - pip install pylint
  - pip install .
