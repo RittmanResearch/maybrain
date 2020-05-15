@@ -123,21 +123,17 @@ class Brain:
 
         # get data from file
         lines = file.readlines()
-        node_count = 0
-        for line in lines:
-            line = line.strip().split(sep=delimiter)
+        for node_count,line in enumerate(lines): 
+            if node_count in self.G.nodes(): # ensure excluded nodes are not used
+                l = line.strip().split(sep=delimiter)
 
-            if convert_mni:
-                line[1] = 45 - (float(line[1]) / 2)
-                line[2] = 63 + (float(line[2]) / 2)
-                line[3] = 36 + (float(line[3]) / 2)
+                if convert_mni:
+                    l[1] = 45 - (float(l[1]) / 2)
+                    l[2] = 63 + (float(l[2]) / 2)
+                    l[3] = 36 + (float(l[3]) / 2)
 
-            if node_count in self.G.nodes():
-                self.G.nodes[node_count][ct.XYZ] = (float(line[1]), float(line[2]), float(line[3]))
-                self.G.nodes[node_count][ct.ANAT_LABEL] = line[0]
-
-            node_count += 1
-
+                self.G.node[node_count][ct.XYZ] = (float(l[1]), float(l[2]), float(l[3]))
+                self.G.node[node_count][ct.ANAT_LABEL] = l[0]
         file.close()
 
     def import_node_props_from_dict(self, prop_name, props):
@@ -703,7 +699,7 @@ class Brain:
             self.G.edges[edge[0], edge[1]][ct.DISTANCE] = emax - self.G.edges[edge[0], edge[1]][
                 ct.WEIGHT]  # convert weights to a positive distance
 
-    def copy_hemisphere(self, hsphere="R", midline=0):
+    def copy_hemisphere(self, hsphere="R", midline=0, conv="neuro"):
         """
         This copies all the nodes and attributes from one hemisphere to the other, deleting any pre-existing
         data on the contralateral side. Particularly useful when you only have data from a single
@@ -718,6 +714,7 @@ class Brain:
             The hemisphere to copy. "R" stands for right hemisphere, and "L" for left hemisphere
         midline: float
             Where the midline dividing the hemisphere is located (in the X coordinate)
+        conv: convention, may be radiological ("radio") or neurological ("neurol")
 
         Raises
         ------
@@ -735,13 +732,24 @@ class Brain:
         for n in nodes_iter.items():
             pos = self.G.nodes[n[0]][ct.XYZ]
 
-            if hsphere == 'L' and pos[0] < midline:
-                new_pos = (midline + (midline - pos[0]), pos[1], pos[2])
-            elif hsphere == 'R' and pos[0] > midline:
-                new_pos = (midline - (pos[0] - midline), pos[1], pos[2])
-            else:
-                nodes_to_remove.append(n[0])
-                continue
+            if conv == "neuro":
+                if hsphere == 'L' and pos[0] < midline:
+                        new_pos = (midline + (midline - pos[0]), pos[1], pos[2])
+                elif hsphere == 'R' and pos[0] > midline:
+                    new_pos = (midline - (pos[0] - midline), pos[1], pos[2])
+                else:
+                    nodes_to_remove.append(n[0])
+                    continue
+
+            elif conv == "radio":
+                if hsphere == 'L' and pos[0] > midline:
+                        new_pos = (midline - (midline - pos[0]), pos[1], pos[2])
+                elif hsphere == 'R' and pos[0] < midline:
+                    new_pos = (midline + (pos[0] - midline), pos[1], pos[2])
+                else:
+                    nodes_to_remove.append(n[0])
+                    continue
+
 
             # Adding new node and its attributes
             self.G.add_node(str(n[0]) + new_name)
