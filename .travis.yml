@@ -8,6 +8,8 @@ env:
  - MATPLOTLIB="3*" NETWORKX="2.4"
  - MATPLOTLIB="2.* NETWORKX="2.2"
  - MATPLOTLIB="2.*" NETWORKX="2.1"
+services:
+ - xvfb
 install:
  - sudo apt-get update
  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
@@ -30,9 +32,7 @@ install:
  - pip install .
  - conda install -c conda-forge codecov
 before_script:
-#  - "export DISPLAY=:99.0"
-#  - "sh -e /etc/init.d/xvfb start"
-#  - sleep 3 # give xvfb some time to start
+  - export DISPLAY=:99.0
 script:
  - python test/test_brain_class.py
  - python test/test_smoke_plotting_algs.py
