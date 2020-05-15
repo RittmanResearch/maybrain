@@ -30,9 +30,9 @@ install:
  - pip install .
  - conda install -c conda-forge codecov
 before_script:
-  - "export DISPLAY=:99.0"
-  - "sh -e /etc/init.d/xvfb start"
-  - sleep 3 # give xvfb some time to start
+#  - "export DISPLAY=:99.0"
+#  - "sh -e /etc/init.d/xvfb start"
+#  - sleep 3 # give xvfb some time to start
 script:
  - python test/test_brain_class.py
  - python test/test_smoke_plotting_algs.py
