@@ -2,7 +2,9 @@
 """
 Utility module with recipes to calculate some common measures
 """
+import csv
 from os import path, rename
+import nibabel as nb
 import numpy as np
 
 
@@ -84,8 +86,8 @@ def write_results(results, measure,
         writeheadflag = False
 
     # check to see what form the results take
-    if isinstance(results, (dict)):
-        headers = [v for v in list(results.keys())]
+    if isinstance(results, dict):
+        headers = list(results.keys())
         headers.sort()
 
         out = ' '.join([str(results[v]) if v in list(results.keys()) else 'NA' for v in headers])
@@ -125,9 +127,6 @@ def extract_coordinates(template, outfile="ROI_xyz.txt"):
     """
     Legacy code
     """
-    import nibabel as nb
-    import csv
-
     # load image
     file = nb.load(template)
     f_data = file.get_data()
