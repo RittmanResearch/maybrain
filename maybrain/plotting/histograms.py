@@ -46,7 +46,7 @@ def plot_weight_distribution(brain, output_file=None, **kwargs):
     # If directed, also add the lower down part of the adjacency matrix
     if not isinstance(brain, nx.Graph) and brain.directed:
         below_values = np.tril_indices(np.shape(arr)[0], k=-1)
-        weights.extend(np.array(below_values))
+        np.hstack([weights, arr[below_values]])
 
     # Removing NaNs for correct plotting
     weights = weights[~np.isnan(weights)]
