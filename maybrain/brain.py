@@ -132,8 +132,8 @@ class Brain:
                     l[2] = 63 + (float(l[2]) / 2)
                     l[3] = 36 + (float(l[3]) / 2)
 
-                self.G.node[node_count][ct.XYZ] = (float(l[1]), float(l[2]), float(l[3]))
-                self.G.node[node_count][ct.ANAT_LABEL] = l[0]
+                self.G.nodes[node_count][ct.XYZ] = (float(l[1]), float(l[2]), float(l[3]))
+                self.G.nodes[node_count][ct.ANAT_LABEL] = l[0]
         file.close()
 
     def import_node_props_from_dict(self, prop_name, props):
