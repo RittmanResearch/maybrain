@@ -3,11 +3,11 @@ language: python
 python:
  - 3.5
  - 3.6
+ - 3.7
 env:
- - MATPLOTLIB=2 NETWORKX=2.2
- - MATPLOTLIB=2 NETWORKX=2.1
- - MATPLOTLIB=3 NETWORKX=2.2
- - MATPLOTLIB=3 NETWORKX=2.1
+ - MATPLOTLIB="3*" NETWORKX="2.4"
+ - MATPLOTLIB="2.* NETWORKX="2.2"
+ - MATPLOTLIB="2.*" NETWORKX="2.1"
 install:
  - sudo apt-get update
  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
