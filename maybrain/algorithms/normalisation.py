@@ -276,14 +276,14 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exac
             # convert results to a dictionary if not already so
             if not isinstance(res, dict):
                 res = {v[0]:v[1] for v in res}
-            for node in res:
+            for node in res.keys():
                 nodes_dict[node].append(res[node])
         else:
             vals.append(res)
 
     if isinstance(init_vals, dict):
         if ret_normalised:  # update nodes_dict to return the normalised values
-            for node in nodes_dict:
+            for node in nodes_dict.keys():
                 nodes_dict[node] = init_vals[node] / np.nanmean(nodes_dict[node])
         return nodes_dict
 
