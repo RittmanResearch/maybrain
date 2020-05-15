@@ -122,7 +122,7 @@ class Brain:
             raise error
 
         # get data from file
-        lines = f.readlines()
+        lines = file.readlines()
         for node_count,line in enumerate(lines): 
             if node_count in self.G.nodes(): # ensure excluded nodes are not used
                 l = line.strip().split(sep=delimiter)
