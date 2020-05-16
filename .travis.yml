@@ -1,12 +1,13 @@
-sudo: false
+os: linux
 language: python
+dist: eoan
 python:
  - 3.5
  - 3.6
  - 3.7
 env:
  - MATPLOTLIB="3*" NETWORKX="2.4"
- - MATPLOTLIB="2.* NETWORKX="2.2"
+ - MATPLOTLIB="2.*" NETWORKX="2.2"
  - MATPLOTLIB="2.*" NETWORKX="2.1"
 services:
  - xvfb
