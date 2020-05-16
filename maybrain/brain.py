@@ -2,10 +2,10 @@
 """
 Module which contains the definition of Brain class.
 """
-import random
-
 import networkx as nx
 import numpy as np
+import random
+import sys
 
 from maybrain import constants as ct
 
@@ -123,17 +123,17 @@ class Brain:
 
         # get data from file
         lines = file.readlines()
-        for node_count,line in enumerate(lines): 
-            if node_count in self.G.nodes(): # ensure excluded nodes are not used
-                l = line.strip().split(sep=delimiter)
+        for node_count, line in enumerate(lines):
+            if node_count in self.G.nodes():  # ensure excluded nodes are not used
+                l_val = line.strip().split(sep=delimiter)
 
                 if convert_mni:
-                    l[1] = 45 - (float(l[1]) / 2)
-                    l[2] = 63 + (float(l[2]) / 2)
-                    l[3] = 36 + (float(l[3]) / 2)
+                    l_val[1] = 45 - (float(l_val[1]) / 2)
+                    l_val[2] = 63 + (float(l_val[2]) / 2)
+                    l_val[3] = 36 + (float(l_val[3]) / 2)
 
-                self.G.nodes[node_count][ct.XYZ] = (float(l[1]), float(l[2]), float(l[3]))
-                self.G.nodes[node_count][ct.ANAT_LABEL] = l[0]
+                self.G.nodes[node_count][ct.XYZ] = (float(l_val[1]), float(l_val[2]), float(l_val[3]))
+                self.G.nodes[node_count][ct.ANAT_LABEL] = l_val[0]
         file.close()
 
     def import_node_props_from_dict(self, prop_name, props):
@@ -448,12 +448,10 @@ class Brain:
             if not self.directed:
                 self.adjMat[edge[1], edge[0]] = e_wei
         except KeyError as error:
-            import sys
             _, _, tbb = sys.exc_info()
             error_msg = "Edge does not exist in G or doesn't have constants.WEIGHT property"
             raise KeyError(error, error_msg).with_traceback(tbb)
         except IndexError:
-            import sys
             _, _, tbb = sys.exc_info()
             raise IndexError("adjMat too small to have such an edge").with_traceback(tbb)
 
@@ -734,7 +732,7 @@ class Brain:
 
             if conv == "neuro":
                 if hsphere == 'L' and pos[0] < midline:
-                        new_pos = (midline + (midline - pos[0]), pos[1], pos[2])
+                    new_pos = (midline + (midline - pos[0]), pos[1], pos[2])
                 elif hsphere == 'R' and pos[0] > midline:
                     new_pos = (midline - (pos[0] - midline), pos[1], pos[2])
                 else:
@@ -743,13 +741,12 @@ class Brain:
 
             elif conv == "radio":
                 if hsphere == 'L' and pos[0] > midline:
-                        new_pos = (midline - (midline - pos[0]), pos[1], pos[2])
+                    new_pos = (midline - (midline - pos[0]), pos[1], pos[2])
                 elif hsphere == 'R' and pos[0] < midline:
                     new_pos = (midline + (pos[0] - midline), pos[1], pos[2])
                 else:
                     nodes_to_remove.append(n[0])
                     continue
-
 
             # Adding new node and its attributes
             self.G.add_node(str(n[0]) + new_name)

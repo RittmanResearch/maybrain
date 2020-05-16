@@ -2,11 +2,11 @@
 Module for normalisation of the graphs representing the brain and respective measures
 """
 import numbers
-
+import sys
 from random import shuffle
-import numpy as np
+
 import networkx as nx
-import numbers
+import numpy as np
 
 from maybrain import constants as ct
 
@@ -146,7 +146,8 @@ def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True
 
     return normalise(brain, func, init_vals=init_val, n_iter=n_iter,
                      ret_normalised=ret_normalised, exact_random=exact_random,
-                     node_attrs=node_attrs, edge_attrs=edge_attrs, random_location=random_location, connected=connected, **kwargs)
+                     node_attrs=node_attrs, edge_attrs=edge_attrs, random_location=random_location, connected=connected,
+                     **kwargs)
 
 
 def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exact_random=False,
@@ -234,7 +235,6 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exac
         if list(brain.G.edges(data=True))[0][2][ct.WEIGHT]:
             pass
     except KeyError as error:
-        import sys
         _, _, tbb = sys.exc_info()
         raise KeyError(error, "Edge doesn't have constants.WEIGHT property").with_traceback(tbb)
 
@@ -275,7 +275,7 @@ def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exac
         if isinstance(init_vals, dict):
             # convert results to a dictionary if not already so
             if not isinstance(res, dict):
-                res = {v[0]:v[1] for v in res}
+                res = {v[0]: v[1] for v in res}
             for node in res.keys():
                 nodes_dict[node].append(res[node])
         else:

@@ -2,10 +2,11 @@
 Wrapper over nilearn to visualise brain connectome
 """
 import colorsys
+import sys
 
 import matplotlib.pyplot as plt
-import numpy as np
 import networkx as nx
+import numpy as np
 from nilearn import plotting
 
 from maybrain import constants as ct
@@ -70,7 +71,6 @@ def plot_connectome(brain,
         if list(brain.G.nodes(data=True))[0][1][ct.XYZ]:
             pass
     except KeyError as error:
-        import sys
         _, _, tbb = sys.exc_info()
         raise KeyError(error, "Node doesn't have constants.XYZ property").with_traceback(tbb)
 
