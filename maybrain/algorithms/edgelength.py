@@ -10,7 +10,7 @@ def edgelength(G, node_wise=False, edge_wise=False, summary="mean"):
     summary:     values are either "mean" or "median", returns a single value for all edges
     """
     el =  dict(zip(G.edges(),
-                   [ np.absolute(np.linalg.norm(np.array(G.node[edge[0]]['xyz']) - np.array(G.node[edge[1]]['xyz']))) for edge in G.edges()]))
+                   [ np.absolute(np.linalg.norm(np.array(G.nodes[edge[0]]['xyz']) - np.array(G.nodes[edge[1]]['xyz']))) for edge in G.edges()]))
     
     if node_wise:
         eln = {}
