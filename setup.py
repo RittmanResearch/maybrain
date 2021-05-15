@@ -6,7 +6,7 @@ setup(
     name='maybrain',
     version='0.7.7',
     author='Martyn Rittman, Timothy Rittman and Tiago Azevedo',
-    author_email='mrittman@physics.org',
+    author_email='tr332@medschl.cam.ac.uk',
     packages=['maybrain', 'maybrain.algorithms', 'maybrain.utils', 'maybrain.plotting', 'maybrain.resources'],
     url='https://github.com/RittmanResearch/maybrain',
     license='LICENSE',

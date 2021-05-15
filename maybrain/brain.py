@@ -57,6 +57,9 @@ class Brain:
         else:
             self.G = nx.Graph()
 
+        # threshold
+        self.threshold = None
+
     def import_adj_file(self, fname, delimiter=None, nodes_to_exclude=None, na_vals=None):
         """
         Imports an adjacency matrix from a file.
@@ -346,6 +349,9 @@ class Brain:
             If a not valid threshold type is passed
         """
 
+        # Save the threshold value
+        self.threshold = value
+
         # Controlling input
         if threshold_type not in ["edgePC", "totalEdges", "tVal", None]:
             raise TypeError("Not a valid threshold_type for apply_threshold()")
@@ -481,6 +487,9 @@ class Brain:
             If a not valid threshold type is passed, the graph is directed, or G is not connected.
             Consider using `self.remove_unconnected_nodes()`
         """
+
+        # Save the threshold value
+        self.threshold = value
 
         # Controlling input
         if threshold_type not in ["edgePC", "totalEdges", None]:

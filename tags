@@ -1,0 +1,451 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+ANAT_LABEL	build/lib/maybrain/constants.py	/^ANAT_LABEL = 'anatlabel'$/;"	v
+ANAT_LABEL	maybrain/constants.py	/^ANAT_LABEL = 'anatlabel'$/;"	v
+AllenBrain	build/lib/maybrain/allen.py	/^class AllenBrain:$/;"	c
+AllenBrain	maybrain/allen.py	/^class AllenBrain:$/;"	c
+Brain	build/lib/maybrain/brain.py	/^class Brain:$/;"	c
+Brain	maybrain/brain.py	/^class Brain:$/;"	c
+DISTANCE	build/lib/maybrain/constants.py	/^DISTANCE = 'distance'$/;"	v
+DISTANCE	maybrain/constants.py	/^DISTANCE = 'distance'$/;"	v
+DUMMY_ADJ_FILE_500	build/lib/maybrain/resources/__init__.py	/^DUMMY_ADJ_FILE_500 = pkg_resources.resource_filename('maybrain', 'resources\/adj_file_500.txt')$/;"	v
+DUMMY_ADJ_FILE_500	maybrain/resources/__init__.py	/^DUMMY_ADJ_FILE_500 = pkg_resources.resource_filename('maybrain', 'resources\/adj_file_500.txt')$/;"	v
+HEMISPHERE	build/lib/maybrain/constants.py	/^HEMISPHERE = 'hemisphere'$/;"	v
+HEMISPHERE	maybrain/constants.py	/^HEMISPHERE = 'hemisphere'$/;"	v
+Highlight	build/lib/maybrain/utils/highlights.py	/^class Highlight:$/;"	c
+Highlight	maybrain/utils/highlights.py	/^class Highlight:$/;"	c
+LINKED_NODES	build/lib/maybrain/constants.py	/^LINKED_NODES = 'linkedNodes'$/;"	v
+LINKED_NODES	maybrain/constants.py	/^LINKED_NODES = 'linkedNodes'$/;"	v
+LOBE	build/lib/maybrain/constants.py	/^LOBE = 'lobe'$/;"	v
+LOBE	maybrain/constants.py	/^LOBE = 'lobe'$/;"	v
+MNI_SPACE_COORDINATES_500	build/lib/maybrain/resources/__init__.py	/^MNI_SPACE_COORDINATES_500 = pkg_resources.resource_filename('maybrain', 'resources\/parcel_500.txt')$/;"	v
+MNI_SPACE_COORDINATES_500	maybrain/resources/__init__.py	/^MNI_SPACE_COORDINATES_500 = pkg_resources.resource_filename('maybrain', 'resources\/parcel_500.txt')$/;"	v
+MayaviWrapper	build/lib/maybrain/plotting/mayavi_wrapper.py	/^class MayaviWrapper:$/;"	c
+MayaviWrapper	maybrain/plotting/mayavi_wrapper.py	/^class MayaviWrapper:$/;"	c
+PROPERTIES_ANATLABEL_500	build/lib/maybrain/resources/__init__.py	/^PROPERTIES_ANATLABEL_500 = pkg_resources.resource_filename('maybrain', 'resources\/properties_anatlabels_500.txt')$/;"	v
+PROPERTIES_ANATLABEL_500	maybrain/resources/__init__.py	/^PROPERTIES_ANATLABEL_500 = pkg_resources.resource_filename('maybrain', 'resources\/properties_anatlabels_500.txt')$/;"	v
+PROPERTIES_HEMISPHERES_500	build/lib/maybrain/resources/__init__.py	/^PROPERTIES_HEMISPHERES_500 = pkg_resources.resource_filename('maybrain', 'resources\/properties_hemispheres_500.txt')$/;"	v
+PROPERTIES_HEMISPHERES_500	maybrain/resources/__init__.py	/^PROPERTIES_HEMISPHERES_500 = pkg_resources.resource_filename('maybrain', 'resources\/properties_hemispheres_500.txt')$/;"	v
+PROPERTIES_LOBES_500	build/lib/maybrain/resources/__init__.py	/^PROPERTIES_LOBES_500 = pkg_resources.resource_filename('maybrain', 'resources\/properties_lobes_500.txt')$/;"	v
+PROPERTIES_LOBES_500	maybrain/resources/__init__.py	/^PROPERTIES_LOBES_500 = pkg_resources.resource_filename('maybrain', 'resources\/properties_lobes_500.txt')$/;"	v
+RandomGenerationError	build/lib/maybrain/algorithms/normalisation.py	/^class RandomGenerationError(Exception):$/;"	c
+RandomGenerationError	maybrain/algorithms/normalisation.py	/^class RandomGenerationError(Exception):$/;"	c
+TestBrainObj	test/test_brain_class.py	/^class TestBrainObj(unittest.TestCase):$/;"	c
+TestPlottingAndAlgs	test/test_smoke_plotting_algs.py	/^class TestPlottingAndAlgs(unittest.TestCase):$/;"	c
+WEIGHT	build/lib/maybrain/constants.py	/^WEIGHT = 'weight'$/;"	v
+WEIGHT	maybrain/constants.py	/^WEIGHT = 'weight'$/;"	v
+XYZ	build/lib/maybrain/constants.py	/^XYZ = 'xyz'  # 3D coordinates of one node$/;"	v
+XYZ	maybrain/constants.py	/^XYZ = 'xyz'  # 3D coordinates of one node$/;"	v
+__init__	build/lib/maybrain/algorithms/normalisation.py	/^    def __init__(self, *args, **kwargs):$/;"	m	class:RandomGenerationError
+__init__	build/lib/maybrain/allen.py	/^    def __init__(self, allen_subj,$/;"	m	class:AllenBrain
+__init__	build/lib/maybrain/allen.py	/^    def __init__(self,$/;"	m	class:multisubj
+__init__	build/lib/maybrain/brain.py	/^    def __init__(self, directed=False):$/;"	m	class:Brain
+__init__	build/lib/maybrain/braineac.py	/^    def __init__(self,AALrois="ROI_MNI_V4.txt", braineacDir = "\/home\/tim\/Documents\/braineac"):$/;"	m	class:braineac
+__init__	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def __init__(self, bg=None):$/;"	m	class:MayaviWrapper
+__init__	build/lib/maybrain/utils/highlights.py	/^    def __init__(self, nodes=None, edges=None):$/;"	m	class:Highlight
+__init__	maybrain/algorithms/normalisation.py	/^    def __init__(self, *args, **kwargs):$/;"	m	class:RandomGenerationError
+__init__	maybrain/allen.py	/^    def __init__(self, allen_subj,$/;"	m	class:AllenBrain
+__init__	maybrain/allen.py	/^    def __init__(self,$/;"	m	class:multisubj
+__init__	maybrain/brain.py	/^    def __init__(self, directed=False):$/;"	m	class:Brain
+__init__	maybrain/braineac.py	/^    def __init__(self,AALrois="ROI_MNI_V4.txt", braineacDir = "\/home\/tim\/Documents\/braineac"):$/;"	m	class:braineac
+__init__	maybrain/plotting/mayavi_wrapper.py	/^    def __init__(self, bg=None):$/;"	m	class:MayaviWrapper
+__init__	maybrain/utils/highlights.py	/^    def __init__(self, nodes=None, edges=None):$/;"	m	class:Highlight
+__number_of_highlights	build/lib/maybrain/utils/highlights.py	/^__number_of_highlights = 1  # Used for automatic labeling$/;"	v
+__number_of_highlights	maybrain/utils/highlights.py	/^__number_of_highlights = 1  # Used for automatic labeling$/;"	v
+_add_properties	build/lib/maybrain/brain.py	/^    def _add_properties(self, properties):$/;"	m	class:Brain
+_add_properties	maybrain/brain.py	/^    def _add_properties(self, properties):$/;"	m	class:Brain
+_get_auto_label	build/lib/maybrain/utils/highlights.py	/^def _get_auto_label():$/;"	f
+_get_auto_label	maybrain/utils/highlights.py	/^def _get_auto_label():$/;"	f
+_get_ordered_array_and_labels	build/lib/maybrain/plotting/matrices.py	/^def _get_ordered_array_and_labels(matrix, dummy_adj_file, hemi_prop, lobes_prop, anat_prop,$/;"	f
+_get_ordered_array_and_labels	maybrain/plotting/matrices.py	/^def _get_ordered_array_and_labels(matrix, dummy_adj_file, hemi_prop, lobes_prop, anat_prop,$/;"	f
+_nng	build/lib/maybrain/brain.py	/^    def _nng(self, k):$/;"	m	class:Brain
+_nng	maybrain/brain.py	/^    def _nng(self, k):$/;"	m	class:Brain
+_plot_array	build/lib/maybrain/plotting/matrices.py	/^def _plot_array(arr, title, labels, output_file):$/;"	f
+_plot_array	maybrain/plotting/matrices.py	/^def _plot_array(arr, title, labels, output_file):$/;"	f
+_prop_compare	build/lib/maybrain/utils/highlights.py	/^def _prop_compare(val_to_compare, rel, val):$/;"	f
+_prop_compare	maybrain/utils/highlights.py	/^def _prop_compare(val_to_compare, rel, val):$/;"	f
+a	docs/old/demo videos/demoVideo.py	/^a = nb.brainObj()$/;"	v
+anim	docs/old/demo videos/demoVideoAnimate.py	/^def anim(obj, saveBool, folder = ''):$/;"	f
+animate	docs/old/demo videos/demoVideo.py	/^import demoVideoAnimate as animate$/;"	i
+apply_threshold	build/lib/maybrain/brain.py	/^    def apply_threshold(self, threshold_type=None, value=0., use_absolute=False):$/;"	m	class:Brain
+apply_threshold	maybrain/brain.py	/^    def apply_threshold(self, threshold_type=None, value=0., use_absolute=False):$/;"	m	class:Brain
+arange	docs/old/demo videos/demoVideoAnimate.py	/^from numpy import arange$/;"	i
+array	build/lib/maybrain/plotting/mayavi_wrapper.py	/^from numpy import array, repeat, max, power$/;"	i
+array	maybrain/plotting/mayavi_wrapper.py	/^from numpy import array, repeat, max, power$/;"	i
+assignbctresult	build/lib/maybrain/utils/bct.py	/^def assignbctresult(brain, bct_res):$/;"	f
+assignbctresult	maybrain/utils/bct.py	/^def assignbctresult(brain, bct_res):$/;"	f
+author	setup.py	/^    author='Martyn Rittman, Timothy Rittman and Tiago Azevedo',$/;"	v
+author_email	setup.py	/^    author_email='mrittman@physics.org',$/;"	v
+binarise	build/lib/maybrain/brain.py	/^    def binarise(self):$/;"	m	class:Brain
+binarise	maybrain/brain.py	/^    def binarise(self):$/;"	m	class:Brain
+blueBrain	docs/old/demo videos/demoVideo.py	/^blueBrain = a.makeSubBrain('colour', 'blue')$/;"	v
+brain	build/lib/maybrain/__init__.py	/^from . import brain$/;"	i
+brain	build/lib/maybrain/allen.py	/^from maybrain import brain$/;"	i
+brain	maybrain/__init__.py	/^from . import brain$/;"	i
+brain	maybrain/allen.py	/^from maybrain import brain$/;"	i
+braineac	build/lib/maybrain/braineac.py	/^class braineac:$/;"	c
+braineac	maybrain/braineac.py	/^class braineac:$/;"	c
+braineacData	build/lib/maybrain/braineac.py	/^    def braineacData(self, probeList, naVal="NA"):$/;"	m	class:braineac
+braineacData	maybrain/braineac.py	/^    def braineacData(self, probeList, naVal="NA"):$/;"	m	class:braineac
+change_plot_property	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def change_plot_property(self, plot_type, prop, plot_label, value=0.):$/;"	m	class:MayaviWrapper
+change_plot_property	maybrain/plotting/mayavi_wrapper.py	/^    def change_plot_property(self, plot_type, prop, plot_label, value=0.):$/;"	m	class:MayaviWrapper
+clear	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def clear(self):$/;"	m	class:MayaviWrapper
+clear	maybrain/plotting/mayavi_wrapper.py	/^    def clear(self):$/;"	m	class:MayaviWrapper
+col	docs/old/demo videos/demoVideo.py	/^    col = cols[n]$/;"	v
+colorsys	build/lib/maybrain/plotting/connectome.py	/^import colorsys$/;"	i
+colorsys	maybrain/plotting/connectome.py	/^import colorsys$/;"	i
+cols	docs/old/demo videos/demoVideo.py	/^cols = ['red', 'green', 'blue']$/;"	v
+comparison	build/lib/maybrain/allen.py	/^    def comparison(self):$/;"	m	class:multisubj
+comparison	build/lib/maybrain/allen.py	/^    def comparison(self, max_dist=None):$/;"	m	class:AllenBrain
+comparison	build/lib/maybrain/braineac.py	/^    def comparison(self, assMat, delim=" ", spatialFile="parcel_500.txt", parcellation="parcels\/parcel_500.nii",$/;"	m	class:braineac
+comparison	maybrain/allen.py	/^    def comparison(self):$/;"	m	class:multisubj
+comparison	maybrain/allen.py	/^    def comparison(self, max_dist=None):$/;"	m	class:AllenBrain
+comparison	maybrain/braineac.py	/^    def comparison(self, assMat, delim=" ", spatialFile="parcel_500.txt", parcellation="parcels\/parcel_500.nii",$/;"	m	class:braineac
+comparisonaveraged	build/lib/maybrain/allen.py	/^    def comparisonaveraged(self):$/;"	m	class:multisubj
+comparisonaveraged	maybrain/allen.py	/^    def comparisonaveraged(self):$/;"	m	class:multisubj
+contiguous_spread	build/lib/maybrain/algorithms/degeneration.py	/^def contiguous_spread(brain, edgeloss, startnodes=None):$/;"	f
+contiguous_spread	maybrain/algorithms/degeneration.py	/^def contiguous_spread(brain, edgeloss, startnodes=None):$/;"	f
+contourVals	docs/old/demo videos/demoVideo.py	/^contourVals = range(0, 255, 75)$/;"	v
+coords_to_list	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def coords_to_list(self, brain, node_list=None):$/;"	m	class:MayaviWrapper
+coords_to_list	maybrain/plotting/mayavi_wrapper.py	/^    def coords_to_list(self, brain, node_list=None):$/;"	m	class:MayaviWrapper
+copy	build/lib/maybrain/plotting/matrices.py	/^import copy$/;"	i
+copy	maybrain/plotting/matrices.py	/^import copy$/;"	i
+copy_hemisphere	build/lib/maybrain/brain.py	/^    def copy_hemisphere(self, hsphere="R", midline=0, conv="neuro"):$/;"	m	class:Brain
+copy_hemisphere	maybrain/brain.py	/^    def copy_hemisphere(self, hsphere="R", midline=0, conv="neuro"):$/;"	m	class:Brain
+createParcellation	build/lib/maybrain/braineac.py	/^    def createParcellation(self, outFile="AAL_braineac_parcels.nii"):$/;"	m	class:braineac
+createParcellation	maybrain/braineac.py	/^    def createParcellation(self, outFile="AAL_braineac_parcels.nii"):$/;"	m	class:braineac
+csv	build/lib/maybrain/allen.py	/^import csv$/;"	i
+csv	build/lib/maybrain/utils/brain_utils.py	/^import csv$/;"	i
+csv	maybrain/allen.py	/^import csv$/;"	i
+csv	maybrain/utils/brain_utils.py	/^import csv$/;"	i
+ct	build/lib/maybrain/algorithms/degeneration.py	/^from maybrain import constants as ct$/;"	i
+ct	build/lib/maybrain/algorithms/normalisation.py	/^from maybrain import constants as ct$/;"	i
+ct	build/lib/maybrain/brain.py	/^from maybrain import constants as ct$/;"	i
+ct	build/lib/maybrain/plotting/connectome.py	/^from maybrain import constants as ct$/;"	i
+ct	build/lib/maybrain/plotting/matrices.py	/^from maybrain import constants as ct$/;"	i
+ct	build/lib/maybrain/plotting/mayavi_wrapper.py	/^from maybrain import constants as ct$/;"	i
+ct	build/lib/maybrain/utils/highlights.py	/^from maybrain import constants as ct$/;"	i
+ct	maybrain/algorithms/degeneration.py	/^from maybrain import constants as ct$/;"	i
+ct	maybrain/algorithms/normalisation.py	/^from maybrain import constants as ct$/;"	i
+ct	maybrain/brain.py	/^from maybrain import constants as ct$/;"	i
+ct	maybrain/plotting/connectome.py	/^from maybrain import constants as ct$/;"	i
+ct	maybrain/plotting/matrices.py	/^from maybrain import constants as ct$/;"	i
+ct	maybrain/plotting/mayavi_wrapper.py	/^from maybrain import constants as ct$/;"	i
+ct	maybrain/utils/highlights.py	/^from maybrain import constants as ct$/;"	i
+ct	test/test_brain_class.py	/^from maybrain import constants as ct$/;"	i
+ct	test/test_smoke_plotting_algs.py	/^import maybrain.constants as ct$/;"	i
+description	setup.py	/^    description='A module written in Python for visualising brain connectivity data. Its purpose is to allow easy '$/;"	v
+edgelength	build/lib/maybrain/algorithms/edgelength.py	/^def edgelength(G, node_wise=False, edge_wise=False, summary="mean"):$/;"	f
+edgelength	maybrain/algorithms/edgelength.py	/^def edgelength(G, node_wise=False, edge_wise=False, summary="mean"):$/;"	f
+edges_to_list	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def edges_to_list(self, brain):$/;"	m	class:MayaviWrapper
+edges_to_list	maybrain/plotting/mayavi_wrapper.py	/^    def edges_to_list(self, brain):$/;"	m	class:MayaviWrapper
+export_parcels_nii	build/lib/maybrain/brain.py	/^    def export_parcels_nii(self, outname='brain', value_dict=None):$/;"	m	class:Brain
+export_parcels_nii	maybrain/brain.py	/^    def export_parcels_nii(self, outname='brain', value_dict=None):$/;"	m	class:Brain
+extract_coordinates	build/lib/maybrain/utils/brain_utils.py	/^def extract_coordinates(template, outfile="ROI_xyz.txt"):$/;"	f
+extract_coordinates	maybrain/utils/brain_utils.py	/^def extract_coordinates(template, outfile="ROI_xyz.txt"):$/;"	f
+find_linked_nodes	build/lib/maybrain/brain.py	/^    def find_linked_nodes(self):$/;"	m	class:Brain
+find_linked_nodes	maybrain/brain.py	/^    def find_linked_nodes(self):$/;"	m	class:Brain
+find_spatially_nearest	build/lib/maybrain/brain.py	/^    def find_spatially_nearest(self, node_list, contra=False, midline=44.5, connected=True, threshold=None):$/;"	m	class:Brain
+find_spatially_nearest	maybrain/brain.py	/^    def find_spatially_nearest(self, node_list, contra=False, midline=44.5, connected=True, threshold=None):$/;"	m	class:Brain
+generate_rand_from_degree	build/lib/maybrain/algorithms/normalisation.py	/^def generate_rand_from_degree(brain, throw_exception=False, node_attrs=None, edge_attrs=None):$/;"	f
+generate_rand_from_degree	maybrain/algorithms/normalisation.py	/^def generate_rand_from_degree(brain, throw_exception=False, node_attrs=None, edge_attrs=None):$/;"	f
+get_auto_label	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def get_auto_label(self):$/;"	m	class:MayaviWrapper
+get_auto_label	maybrain/plotting/mayavi_wrapper.py	/^    def get_auto_label(self):$/;"	m	class:MayaviWrapper
+get_coords	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def get_coords(self, brain, edge):$/;"	m	class:MayaviWrapper
+get_coords	maybrain/plotting/mayavi_wrapper.py	/^    def get_coords(self, brain, edge):$/;"	m	class:MayaviWrapper
+get_plot_property	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def get_plot_property(self, plot_type, prop, plot_label):$/;"	m	class:MayaviWrapper
+get_plot_property	maybrain/plotting/mayavi_wrapper.py	/^    def get_plot_property(self, plot_type, prop, plot_label):$/;"	m	class:MayaviWrapper
+glob	build/lib/maybrain/allen.py	/^from glob import glob$/;"	i
+glob	maybrain/allen.py	/^from glob import glob$/;"	i
+greenBrain	docs/old/demo videos/demoVideo.py	/^greenBrain = a.makeSubBrain('colour', 'green')$/;"	v
+highlight_from_conds	build/lib/maybrain/utils/highlights.py	/^def highlight_from_conds(brain, prop, rel, val, mode, label=None):$/;"	f
+highlight_from_conds	maybrain/utils/highlights.py	/^def highlight_from_conds(brain, prop, rel, val, mode, label=None):$/;"	f
+highlights	build/lib/maybrain/utils/highlights.py	/^highlights = {}  # Our highlights$/;"	v
+highlights	maybrain/utils/highlights.py	/^highlights = {}  # Our highlights$/;"	v
+import_adj_file	build/lib/maybrain/brain.py	/^    def import_adj_file(self, fname, delimiter=None, nodes_to_exclude=None, na_vals=None):$/;"	m	class:Brain
+import_adj_file	maybrain/brain.py	/^    def import_adj_file(self, fname, delimiter=None, nodes_to_exclude=None, na_vals=None):$/;"	m	class:Brain
+import_background	build/lib/maybrain/brain.py	/^    def import_background(self, fname):$/;"	m	class:Brain
+import_background	maybrain/brain.py	/^    def import_background(self, fname):$/;"	m	class:Brain
+import_edge_props_from_dict	build/lib/maybrain/brain.py	/^    def import_edge_props_from_dict(self, prop_name, props):$/;"	m	class:Brain
+import_edge_props_from_dict	maybrain/brain.py	/^    def import_edge_props_from_dict(self, prop_name, props):$/;"	m	class:Brain
+import_iso	build/lib/maybrain/brain.py	/^    def import_iso(self, fname):$/;"	m	class:Brain
+import_iso	maybrain/brain.py	/^    def import_iso(self, fname):$/;"	m	class:Brain
+import_node_props_from_dict	build/lib/maybrain/brain.py	/^    def import_node_props_from_dict(self, prop_name, props):$/;"	m	class:Brain
+import_node_props_from_dict	maybrain/brain.py	/^    def import_node_props_from_dict(self, prop_name, props):$/;"	m	class:Brain
+import_properties	build/lib/maybrain/brain.py	/^    def import_properties(self, filename):$/;"	m	class:Brain
+import_properties	maybrain/brain.py	/^    def import_properties(self, filename):$/;"	m	class:Brain
+import_spatial_info	build/lib/maybrain/brain.py	/^    def import_spatial_info(self, fname, delimiter=None, convert_mni=False):$/;"	m	class:Brain
+import_spatial_info	maybrain/brain.py	/^    def import_spatial_info(self, fname, delimiter=None, convert_mni=False):$/;"	m	class:Brain
+include_package_data	setup.py	/^    include_package_data=True$/;"	v
+l	docs/old/demo videos/demoVideo.py	/^l = len(a.G.nodes())$/;"	v
+license	setup.py	/^    license='LICENSE',$/;"	v
+load_allen	build/lib/maybrain/allen.py	/^def load_allen(subject,$/;"	f
+load_allen	maybrain/allen.py	/^def load_allen(subject,$/;"	f
+local_thresholding	build/lib/maybrain/brain.py	/^    def local_thresholding(self, threshold_type=None, value=0.):$/;"	m	class:Brain
+local_thresholding	maybrain/brain.py	/^    def local_thresholding(self, threshold_type=None, value=0.):$/;"	m	class:Brain
+long_description	setup.py	/^    long_description=open('README.md').read(),$/;"	v
+makeTemplate	build/lib/maybrain/braineac.py	/^    def makeTemplate(self, AAL="ROI_MNI_V4.nii.gz", outFile="AAL_braineac.nii",$/;"	m	class:braineac
+makeTemplate	maybrain/braineac.py	/^    def makeTemplate(self, AAL="ROI_MNI_V4.nii.gz", outFile="AAL_braineac.nii",$/;"	m	class:braineac
+make_edges_absolute	build/lib/maybrain/brain.py	/^    def make_edges_absolute(self):$/;"	m	class:Brain
+make_edges_absolute	maybrain/brain.py	/^    def make_edges_absolute(self):$/;"	m	class:Brain
+make_highlight	build/lib/maybrain/utils/highlights.py	/^def make_highlight(edge_inds=None, nodes_inds=None, label=None):$/;"	f
+make_highlight	maybrain/utils/highlights.py	/^def make_highlight(edge_inds=None, nodes_inds=None, label=None):$/;"	f
+makebctmat	build/lib/maybrain/utils/bct.py	/^def makebctmat(brain, nonedge=np.nan):$/;"	f
+makebctmat	maybrain/utils/bct.py	/^def makebctmat(brain, nonedge=np.nan):$/;"	f
+makefname	docs/old/demo videos/demoVideoAnimate.py	/^    def makefname(folder, count, length):$/;"	f	function:anim
+matplotlib	build/lib/maybrain/plotting/connectome.py	/^import matplotlib.pyplot as plt$/;"	i
+matplotlib	build/lib/maybrain/plotting/histograms.py	/^import matplotlib.pyplot as plt$/;"	i
+matplotlib	build/lib/maybrain/plotting/matrices.py	/^import matplotlib.pyplot as plt$/;"	i
+matplotlib	build/lib/maybrain/plotting/matrices.py	/^import matplotlib.ticker as ticker$/;"	i
+matplotlib	maybrain/plotting/connectome.py	/^import matplotlib.pyplot as plt$/;"	i
+matplotlib	maybrain/plotting/histograms.py	/^import matplotlib.pyplot as plt$/;"	i
+matplotlib	maybrain/plotting/matrices.py	/^import matplotlib.pyplot as plt$/;"	i
+matplotlib	maybrain/plotting/matrices.py	/^import matplotlib.ticker as ticker$/;"	i
+matplotlib	test/test_smoke_plotting_algs.py	/^import matplotlib.pyplot as plt$/;"	i
+max	build/lib/maybrain/plotting/mayavi_wrapper.py	/^from numpy import array, repeat, max, power$/;"	i
+max	maybrain/plotting/mayavi_wrapper.py	/^from numpy import array, repeat, max, power$/;"	i
+maybrain	build/lib/maybrain/braineac.py	/^import maybrain.brainObj as mbo$/;"	i
+maybrain	maybrain/braineac.py	/^import maybrain.brainObj as mbo$/;"	i
+maybrain	test/test_smoke_plotting_algs.py	/^import maybrain.algorithms as mba$/;"	i
+maybrain	test/test_smoke_plotting_algs.py	/^import maybrain.constants as ct$/;"	i
+maybrain	test/test_smoke_plotting_algs.py	/^import maybrain.plotting as mpt$/;"	i
+mba	test/test_smoke_plotting_algs.py	/^import maybrain.algorithms as mba$/;"	i
+mbo	build/lib/maybrain/braineac.py	/^import maybrain.brainObj as mbo$/;"	i
+mbo	maybrain/braineac.py	/^import maybrain.brainObj as mbo$/;"	i
+mbt	build/lib/maybrain/plotting/matrices.py	/^from maybrain import brain as mbt$/;"	i
+mbt	maybrain/plotting/matrices.py	/^from maybrain import brain as mbt$/;"	i
+mbt	test/test_brain_class.py	/^from maybrain import brain as mbt$/;"	i
+mbt	test/test_smoke_plotting_algs.py	/^from maybrain import brain as mbt$/;"	i
+mlab	build/lib/maybrain/plotting/mayavi_wrapper.py	/^from mayavi import mlab$/;"	i
+mlab	docs/old/demo videos/demoVideo.py	/^from mayavi import mlab$/;"	i
+mlab	docs/old/demo videos/demoVideoAnimate.py	/^from mayavi import mlab$/;"	i
+mlab	maybrain/plotting/mayavi_wrapper.py	/^from mayavi import mlab$/;"	i
+modularity	build/lib/maybrain/algorithms/modularity.py	/^def modularity(brain, hierarchy=False, diag_val=0., nodes_to_exclude=None):$/;"	f
+modularity	maybrain/algorithms/modularity.py	/^def modularity(brain, hierarchy=False, diag_val=0., nodes_to_exclude=None):$/;"	f
+mpt	test/test_smoke_plotting_algs.py	/^import maybrain.plotting as mpt$/;"	i
+multisubj	build/lib/maybrain/allen.py	/^class multisubj:$/;"	c
+multisubj	maybrain/allen.py	/^class multisubj:$/;"	c
+n	docs/old/demo videos/demoVideo.py	/^    n = int(len(cols)*random.rand())$/;"	v
+name	setup.py	/^    name='maybrain',$/;"	v
+nb	build/lib/maybrain/brain.py	/^        import nibabel as nb$/;"	i
+nb	build/lib/maybrain/braineac.py	/^import nibabel as nb$/;"	i
+nb	build/lib/maybrain/utils/brain_utils.py	/^import nibabel as nb$/;"	i
+nb	docs/old/demo videos/demoVideo.py	/^import mayBrainTools as nb$/;"	i
+nb	docs/old/demo videos/demoVideoAnimate.py	/^import mayBrainTools as nb$/;"	i
+nb	maybrain/brain.py	/^        import nibabel as nb$/;"	i
+nb	maybrain/braineac.py	/^import nibabel as nb$/;"	i
+nb	maybrain/utils/brain_utils.py	/^import nibabel as nb$/;"	i
+normalise	build/lib/maybrain/algorithms/normalisation.py	/^def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exact_random=False,$/;"	f
+normalise	maybrain/algorithms/normalisation.py	/^def normalise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exact_random=False,$/;"	f
+normalise_node_wise	build/lib/maybrain/algorithms/normalisation.py	/^def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exact_random=False,$/;"	f
+normalise_node_wise	maybrain/algorithms/normalisation.py	/^def normalise_node_wise(brain, func, init_vals=None, n_iter=500, ret_normalised=True, exact_random=False,$/;"	f
+normalise_single	build/lib/maybrain/algorithms/normalisation.py	/^def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True, exact_random=False,$/;"	f
+normalise_single	maybrain/algorithms/normalisation.py	/^def normalise_single(brain, func, init_val=None, n_iter=500, ret_normalised=True, exact_random=False,$/;"	f
+np	build/lib/maybrain/algorithms/degeneration.py	/^import numpy as np$/;"	i
+np	build/lib/maybrain/algorithms/edgelength.py	/^import numpy as np$/;"	i
+np	build/lib/maybrain/algorithms/modularity.py	/^import numpy as np$/;"	i
+np	build/lib/maybrain/algorithms/normalisation.py	/^import numpy as np$/;"	i
+np	build/lib/maybrain/algorithms/robustness.py	/^import numpy as np$/;"	i
+np	build/lib/maybrain/allen.py	/^import numpy as np$/;"	i
+np	build/lib/maybrain/brain.py	/^import numpy as np$/;"	i
+np	build/lib/maybrain/braineac.py	/^import numpy as np$/;"	i
+np	build/lib/maybrain/plotting/connectome.py	/^import numpy as np$/;"	i
+np	build/lib/maybrain/plotting/histograms.py	/^import numpy as np$/;"	i
+np	build/lib/maybrain/plotting/matrices.py	/^import numpy as np$/;"	i
+np	build/lib/maybrain/utils/bct.py	/^import numpy as np$/;"	i
+np	build/lib/maybrain/utils/brain_utils.py	/^import numpy as np$/;"	i
+np	maybrain/algorithms/degeneration.py	/^import numpy as np$/;"	i
+np	maybrain/algorithms/edgelength.py	/^import numpy as np$/;"	i
+np	maybrain/algorithms/modularity.py	/^import numpy as np$/;"	i
+np	maybrain/algorithms/normalisation.py	/^import numpy as np$/;"	i
+np	maybrain/algorithms/robustness.py	/^import numpy as np$/;"	i
+np	maybrain/allen.py	/^import numpy as np$/;"	i
+np	maybrain/brain.py	/^import numpy as np$/;"	i
+np	maybrain/braineac.py	/^import numpy as np$/;"	i
+np	maybrain/plotting/connectome.py	/^import numpy as np$/;"	i
+np	maybrain/plotting/histograms.py	/^import numpy as np$/;"	i
+np	maybrain/plotting/matrices.py	/^import numpy as np$/;"	i
+np	maybrain/utils/bct.py	/^import numpy as np$/;"	i
+np	maybrain/utils/brain_utils.py	/^import numpy as np$/;"	i
+np	test/test_brain_class.py	/^import numpy as np$/;"	i
+numbers	build/lib/maybrain/algorithms/normalisation.py	/^import numbers$/;"	i
+numbers	maybrain/algorithms/normalisation.py	/^import numbers$/;"	i
+nx	build/lib/maybrain/algorithms/degeneration.py	/^import networkx as nx$/;"	i
+nx	build/lib/maybrain/algorithms/normalisation.py	/^import networkx as nx$/;"	i
+nx	build/lib/maybrain/algorithms/robustness.py	/^import networkx as nx$/;"	i
+nx	build/lib/maybrain/brain.py	/^import networkx as nx$/;"	i
+nx	build/lib/maybrain/plotting/connectome.py	/^import networkx as nx$/;"	i
+nx	build/lib/maybrain/plotting/histograms.py	/^import networkx as nx$/;"	i
+nx	build/lib/maybrain/utils/bct.py	/^import networkx as nx$/;"	i
+nx	maybrain/algorithms/degeneration.py	/^import networkx as nx$/;"	i
+nx	maybrain/algorithms/normalisation.py	/^import networkx as nx$/;"	i
+nx	maybrain/algorithms/robustness.py	/^import networkx as nx$/;"	i
+nx	maybrain/brain.py	/^import networkx as nx$/;"	i
+nx	maybrain/plotting/connectome.py	/^import networkx as nx$/;"	i
+nx	maybrain/plotting/histograms.py	/^import networkx as nx$/;"	i
+nx	maybrain/utils/bct.py	/^import networkx as nx$/;"	i
+nx	test/test_brain_class.py	/^import networkx as nx$/;"	i
+nx	test/test_smoke_plotting_algs.py	/^import networkx as nx$/;"	i
+output_adj_matrix	build/lib/maybrain/utils/writers.py	/^def output_adj_matrix(brain, filename):$/;"	f
+output_adj_matrix	maybrain/utils/writers.py	/^def output_adj_matrix(brain, filename):$/;"	f
+output_edges	build/lib/maybrain/utils/writers.py	/^def output_edges(brain, filename, properties=None):$/;"	f
+output_edges	maybrain/utils/writers.py	/^def output_edges(brain, filename, properties=None):$/;"	f
+packages	setup.py	/^    packages=['maybrain', 'maybrain.algorithms', 'maybrain.utils', 'maybrain.plotting', 'maybrain.resources'],$/;"	v
+parcels	build/lib/maybrain/brain.py	/^    def parcels(self, node_list):$/;"	m	class:Brain
+parcels	maybrain/brain.py	/^    def parcels(self, node_list):$/;"	m	class:Brain
+path	build/lib/maybrain/allen.py	/^from os import path, rename, remove$/;"	i
+path	build/lib/maybrain/braineac.py	/^from os import path$/;"	i
+path	build/lib/maybrain/utils/brain_utils.py	/^from os import path, rename$/;"	i
+path	maybrain/allen.py	/^from os import path, rename, remove$/;"	i
+path	maybrain/braineac.py	/^from os import path$/;"	i
+path	maybrain/utils/brain_utils.py	/^from os import path, rename$/;"	i
+percent_connected	build/lib/maybrain/utils/brain_utils.py	/^def percent_connected(brain):$/;"	f
+percent_connected	maybrain/utils/brain_utils.py	/^def percent_connected(brain):$/;"	f
+pkg_resources	build/lib/maybrain/resources/__init__.py	/^import pkg_resources$/;"	i
+pkg_resources	maybrain/resources/__init__.py	/^import pkg_resources$/;"	i
+plot	docs/old/demo videos/demoVideo.py	/^plot = nb.plotObj()$/;"	v
+plot_avg_matrix	build/lib/maybrain/plotting/matrices.py	/^def plot_avg_matrix(brains, output_file=None, dummy_adj_file=rr.DUMMY_ADJ_FILE_500,$/;"	f
+plot_avg_matrix	maybrain/plotting/matrices.py	/^def plot_avg_matrix(brains, output_file=None, dummy_adj_file=rr.DUMMY_ADJ_FILE_500,$/;"	f
+plot_brain	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def plot_brain(self, brain, opacity=1.0, edge_opacity=None, label='plot', plot_highlights=True):$/;"	m	class:MayaviWrapper
+plot_brain	maybrain/plotting/mayavi_wrapper.py	/^    def plot_brain(self, brain, opacity=1.0, edge_opacity=None, label='plot', plot_highlights=True):$/;"	m	class:MayaviWrapper
+plot_brain_coords	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def plot_brain_coords(self, brain, nodes=None, opacity=1.0, label='coordplot', size_list=None, col=(0., 0., 0.),$/;"	m	class:MayaviWrapper
+plot_brain_coords	maybrain/plotting/mayavi_wrapper.py	/^    def plot_brain_coords(self, brain, nodes=None, opacity=1.0, label='coordplot', size_list=None, col=(0., 0., 0.),$/;"	m	class:MayaviWrapper
+plot_brain_edges	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def plot_brain_edges(self, brain, opacity=1.0, label='edgeplot', col=None, cm='GnBu', lw=2., scalars=None):$/;"	m	class:MayaviWrapper
+plot_brain_edges	maybrain/plotting/mayavi_wrapper.py	/^    def plot_brain_edges(self, brain, opacity=1.0, label='edgeplot', col=None, cm='GnBu', lw=2., scalars=None):$/;"	m	class:MayaviWrapper
+plot_brain_highlights	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def plot_brain_highlights(self, brain, highlights=[], labelpre=''):$/;"	m	class:MayaviWrapper
+plot_brain_highlights	maybrain/plotting/mayavi_wrapper.py	/^    def plot_brain_highlights(self, brain, highlights=[], labelpre=''):$/;"	m	class:MayaviWrapper
+plot_connectome	build/lib/maybrain/plotting/connectome.py	/^def plot_connectome(brain,$/;"	f
+plot_connectome	maybrain/plotting/connectome.py	/^def plot_connectome(brain,$/;"	f
+plot_coords	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def plot_coords(self, coords, col=(1., 1., 1.), opacity=1., label='plot', size_list=None, sf=1., sf_range=None):$/;"	m	class:MayaviWrapper
+plot_coords	maybrain/plotting/mayavi_wrapper.py	/^    def plot_coords(self, coords, col=(1., 1., 1.), opacity=1., label='plot', size_list=None, sf=1., sf_range=None):$/;"	m	class:MayaviWrapper
+plot_edges	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def plot_edges(self, ex1, ey1, ez1, ux, uy, uz, s, lw=2., col=None, opacity=1., cm='GnBu', label='plot'):$/;"	m	class:MayaviWrapper
+plot_edges	maybrain/plotting/mayavi_wrapper.py	/^    def plot_edges(self, ex1, ey1, ez1, ux, uy, uz, s, lw=2., col=None, opacity=1., cm='GnBu', label='plot'):$/;"	m	class:MayaviWrapper
+plot_isosurface	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def plot_isosurface(self, brain, label=None, contour_vals=[], opacity=0.1, cmap='autumn'):$/;"	m	class:MayaviWrapper
+plot_isosurface	maybrain/plotting/mayavi_wrapper.py	/^    def plot_isosurface(self, brain, label=None, contour_vals=[], opacity=0.1, cmap='autumn'):$/;"	m	class:MayaviWrapper
+plot_parcels	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def plot_parcels(self, brain, label=None, contour_vals=[], opacity=0.5, cmap='autumn'):$/;"	m	class:MayaviWrapper
+plot_parcels	maybrain/plotting/mayavi_wrapper.py	/^    def plot_parcels(self, brain, label=None, contour_vals=[], opacity=0.5, cmap='autumn'):$/;"	m	class:MayaviWrapper
+plot_skull	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def plot_skull(self, brain, label=None, contour_vals=[], opacity=0.1, cmap='Spectral'):$/;"	m	class:MayaviWrapper
+plot_skull	maybrain/plotting/mayavi_wrapper.py	/^    def plot_skull(self, brain, label=None, contour_vals=[], opacity=0.1, cmap='Spectral'):$/;"	m	class:MayaviWrapper
+plot_strength_matrix	build/lib/maybrain/plotting/matrices.py	/^def plot_strength_matrix(brain, title="", output_file=None, dummy_adj_file=rr.DUMMY_ADJ_FILE_500,$/;"	f
+plot_strength_matrix	maybrain/plotting/matrices.py	/^def plot_strength_matrix(brain, title="", output_file=None, dummy_adj_file=rr.DUMMY_ADJ_FILE_500,$/;"	f
+plot_weight_distribution	build/lib/maybrain/plotting/histograms.py	/^def plot_weight_distribution(brain, output_file=None, **kwargs):$/;"	f
+plot_weight_distribution	maybrain/plotting/histograms.py	/^def plot_weight_distribution(brain, output_file=None, **kwargs):$/;"	f
+plotting	build/lib/maybrain/plotting/connectome.py	/^from nilearn import plotting$/;"	i
+plotting	maybrain/plotting/connectome.py	/^from nilearn import plotting$/;"	i
+plt	build/lib/maybrain/allen.py	/^from matplotlib import pyplot as plt$/;"	i
+plt	build/lib/maybrain/plotting/connectome.py	/^import matplotlib.pyplot as plt$/;"	i
+plt	build/lib/maybrain/plotting/histograms.py	/^import matplotlib.pyplot as plt$/;"	i
+plt	build/lib/maybrain/plotting/matrices.py	/^import matplotlib.pyplot as plt$/;"	i
+plt	maybrain/allen.py	/^from matplotlib import pyplot as plt$/;"	i
+plt	maybrain/plotting/connectome.py	/^import matplotlib.pyplot as plt$/;"	i
+plt	maybrain/plotting/histograms.py	/^import matplotlib.pyplot as plt$/;"	i
+plt	maybrain/plotting/matrices.py	/^import matplotlib.pyplot as plt$/;"	i
+plt	test/test_smoke_plotting_algs.py	/^import matplotlib.pyplot as plt$/;"	i
+postChange	docs/old/demo videos/demoVideoAnimate.py	/^    def postChange(fig, saveFig, count):$/;"	f	function:anim
+power	build/lib/maybrain/plotting/mayavi_wrapper.py	/^from numpy import array, repeat, max, power$/;"	i
+power	maybrain/plotting/mayavi_wrapper.py	/^from numpy import array, repeat, max, power$/;"	i
+probedata	build/lib/maybrain/allen.py	/^    def probedata(self, probe_numbers=[], mean_vals=True):$/;"	m	class:multisubj
+probedata	build/lib/maybrain/allen.py	/^    def probedata(self, prop_dict, graph_metric_name="gm", node_list=None, scatter_plot=False,$/;"	m	class:AllenBrain
+probedata	maybrain/allen.py	/^    def probedata(self, probe_numbers=[], mean_vals=True):$/;"	m	class:multisubj
+probedata	maybrain/allen.py	/^    def probedata(self, prop_dict, graph_metric_name="gm", node_list=None, scatter_plot=False,$/;"	m	class:AllenBrain
+probesubt	build/lib/maybrain/allen.py	/^    def probesubt(self, line, prop_dict, probe_dict, graph_metric_name, out_file, probe_numbers=None):$/;"	m	class:AllenBrain
+probesubt	maybrain/allen.py	/^    def probesubt(self, line, prop_dict, probe_dict, graph_metric_name, out_file, probe_numbers=None):$/;"	m	class:AllenBrain
+random	build/lib/maybrain/algorithms/degeneration.py	/^import random$/;"	i
+random	build/lib/maybrain/algorithms/modularity.py	/^import random$/;"	i
+random	build/lib/maybrain/algorithms/robustness.py	/^import random$/;"	i
+random	build/lib/maybrain/brain.py	/^import random$/;"	i
+random	docs/old/demo videos/demoVideo.py	/^from numpy import random$/;"	i
+random	maybrain/algorithms/degeneration.py	/^import random$/;"	i
+random	maybrain/algorithms/modularity.py	/^import random$/;"	i
+random	maybrain/algorithms/robustness.py	/^import random$/;"	i
+random	maybrain/brain.py	/^import random$/;"	i
+random_degenerate	build/lib/maybrain/algorithms/degeneration.py	/^def random_degenerate(brain, weight_loss=0.1, edges_removed_limit=1,$/;"	f
+random_degenerate	maybrain/algorithms/degeneration.py	/^def random_degenerate(brain, weight_loss=0.1, edges_removed_limit=1,$/;"	f
+reconstruct_adj_mat	build/lib/maybrain/brain.py	/^    def reconstruct_adj_mat(self):$/;"	m	class:Brain
+reconstruct_adj_mat	maybrain/brain.py	/^    def reconstruct_adj_mat(self):$/;"	m	class:Brain
+redBrain	docs/old/demo videos/demoVideo.py	/^redBrain = a.makeSubBrain('colour', 'red')$/;"	v
+remove	build/lib/maybrain/allen.py	/^from os import path, rename, remove$/;"	i
+remove	maybrain/allen.py	/^from os import path, rename, remove$/;"	i
+remove_unconnected_nodes	build/lib/maybrain/brain.py	/^    def remove_unconnected_nodes(self):$/;"	m	class:Brain
+remove_unconnected_nodes	maybrain/brain.py	/^    def remove_unconnected_nodes(self):$/;"	m	class:Brain
+rename	build/lib/maybrain/allen.py	/^from os import path, rename, remove$/;"	i
+rename	build/lib/maybrain/utils/brain_utils.py	/^from os import path, rename$/;"	i
+rename	maybrain/allen.py	/^from os import path, rename, remove$/;"	i
+rename	maybrain/utils/brain_utils.py	/^from os import path, rename$/;"	i
+repeat	build/lib/maybrain/plotting/mayavi_wrapper.py	/^from numpy import array, repeat, max, power$/;"	i
+repeat	maybrain/plotting/mayavi_wrapper.py	/^from numpy import array, repeat, max, power$/;"	i
+requires	setup.py	/^    requires=['networkx', 'numpy', 'matplotlib', 'nilearn'],$/;"	v
+robustness	build/lib/maybrain/algorithms/robustness.py	/^def robustness(brain, iter_len=500, window_size=50):$/;"	f
+robustness	maybrain/algorithms/robustness.py	/^def robustness(brain, iter_len=500, window_size=50):$/;"	f
+rr	build/lib/maybrain/plotting/matrices.py	/^from maybrain import resources as rr$/;"	i
+rr	maybrain/plotting/matrices.py	/^from maybrain import resources as rr$/;"	i
+rt	test/test_smoke_plotting_algs.py	/^from maybrain import resources as rt$/;"	i
+setUp	test/test_brain_class.py	/^    def setUp(self):$/;"	m	class:TestBrainObj
+setUp	test/test_smoke_plotting_algs.py	/^    def setUp(self):$/;"	m	class:TestPlottingAndAlgs
+setup	setup.py	/^from setuptools import setup$/;"	i
+show	build/lib/maybrain/plotting/histograms.py	/^def show():$/;"	f
+show	build/lib/maybrain/plotting/mayavi_wrapper.py	/^    def show(self):$/;"	m	class:MayaviWrapper
+show	maybrain/plotting/histograms.py	/^def show():$/;"	f
+show	maybrain/plotting/mayavi_wrapper.py	/^    def show(self):$/;"	m	class:MayaviWrapper
+shuffle	build/lib/maybrain/algorithms/normalisation.py	/^from random import shuffle$/;"	i
+shuffle	maybrain/algorithms/normalisation.py	/^from random import shuffle$/;"	i
+stats	build/lib/maybrain/allen.py	/^from scipy import stats$/;"	i
+stats	maybrain/allen.py	/^from scipy import stats$/;"	i
+sys	build/lib/maybrain/algorithms/normalisation.py	/^import sys$/;"	i
+sys	build/lib/maybrain/brain.py	/^import sys$/;"	i
+sys	build/lib/maybrain/plotting/connectome.py	/^import sys$/;"	i
+sys	maybrain/algorithms/normalisation.py	/^import sys$/;"	i
+sys	maybrain/brain.py	/^import sys$/;"	i
+sys	maybrain/plotting/connectome.py	/^import sys$/;"	i
+test_adj_mat	test/test_brain_class.py	/^    def test_adj_mat(self):$/;"	m	class:TestBrainObj
+test_apply_threshold	test/test_brain_class.py	/^    def test_apply_threshold(self):$/;"	m	class:TestBrainObj
+test_bctpy	test/test_brain_class.py	/^    def test_bctpy(self):$/;"	m	class:TestBrainObj
+test_binarise	test/test_brain_class.py	/^    def test_binarise(self):$/;"	m	class:TestBrainObj
+test_connectome	test/test_smoke_plotting_algs.py	/^    def test_connectome(self):$/;"	m	class:TestPlottingAndAlgs
+test_constructor	test/test_brain_class.py	/^    def test_constructor(self):$/;"	m	class:TestBrainObj
+test_copy_hemisphere	test/test_brain_class.py	/^    def test_copy_hemisphere(self):$/;"	m	class:TestBrainObj
+test_highlights	test/test_brain_class.py	/^    def test_highlights(self):$/;"	m	class:TestBrainObj
+test_histograms	test/test_smoke_plotting_algs.py	/^    def test_histograms(self):$/;"	m	class:TestPlottingAndAlgs
+test_import_adj_file	test/test_brain_class.py	/^    def test_import_adj_file(self):$/;"	m	class:TestBrainObj
+test_import_spatial_info	test/test_brain_class.py	/^    def test_import_spatial_info(self):$/;"	m	class:TestBrainObj
+test_linked_nodes	test/test_brain_class.py	/^    def test_linked_nodes(self):$/;"	m	class:TestBrainObj
+test_local_threshold	test/test_brain_class.py	/^    def test_local_threshold(self):$/;"	m	class:TestBrainObj
+test_make_absolute	test/test_brain_class.py	/^    def test_make_absolute(self):$/;"	m	class:TestBrainObj
+test_matrices	test/test_smoke_plotting_algs.py	/^    def test_matrices(self):$/;"	m	class:TestPlottingAndAlgs
+test_normalisation	test/test_smoke_plotting_algs.py	/^    def test_normalisation(self):$/;"	m	class:TestPlottingAndAlgs
+test_percentages	test/test_brain_class.py	/^    def test_percentages(self):$/;"	m	class:TestBrainObj
+test_properties	test/test_brain_class.py	/^    def test_properties(self):$/;"	m	class:TestBrainObj
+test_remove_unconnected_nodes	test/test_brain_class.py	/^    def test_remove_unconnected_nodes(self):$/;"	m	class:TestBrainObj
+test_robustness	test/test_smoke_plotting_algs.py	/^    def test_robustness(self):$/;"	m	class:TestPlottingAndAlgs
+test_weight_to_distance	test/test_brain_class.py	/^    def test_weight_to_distance(self):$/;"	m	class:TestBrainObj
+threshold_to_percentage	build/lib/maybrain/utils/brain_utils.py	/^def threshold_to_percentage(brain, threshold):$/;"	f
+threshold_to_percentage	maybrain/utils/brain_utils.py	/^def threshold_to_percentage(brain, threshold):$/;"	f
+ticker	build/lib/maybrain/plotting/matrices.py	/^import matplotlib.ticker as ticker$/;"	i
+ticker	maybrain/plotting/matrices.py	/^import matplotlib.ticker as ticker$/;"	i
+unittest	test/test_brain_class.py	/^import unittest$/;"	i
+unittest	test/test_smoke_plotting_algs.py	/^import unittest$/;"	i
+update_adj_mat	build/lib/maybrain/brain.py	/^    def update_adj_mat(self, edge):$/;"	m	class:Brain
+update_adj_mat	maybrain/brain.py	/^    def update_adj_mat(self, edge):$/;"	m	class:Brain
+url	setup.py	/^    url='https:\/\/github.com\/RittmanResearch\/maybrain',$/;"	v
+utils	build/lib/maybrain/__init__.py	/^from . import utils$/;"	i
+utils	maybrain/__init__.py	/^from . import utils$/;"	i
+utils	test/test_brain_class.py	/^from maybrain import utils$/;"	i
+version	setup.py	/^    version='0.7.7',$/;"	v
+weight_to_distance	build/lib/maybrain/brain.py	/^    def weight_to_distance(self):$/;"	m	class:Brain
+weight_to_distance	maybrain/brain.py	/^    def weight_to_distance(self):$/;"	m	class:Brain
+within_module_degree	build/lib/maybrain/algorithms/modularity.py	/^def within_module_degree(brain, ci, weight=None):$/;"	f
+within_module_degree	maybrain/algorithms/modularity.py	/^def within_module_degree(brain, ci, weight=None):$/;"	f
+write_results	build/lib/maybrain/utils/brain_utils.py	/^def write_results(results, measure,$/;"	f
+write_results	maybrain/utils/brain_utils.py	/^def write_results(results, measure,$/;"	f
+xmatrix	build/lib/maybrain/allen.py	/^    def xmatrix(self, out_file="Xmatrix.csv", allen_dir="allen_data",$/;"	m	class:multisubj
+xmatrix	build/lib/maybrain/allen.py	/^    def xmatrix(self, out_file="Xmatrix.csv", probe_numbers=None, temp_mat_name="tempMat.txt",$/;"	m	class:AllenBrain
+xmatrix	maybrain/allen.py	/^    def xmatrix(self, out_file="Xmatrix.csv", allen_dir="allen_data",$/;"	m	class:multisubj
+xmatrix	maybrain/allen.py	/^    def xmatrix(self, out_file="Xmatrix.csv", probe_numbers=None, temp_mat_name="tempMat.txt",$/;"	m	class:AllenBrain
+ymatrixgroup	build/lib/maybrain/allen.py	/^    def ymatrixgroup(self, metric_dict, subj="Control",$/;"	m	class:multisubj
+ymatrixgroup	maybrain/allen.py	/^    def ymatrixgroup(self, metric_dict, subj="Control",$/;"	m	class:multisubj
+ymatrixindividuals	build/lib/maybrain/allen.py	/^    def ymatrixindividuals(self, metric_dict, subj_list,$/;"	m	class:multisubj
+ymatrixindividuals	maybrain/allen.py	/^    def ymatrixindividuals(self, metric_dict, subj_list,$/;"	m	class:multisubj
