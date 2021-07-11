@@ -488,9 +488,6 @@ class Brain:
             Consider using `self.remove_unconnected_nodes()`
         """
 
-        # Save the threshold value
-        self.threshold = value
-
         # Controlling input
         if threshold_type not in ["edgePC", "totalEdges", None]:
             raise TypeError("Not a valid threshold_type for local_thresholding()")
@@ -569,6 +566,9 @@ class Brain:
         if self.update_props_after_threshold:
             self._add_properties(self.node_properties)
             self._add_properties(self.edge_properties)
+
+        # Save the threshold value
+        self.threshold = value
 
     def binarise(self):
         """
