@@ -27,7 +27,7 @@ def makebctmat(brain, nonedge=np.nan):
     array: np.array
         A connectivity array ready to be used by bctpy
     """
-    return np.copy(nx.to_numpy_matrix(brain.G, nonedge=nonedge))
+    return np.copy(nx.to_numpy_array(brain.G, nonedge=nonedge))
 
 
 def assignbctresult(brain, bct_res):
